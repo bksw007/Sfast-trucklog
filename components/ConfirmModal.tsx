@@ -13,6 +13,7 @@ interface ConfirmModalProps {
   cancelText?: string;
   data?: { label: string; value: string }[];
   showCancel?: boolean;
+  showConfirm?: boolean;
 }
 
 const ConfirmModal: React.FC<ConfirmModalProps> = ({ 
@@ -25,7 +26,8 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   confirmText = 'ยืนยัน',
   cancelText = 'ยกเลิก',
   data,
-  showCancel = true
+  showCancel = true,
+  showConfirm = true
 }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -115,26 +117,30 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
         )}
         
         {/* Buttons */}
-        <div className={`flex gap-3 ${showCancel ? '' : 'justify-center'}`}>
-          {showCancel && (
-            <button 
-              onClick={onClose}
-              className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all ${
-                isDark 
-                  ? 'bg-dark-bg hover:bg-white/10 text-dark-text' 
-                  : 'bg-light-bg hover:bg-black/5 text-light-text'
-              }`}
-            >
-              {cancelText}
-            </button>
-          )}
-          <button 
-            onClick={onConfirm}
-            className={`${showCancel ? 'flex-1' : 'px-8'} py-3 rounded-xl font-bold text-white transition-all hover:brightness-110 ${buttonColors[type]}`}
-          >
-            {confirmText}
-          </button>
-        </div>
+        {(showConfirm || showCancel) && (
+          <div className={`flex gap-3 ${showCancel && showConfirm ? '' : 'justify-center'}`}>
+            {showCancel && (
+              <button 
+                onClick={onClose}
+                className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all ${
+                  isDark 
+                    ? 'bg-dark-bg hover:bg-white/10 text-dark-text' 
+                    : 'bg-light-bg hover:bg-black/5 text-light-text'
+                }`}
+              >
+                {cancelText}
+              </button>
+            )}
+            {showConfirm && (
+              <button 
+                onClick={onConfirm}
+                className={`${showCancel ? 'flex-1' : 'px-8'} py-3 rounded-xl font-bold text-white transition-all hover:brightness-110 ${buttonColors[type]}`}
+              >
+                {confirmText}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

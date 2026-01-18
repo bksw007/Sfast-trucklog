@@ -6,13 +6,36 @@ const STORAGE_KEY = 'sfast_trucklog_data_v1';
 // Get the Google Apps Script URL from environment variables
 const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || '';
 
+// Helper to migrate legacy data structure
+const migrateOptions = (data: AppData): AppData => {
+  const options = (data.options || {}) as any;
+  
+  // If backend/local returns old structure (pickupLocations/dropoffLocations) but no 'locations'
+  if (!options.locations) {
+    // Merge unique locations from pickup and dropoff
+    const mergedLocations = new Set<string>([
+      ...(options.pickupLocations || []),
+      ...(options.dropoffLocations || [])
+    ]);
+    options.locations = Array.from(mergedLocations);
+    
+    // Ensure other arrays exist
+    options.vehicleTypes = options.vehicleTypes || [];
+    options.drivers = options.drivers || [];
+    options.licensePlates = options.licensePlates || [];
+  }
+  
+  return { ...data, options: options as AppData['options'] };
+};
+
 // Helper to get data from local storage
 const getStoredData = (): AppData => {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (!stored) {
     return INITIAL_DATA;
   }
-  return JSON.parse(stored);
+  const data = JSON.parse(stored);
+  return migrateOptions(data);
 };
 
 // Helper to save data to local storage
@@ -82,32 +105,14 @@ export const dataService = {
     const remoteData = await apiCall('GET');
     
     if (remoteData && remoteData.jobs) {
-      // Handle backward compatibility for options
-      const options = remoteData.options || {};
-      
-      // If backend returns old structure (pickupLocations/dropoffLocations) but no 'locations'
-      if (!options.locations) {
-        const title = 'Migration Fix';
-        // Merge unique locations from pickup and dropoff
-        const mergedLocations = new Set<string>([
-          ...(options.pickupLocations || []),
-          ...(options.dropoffLocations || [])
-        ]);
-        options.locations = Array.from(mergedLocations);
-        
-        // Ensure other arrays exist
-        options.vehicleTypes = options.vehicleTypes || [];
-        options.drivers = options.drivers || [];
-        options.licensePlates = options.licensePlates || [];
-      }
-
-      // Update local storage with remote data
       const appData: AppData = {
         jobs: remoteData.jobs,
-        options: options
+        options: remoteData.options
       };
-      setStoredData(appData);
-      return appData;
+      // Apply migration logic to remote data as well
+      const migratedData = migrateOptions(appData);
+      setStoredData(migratedData);
+      return migratedData;
     }
     
     // Fallback to local storage

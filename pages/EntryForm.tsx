@@ -81,6 +81,8 @@ const EntryForm: React.FC = () => {
       
       // Show success modal
       setShowSuccessModal(true);
+      // Auto close after 1.5s
+      setTimeout(() => setShowSuccessModal(false), 1500);
       
       // Reset form for next entry
       setFormData({
@@ -116,19 +118,20 @@ const EntryForm: React.FC = () => {
         await loadData();
         
         const fieldMap: Record<OptionCategory, keyof typeof formData | null> = {
-          [OptionCategory.LOCATION]: null, // Location is special - it's shared for pickup/dropoff
+          [OptionCategory.LOCATION]: null,
           [OptionCategory.VEHICLE]: 'vehicleType',
           [OptionCategory.DRIVER]: 'driverName',
           [OptionCategory.PLATE]: 'licensePlate',
         };
         
-        // For location, don't auto-select since it could be pickup or dropoff
         const fieldName = fieldMap[modalCategory];
         if (fieldName) {
           setFormData(prev => ({...prev, [fieldName]: newOptionValue.trim()}));
         }
         setIsAddModalOpen(false);
         setShowOptionSuccess(true);
+        // Auto close after 1.5s
+        setTimeout(() => setShowOptionSuccess(false), 1500);
       } catch (error) {
         console.error('Failed to save option:', error);
       } finally {
@@ -365,6 +368,7 @@ const EntryForm: React.FC = () => {
         type="success"
         confirmText="ตกลง"
         showCancel={false}
+        showConfirm={false}
       />
 
       {/* Confirmation Modal */}
@@ -390,6 +394,7 @@ const EntryForm: React.FC = () => {
         type="success"
         confirmText="ตกลง"
         showCancel={false}
+        showConfirm={false}
       />
     </div>
   );
