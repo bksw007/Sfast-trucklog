@@ -969,7 +969,7 @@ const DataTable: React.FC = () => {
                     className={`transition-colors cursor-pointer ${isDark ? 'hover:bg-white/5' : 'hover:bg-accent-primary/5'}`}
                   >
                     <td className={`px-6 py-4 font-medium whitespace-nowrap ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                      {job.date}
+                      {formatDate(job.date)}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col gap-1">
