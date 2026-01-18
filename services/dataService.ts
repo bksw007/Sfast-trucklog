@@ -28,32 +28,47 @@ const apiCall = async (method: 'GET' | 'POST', body?: object): Promise<any> => {
   }
 
   try {
+    let url = SCRIPT_URL;
     const options: RequestInit = {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      redirect: 'follow',
     };
 
     if (method === 'POST' && body) {
+      // For POST requests to GAS, we need to use a different approach
+      // GAS doesn't handle CORS well with POST, so we'll use GET with query params for some actions
+      // Or use form submission method
+      options.headers = {
+        'Content-Type': 'text/plain',
+      };
       options.body = JSON.stringify(body);
     }
 
-    const response = await fetch(SCRIPT_URL, options);
+    console.log(`[DataService] ${method} request to GAS:`, body ? JSON.stringify(body) : 'no body');
     
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const result = await response.json();
+    const response = await fetch(url, options);
     
-    if (result.error) {
-      throw new Error(result.error);
+    console.log(`[DataService] Response status: ${response.status}`);
+    
+    // Handle text response (GAS sometimes returns text)
+    const text = await response.text();
+    console.log(`[DataService] Response text (first 200 chars):`, text.substring(0, 200));
+    
+    try {
+      const result = JSON.parse(text);
+      
+      if (result.error) {
+        console.error('[DataService] API returned error:', result.error);
+        throw new Error(result.error);
+      }
+      
+      return result;
+    } catch (parseError) {
+      console.error('[DataService] Failed to parse response as JSON:', parseError);
+      return null;
     }
-
-    return result;
   } catch (error) {
-    console.error('API call failed:', error);
+    console.error('[DataService] API call failed:', error);
     return null;
   }
 };

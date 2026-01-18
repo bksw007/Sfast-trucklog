@@ -18,6 +18,8 @@ const EntryForm: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [modalCategory, setModalCategory] = useState<OptionCategory | null>(null);
   const [newOptionValue, setNewOptionValue] = useState('');
+  const [isSavingOption, setIsSavingOption] = useState(false);
+  const [showOptionSuccess, setShowOptionSuccess] = useState(false);
   
   // Confirm Modal States
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -98,20 +100,29 @@ const EntryForm: React.FC = () => {
   };
 
   const handleSaveOption = async () => {
-    if (modalCategory && newOptionValue.trim()) {
-      await dataService.addOption(modalCategory, newOptionValue.trim());
-      await loadData();
+    if (modalCategory && newOptionValue.trim() && !isSavingOption) {
+      setIsSavingOption(true);
       
-      const fieldMap: Record<OptionCategory, keyof typeof formData> = {
-        [OptionCategory.PICKUP]: 'pickupLocation',
-        [OptionCategory.DROPOFF]: 'dropoffLocation',
-        [OptionCategory.VEHICLE]: 'vehicleType',
-        [OptionCategory.DRIVER]: 'driverName',
-        [OptionCategory.PLATE]: 'licensePlate',
-      };
-      
-      setFormData(prev => ({...prev, [fieldMap[modalCategory]]: newOptionValue.trim()}));
-      setIsAddModalOpen(false);
+      try {
+        await dataService.addOption(modalCategory, newOptionValue.trim());
+        await loadData();
+        
+        const fieldMap: Record<OptionCategory, keyof typeof formData> = {
+          [OptionCategory.PICKUP]: 'pickupLocation',
+          [OptionCategory.DROPOFF]: 'dropoffLocation',
+          [OptionCategory.VEHICLE]: 'vehicleType',
+          [OptionCategory.DRIVER]: 'driverName',
+          [OptionCategory.PLATE]: 'licensePlate',
+        };
+        
+        setFormData(prev => ({...prev, [fieldMap[modalCategory]]: newOptionValue.trim()}));
+        setIsAddModalOpen(false);
+        setShowOptionSuccess(true);
+      } catch (error) {
+        console.error('Failed to save option:', error);
+      } finally {
+        setIsSavingOption(false);
+      }
     }
   };
 
@@ -318,12 +329,32 @@ const EntryForm: React.FC = () => {
            </div>
            <button 
             onClick={handleSaveOption}
-            className="w-full bg-accent-secondary text-white font-bold py-2 rounded-lg hover:brightness-110 transition-all"
+            disabled={isSavingOption}
+            className={`w-full bg-accent-secondary text-white font-bold py-2 rounded-lg hover:brightness-110 transition-all flex items-center justify-center gap-2 ${isSavingOption ? 'opacity-70 cursor-not-allowed' : ''}`}
            >
-             ยืนยัน
+             {isSavingOption ? (
+               <>
+                 <Loader2 className="animate-spin" size={18} />
+                 กำลังบันทึก...
+               </>
+             ) : (
+               'ยืนยัน'
+             )}
            </button>
         </div>
       </Modal>
+
+      {/* Option Success Modal */}
+      <ConfirmModal
+        isOpen={showOptionSuccess}
+        onClose={() => setShowOptionSuccess(false)}
+        onConfirm={() => setShowOptionSuccess(false)}
+        title="เพิ่มรายการสำเร็จ!"
+        message="รายการใหม่ถูกบันทึกและเลือกให้อัตโนมัติแล้ว"
+        type="success"
+        confirmText="ตกลง"
+        showCancel={false}
+      />
 
       {/* Confirmation Modal */}
       <ConfirmModal

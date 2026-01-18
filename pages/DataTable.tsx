@@ -468,116 +468,276 @@ const DataTable: React.FC = () => {
     }
   };
 
-  // Detail Modal Content
+  // Detail Modal Content - Beautiful Card Design
   const renderDetailModal = () => {
     if (!selectedJob || !editData) return null;
 
-    const fields = [
-      { key: 'date', label: 'วันที่', type: 'date' },
-      { key: 'pickupLocation', label: 'สถานที่รับ', type: 'text' },
-      { key: 'dropoffLocation', label: 'สถานที่ส่ง', type: 'text' },
-      { key: 'rounds', label: 'จำนวนรอบ', type: 'number' },
-      { key: 'vehicleType', label: 'ประเภทรถ', type: 'text' },
-      { key: 'licensePlate', label: 'ป้ายทะเบียน', type: 'text' },
-      { key: 'driverName', label: 'ชื่อคนขับ', type: 'text' },
-      { key: 'jobNo', label: 'Job No.', type: 'text' },
-      { key: 'invNo', label: 'Invoice No.', type: 'text' },
-      { key: 'remarks', label: 'หมายเหตุ', type: 'textarea' },
-    ];
-
     return (
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsDetailModalOpen(false)} />
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsDetailModalOpen(false)} />
         
-        <div className={`relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-6 shadow-2xl animate-fade-in ${
-          isDark ? 'bg-dark-card' : 'bg-light-card'
+        <div className={`relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl animate-fade-in ${
+          isDark ? 'bg-dark-card' : 'bg-white'
         }`}>
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              {isEditing ? <Edit2 className="text-accent-primary" /> : <Eye className="text-accent-secondary" />}
-              <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {isEditing ? 'แก้ไขข้อมูล' : 'รายละเอียดงาน'}
-              </h3>
+          {/* Header with gradient */}
+          <div className="bg-gradient-to-r from-accent-primary to-accent-secondary p-6 rounded-t-3xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                  {isEditing ? <Edit2 size={24} className="text-white" /> : <Eye size={24} className="text-white" />}
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">
+                    {isEditing ? 'แก้ไขข้อมูล' : 'รายละเอียดงาน'}
+                  </h3>
+                  <p className="text-white/70 text-sm">{selectedJob.jobNo || 'No Job Number'}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsDetailModalOpen(false)} 
+                className="p-2 rounded-xl bg-white/20 hover:bg-white/30 transition-colors"
+              >
+                <X size={20} className="text-white" />
+              </button>
             </div>
-            <button onClick={() => setIsDetailModalOpen(false)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}>
-              <X size={20} className={isDark ? 'text-dark-muted' : 'text-light-muted'} />
-            </button>
           </div>
 
-          {/* Fields */}
-          <div className="space-y-4">
-            {fields.map(field => (
-              <div key={field.key} className="flex flex-col gap-1">
-                <label className={`text-sm font-medium ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
-                  {field.label}
-                </label>
-                {isEditing ? (
-                  field.type === 'textarea' ? (
-                    <textarea
-                      value={editData[field.key as keyof JobEntry] as string}
-                      onChange={(e) => handleEditChange(field.key as keyof JobEntry, e.target.value)}
-                      rows={2}
-                      className={`w-full border rounded-lg px-3 py-2 ${
-                        isDark ? 'bg-dark-bg border-dark-muted/30 text-dark-text' : 'bg-light-bg border-light-muted/30 text-light-text'
-                      }`}
-                    />
-                  ) : (
+          <div className="p-6 space-y-6">
+            {/* Quick Stats Row */}
+            {!isEditing && (
+              <div className="grid grid-cols-3 gap-4">
+                <div className={`p-4 rounded-2xl text-center ${isDark ? 'bg-dark-bg' : 'bg-purple-50'}`}>
+                  <div className="text-2xl font-bold text-accent-primary">{selectedJob.rounds}</div>
+                  <div className={`text-xs ${isDark ? 'text-dark-muted' : 'text-purple-600'}`}>จำนวนรอบ</div>
+                </div>
+                <div className={`p-4 rounded-2xl text-center ${isDark ? 'bg-dark-bg' : 'bg-blue-50'}`}>
+                  <div className="text-lg font-bold text-accent-secondary truncate">{selectedJob.vehicleType}</div>
+                  <div className={`text-xs ${isDark ? 'text-dark-muted' : 'text-blue-600'}`}>ประเภทรถ</div>
+                </div>
+                <div className={`p-4 rounded-2xl text-center ${isDark ? 'bg-dark-bg' : 'bg-green-50'}`}>
+                  <div className="text-lg font-bold text-accent-success truncate">{selectedJob.licensePlate}</div>
+                  <div className={`text-xs ${isDark ? 'text-dark-muted' : 'text-green-600'}`}>ทะเบียน</div>
+                </div>
+              </div>
+            )}
+
+            {/* Route Section */}
+            <div className={`p-5 rounded-2xl border ${isDark ? 'bg-dark-bg/50 border-dark-muted/20' : 'bg-gradient-to-br from-purple-50 to-blue-50 border-purple-100'}`}>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-accent-primary/20 flex items-center justify-center">
+                  <span className="text-accent-primary text-sm">🚚</span>
+                </div>
+                <span className={`font-semibold ${isDark ? 'text-white' : 'text-slate-700'}`}>เส้นทาง</span>
+              </div>
+              {isEditing ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className={`text-xs ${isDark ? 'text-dark-muted' : 'text-slate-500'}`}>สถานที่รับ</label>
                     <input
-                      type={field.type}
-                      value={editData[field.key as keyof JobEntry] as string | number}
-                      onChange={(e) => handleEditChange(field.key as keyof JobEntry, field.type === 'number' ? parseInt(e.target.value) : e.target.value)}
-                      className={`w-full border rounded-lg px-3 py-2 ${
-                        isDark ? 'bg-dark-bg border-dark-muted/30 text-dark-text' : 'bg-light-bg border-light-muted/30 text-light-text'
+                      value={editData.pickupLocation}
+                      onChange={(e) => handleEditChange('pickupLocation', e.target.value)}
+                      className={`w-full mt-1 border rounded-xl px-4 py-2 ${
+                        isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200 text-slate-700'
                       }`}
                     />
-                  )
-                ) : (
-                  <div className={`px-3 py-2 rounded-lg ${isDark ? 'bg-dark-bg' : 'bg-light-bg'}`}>
-                    <span className={isDark ? 'text-dark-text' : 'text-light-text'}>
-                      {selectedJob[field.key as keyof JobEntry] || '-'}
-                    </span>
                   </div>
+                  <div>
+                    <label className={`text-xs ${isDark ? 'text-dark-muted' : 'text-slate-500'}`}>สถานที่ส่ง</label>
+                    <input
+                      value={editData.dropoffLocation}
+                      onChange={(e) => handleEditChange('dropoffLocation', e.target.value)}
+                      className={`w-full mt-1 border rounded-xl px-4 py-2 ${
+                        isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200 text-slate-700'
+                      }`}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className={`flex-1 p-3 rounded-xl ${isDark ? 'bg-dark-card' : 'bg-white'} shadow-sm`}>
+                    <div className={`text-xs ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>รับ</div>
+                    <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.pickupLocation}</div>
+                  </div>
+                  <div className="text-accent-primary text-xl">→</div>
+                  <div className={`flex-1 p-3 rounded-xl ${isDark ? 'bg-dark-card' : 'bg-white'} shadow-sm`}>
+                    <div className={`text-xs ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>ส่ง</div>
+                    <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.dropoffLocation}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Info Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Date */}
+              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>📅 วันที่</div>
+                {isEditing ? (
+                  <input
+                    type="date"
+                    value={editData.date}
+                    onChange={(e) => handleEditChange('date', e.target.value)}
+                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
+                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
+                    }`}
+                  />
+                ) : (
+                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.date}</div>
                 )}
               </div>
-            ))}
-          </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 mt-6">
-            {isEditing ? (
-              <>
-                <button
-                  onClick={() => setIsEditing(false)}
-                  className={`flex-1 py-3 rounded-xl font-medium ${
-                    isDark ? 'bg-dark-bg hover:bg-white/10 text-dark-text' : 'bg-light-bg hover:bg-black/5 text-light-text'
-                  }`}
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  onClick={handleSaveEdit}
-                  className="flex-1 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-accent-primary to-accent-secondary hover:brightness-110"
-                >
-                  บันทึก
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={handleDelete}
-                  className="flex-1 py-3 rounded-xl font-medium text-accent-danger bg-accent-danger/10 hover:bg-accent-danger/20"
-                >
-                  ลบ
-                </button>
-                <button
-                  onClick={handleEditClick}
-                  className="flex-1 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-accent-primary to-accent-secondary hover:brightness-110"
-                >
-                  แก้ไข
-                </button>
-              </>
-            )}
+              {/* Rounds */}
+              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🔄 จำนวนรอบ</div>
+                {isEditing ? (
+                  <input
+                    type="number"
+                    value={editData.rounds}
+                    onChange={(e) => handleEditChange('rounds', parseInt(e.target.value))}
+                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
+                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
+                    }`}
+                  />
+                ) : (
+                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.rounds} รอบ</div>
+                )}
+              </div>
+
+              {/* Vehicle Type */}
+              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🚛 ประเภทรถ</div>
+                {isEditing ? (
+                  <input
+                    value={editData.vehicleType}
+                    onChange={(e) => handleEditChange('vehicleType', e.target.value)}
+                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
+                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
+                    }`}
+                  />
+                ) : (
+                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.vehicleType}</div>
+                )}
+              </div>
+
+              {/* License Plate */}
+              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🔢 ทะเบียน</div>
+                {isEditing ? (
+                  <input
+                    value={editData.licensePlate}
+                    onChange={(e) => handleEditChange('licensePlate', e.target.value)}
+                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
+                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
+                    }`}
+                  />
+                ) : (
+                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.licensePlate}</div>
+                )}
+              </div>
+
+              {/* Driver */}
+              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>👤 คนขับ</div>
+                {isEditing ? (
+                  <input
+                    value={editData.driverName}
+                    onChange={(e) => handleEditChange('driverName', e.target.value)}
+                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
+                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
+                    }`}
+                  />
+                ) : (
+                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.driverName}</div>
+                )}
+              </div>
+
+              {/* Job No */}
+              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>📋 Job No.</div>
+                {isEditing ? (
+                  <input
+                    value={editData.jobNo}
+                    onChange={(e) => handleEditChange('jobNo', e.target.value)}
+                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
+                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
+                    }`}
+                  />
+                ) : (
+                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.jobNo || '-'}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Invoice & Remarks */}
+            <div className="space-y-4">
+              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🧾 Invoice No.</div>
+                {isEditing ? (
+                  <input
+                    value={editData.invNo}
+                    onChange={(e) => handleEditChange('invNo', e.target.value)}
+                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
+                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
+                    }`}
+                  />
+                ) : (
+                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.invNo || '-'}</div>
+                )}
+              </div>
+
+              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-amber-50'}`}>
+                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-amber-600'}`}>💬 หมายเหตุ</div>
+                {isEditing ? (
+                  <textarea
+                    value={editData.remarks}
+                    onChange={(e) => handleEditChange('remarks', e.target.value)}
+                    rows={2}
+                    className={`w-full border rounded-lg px-3 py-2 text-sm ${
+                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-amber-200'
+                    }`}
+                  />
+                ) : (
+                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-amber-800'}`}>{selectedJob.remarks || '-'}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-2">
+              {isEditing ? (
+                <>
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    className={`flex-1 py-3 rounded-xl font-medium transition-all ${
+                      isDark ? 'bg-dark-bg hover:bg-white/10 text-dark-text' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    onClick={handleSaveEdit}
+                    className="flex-1 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-accent-primary to-accent-secondary hover:brightness-110 transition-all shadow-lg shadow-purple-500/25"
+                  >
+                    💾 บันทึก
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={handleDelete}
+                    className="flex-1 py-3 rounded-xl font-medium text-red-500 bg-red-50 hover:bg-red-100 transition-all"
+                  >
+                    🗑️ ลบ
+                  </button>
+                  <button
+                    onClick={handleEditClick}
+                    className="flex-1 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-accent-primary to-accent-secondary hover:brightness-110 transition-all shadow-lg shadow-purple-500/25"
+                  >
+                    ✏️ แก้ไข
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
