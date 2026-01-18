@@ -32,8 +32,7 @@ export const INITIAL_DATA: AppData = {
     }
   ],
   options: {
-    pickupLocations: ['Warehouse A', 'Port C', 'Distribution Center'],
-    dropoffLocations: ['Customer Site B', 'Factory D', 'Shop E'],
+    locations: ['Warehouse A', 'Port C', 'Distribution Center', 'Customer Site B', 'Factory D', 'Shop E'],
     vehicleTypes: ['4 Wheels', '6 Wheels', '10 Wheels', 'Trailer'],
     drivers: ['Somchai Jaidee', 'Somsak Rakdee', 'Mana Meepool'],
     licensePlates: ['70-1234', '12-5678', '99-8888']

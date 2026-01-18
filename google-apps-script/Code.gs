@@ -126,12 +126,12 @@ function setupSheets() {
 
   // Add default options
   const defaultOptions = [
-    ["pickupLocations", "คลังสินค้า A"],
-    ["pickupLocations", "ท่าเรือ B"],
-    ["pickupLocations", "โรงงาน C"],
-    ["dropoffLocations", "ลูกค้า A"],
-    ["dropoffLocations", "โรงงาน B"],
-    ["dropoffLocations", "ศูนย์กระจายสินค้า"],
+    ["locations", "คลังสินค้า A"],
+    ["locations", "ท่าเรือ B"],
+    ["locations", "โรงงาน C"],
+    ["locations", "ลูกค้า A"],
+    ["locations", "โรงงาน B"],
+    ["locations", "ศูนย์กระจายสินค้า"],
     ["vehicleTypes", "4 ล้อ"],
     ["vehicleTypes", "6 ล้อ"],
     ["vehicleTypes", "10 ล้อ"],
@@ -190,8 +190,7 @@ function doGet(e) {
     // Get Options
     const optionsSheet = ss.getSheetByName(OPTIONS_SHEET);
     const options = {
-      pickupLocations: [],
-      dropoffLocations: [],
+      locations: [],
       vehicleTypes: [],
       drivers: [],
       licensePlates: [],

@@ -68,6 +68,16 @@ const DataTable: React.FC = () => {
     setLoading(false);
   };
 
+  // Helper to format date - handles ISO string or date string
+  const formatDate = (dateStr: string): string => {
+    if (!dateStr) return '-';
+    // If it's ISO format with time, extract just the date part
+    if (dateStr.includes('T')) {
+      dateStr = dateStr.split('T')[0];
+    }
+    return dateStr;
+  };
+
   // Extract unique years from data
   const availableYears = useMemo(() => {
     const years = new Set<number>(jobs.map(job => new Date(job.date).getFullYear()));
@@ -582,7 +592,7 @@ const DataTable: React.FC = () => {
                     }`}
                   />
                 ) : (
-                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.date}</div>
+                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{formatDate(selectedJob.date)}</div>
                 )}
               </div>
 

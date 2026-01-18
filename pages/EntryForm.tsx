@@ -107,15 +107,18 @@ const EntryForm: React.FC = () => {
         await dataService.addOption(modalCategory, newOptionValue.trim());
         await loadData();
         
-        const fieldMap: Record<OptionCategory, keyof typeof formData> = {
-          [OptionCategory.PICKUP]: 'pickupLocation',
-          [OptionCategory.DROPOFF]: 'dropoffLocation',
+        const fieldMap: Record<OptionCategory, keyof typeof formData | null> = {
+          [OptionCategory.LOCATION]: null, // Location is special - it's shared for pickup/dropoff
           [OptionCategory.VEHICLE]: 'vehicleType',
           [OptionCategory.DRIVER]: 'driverName',
           [OptionCategory.PLATE]: 'licensePlate',
         };
         
-        setFormData(prev => ({...prev, [fieldMap[modalCategory]]: newOptionValue.trim()}));
+        // For location, don't auto-select since it could be pickup or dropoff
+        const fieldName = fieldMap[modalCategory];
+        if (fieldName) {
+          setFormData(prev => ({...prev, [fieldName]: newOptionValue.trim()}));
+        }
         setIsAddModalOpen(false);
         setShowOptionSuccess(true);
       } catch (error) {
@@ -208,18 +211,18 @@ const EntryForm: React.FC = () => {
             label="สถานที่รับ (Pickup)" 
             name="pickupLocation"
             value={formData.pickupLocation}
-            options={data.options.pickupLocations}
+            options={data.options.locations}
             onChange={handleInputChange}
-            onAdd={() => openAddModal(OptionCategory.PICKUP)}
+            onAdd={() => openAddModal(OptionCategory.LOCATION)}
             isDark={isDark}
           />
           <SelectWithAdd 
             label="สถานที่ส่ง (Dropoff)" 
             name="dropoffLocation"
             value={formData.dropoffLocation}
-            options={data.options.dropoffLocations}
+            options={data.options.locations}
             onChange={handleInputChange}
-            onAdd={() => openAddModal(OptionCategory.DROPOFF)}
+            onAdd={() => openAddModal(OptionCategory.LOCATION)}
             isDark={isDark}
           />
         </div>

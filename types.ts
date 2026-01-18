@@ -16,8 +16,7 @@ export interface JobEntry {
 export interface AppData {
   jobs: JobEntry[];
   options: {
-    pickupLocations: string[];
-    dropoffLocations: string[];
+    locations: string[]; // Combined pickup/dropoff locations
     vehicleTypes: string[];
     drivers: string[];
     licensePlates: string[];
@@ -25,8 +24,7 @@ export interface AppData {
 }
 
 export enum OptionCategory {
-  PICKUP = 'pickupLocations',
-  DROPOFF = 'dropoffLocations',
+  LOCATION = 'locations',
   VEHICLE = 'vehicleTypes',
   DRIVER = 'drivers',
   PLATE = 'licensePlates'
