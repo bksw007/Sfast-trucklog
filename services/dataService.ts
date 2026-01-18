@@ -82,10 +82,29 @@ export const dataService = {
     const remoteData = await apiCall('GET');
     
     if (remoteData && remoteData.jobs) {
+      // Handle backward compatibility for options
+      const options = remoteData.options || {};
+      
+      // If backend returns old structure (pickupLocations/dropoffLocations) but no 'locations'
+      if (!options.locations) {
+        const title = 'Migration Fix';
+        // Merge unique locations from pickup and dropoff
+        const mergedLocations = new Set<string>([
+          ...(options.pickupLocations || []),
+          ...(options.dropoffLocations || [])
+        ]);
+        options.locations = Array.from(mergedLocations);
+        
+        // Ensure other arrays exist
+        options.vehicleTypes = options.vehicleTypes || [];
+        options.drivers = options.drivers || [];
+        options.licensePlates = options.licensePlates || [];
+      }
+
       // Update local storage with remote data
       const appData: AppData = {
         jobs: remoteData.jobs,
-        options: remoteData.options
+        options: options
       };
       setStoredData(appData);
       return appData;
