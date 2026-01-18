@@ -7,6 +7,7 @@ import { useData } from '../contexts/DataContext';
 import ConfirmModal from '../components/ConfirmModal';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { THSarabunNewBase64 } from '../fonts/THSarabunNew';
 
 const MONTHS = [
   { value: 1, label: 'มกราคม' },
@@ -339,15 +340,37 @@ const DataTable: React.FC = () => {
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
     
-    // Title
-    doc.setFontSize(22);
-    doc.setTextColor(124, 58, 237);
-    doc.text('SFast Trucklog Report', pageWidth / 2, 22, { align: 'center' });
+    // Register Thai font
+    doc.addFileToVFS('THSarabunNew.ttf', THSarabunNewBase64);
+    doc.addFont('THSarabunNew.ttf', 'THSarabunNew', 'normal');
+    doc.setFont('THSarabunNew');
     
-    // Subtitle with filter info
-    doc.setFontSize(12);
-    doc.setTextColor(100, 100, 100);
-    doc.text(getFilterDescriptionEN(), pageWidth / 2, 32, { align: 'center' });
+    // Title
+    doc.setFontSize(28);
+    doc.setTextColor(124, 58, 237);
+    doc.text('SFast Trucklog', pageWidth / 2, 20, { align: 'center' });
+    
+    // Thai subtitle
+    doc.setFontSize(16);
+    doc.setTextColor(60, 60, 60);
+    doc.text('รายงานข้อมูลงานวิ่ง', pageWidth / 2, 30, { align: 'center' });
+    
+    // Filter description
+    const filterParts: string[] = [];
+    if (filters.driver) filterParts.push(`คนขับ: ${filters.driver}`);
+    if (filters.licensePlate) filterParts.push(`ทะเบียน: ${filters.licensePlate}`);
+    if (filters.vehicleType) filterParts.push(`ประเภท: ${filters.vehicleType}`);
+    if (filters.month) {
+      const monthName = MONTHS.find(m => m.value === filters.month)?.label || '';
+      filterParts.push(`เดือน ${monthName}`);
+    }
+    if (filters.year) filterParts.push(`ปี ${filters.year}`);
+    
+    if (filterParts.length > 0) {
+      doc.setFontSize(12);
+      doc.setTextColor(100, 100, 100);
+      doc.text(filterParts.join(' | '), pageWidth / 2, 38, { align: 'center' });
+    }
     
     // Date range
     if (filteredJobs.length > 0) {
@@ -355,9 +378,10 @@ const DataTable: React.FC = () => {
       const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
       const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
       
-      doc.setFontSize(10);
+      doc.setFontSize(11);
       doc.setTextColor(120, 120, 120);
-      doc.text(`Period: ${minDate.toLocaleDateString('en-US')} - ${maxDate.toLocaleDateString('en-US')}`, pageWidth / 2, 40, { align: 'center' });
+      const dateRangeY = filterParts.length > 0 ? 46 : 38;
+      doc.text(`ข้อมูลตั้งแต่ ${formatDate(minDate.toISOString())} ถึง ${formatDate(maxDate.toISOString())}`, pageWidth / 2, dateRangeY, { align: 'center' });
     }
     
     // Stats summary boxes
@@ -374,31 +398,34 @@ const DataTable: React.FC = () => {
     doc.setFillColor(124, 58, 237);
     doc.roundedRect(startX, boxY, boxW, boxH, 3, 3, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(14);
+    doc.setFontSize(16);
     doc.text(filteredJobs.length.toString(), startX + boxW/2, boxY + 8, { align: 'center' });
-    doc.setFontSize(8);
-    doc.text('Total Jobs', startX + boxW/2, boxY + 14, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text('จำนวนงาน', startX + boxW/2, boxY + 14, { align: 'center' });
     
     // Box 2 - Total Rounds
     doc.setFillColor(14, 165, 233);
     doc.roundedRect(startX + 45, boxY, boxW, boxH, 3, 3, 'F');
+    doc.setFontSize(16);
     doc.text(totalRounds.toString(), startX + 45 + boxW/2, boxY + 8, { align: 'center' });
-    doc.setFontSize(8);
-    doc.text('Total Rounds', startX + 45 + boxW/2, boxY + 14, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text('จำนวนรอบ', startX + 45 + boxW/2, boxY + 14, { align: 'center' });
     
     // Box 3 - Drivers
     doc.setFillColor(16, 185, 129);
     doc.roundedRect(startX + 90, boxY, boxW, boxH, 3, 3, 'F');
+    doc.setFontSize(16);
     doc.text(uniqueDrivers.toString(), startX + 90 + boxW/2, boxY + 8, { align: 'center' });
-    doc.setFontSize(8);
-    doc.text('Drivers', startX + 90 + boxW/2, boxY + 14, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text('คนขับ', startX + 90 + boxW/2, boxY + 14, { align: 'center' });
     
     // Box 4 - Vehicles
     doc.setFillColor(245, 158, 11);
     doc.roundedRect(startX + 135, boxY, boxW, boxH, 3, 3, 'F');
+    doc.setFontSize(16);
     doc.text(uniqueVehicles.toString(), startX + 135 + boxW/2, boxY + 8, { align: 'center' });
-    doc.setFontSize(8);
-    doc.text('Vehicles', startX + 135 + boxW/2, boxY + 14, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text('รถ', startX + 135 + boxW/2, boxY + 14, { align: 'center' });
     
     // Charts section
     // Driver performance chart
@@ -411,7 +438,7 @@ const DataTable: React.FC = () => {
       .slice(0, 5);
     
     if (driverChartData.length > 0) {
-      drawBarChart(doc, driverChartData, 20, 75, 80, 45, 'Rounds by Driver');
+      drawBarChart(doc, driverChartData, 20, 75, 80, 45, 'รอบตามคนขับ');
     }
     
     // Vehicle type chart
@@ -423,14 +450,14 @@ const DataTable: React.FC = () => {
       .map(([label, value]) => ({ label, value }));
     
     if (vehicleChartData.length > 0) {
-      drawPieChart(doc, vehicleChartData, 150, 100, 20, 'Vehicle Types');
+      drawPieChart(doc, vehicleChartData, 150, 100, 20, 'ประเภทรถ');
     }
     
-    // Table - English headers
-    const tableColumn = ['Date', 'Route', 'Rounds', 'Vehicle/Plate', 'Driver', 'Job/Inv'];
+    // Table - Thai headers
+    const tableColumn = ['วันที่', 'เส้นทาง', 'รอบ', 'รถ/ทะเบียน', 'คนขับ', 'Job/Inv'];
     const tableRows = filteredJobs.map(job => [
-      job.date,
-      `${job.pickupLocation} > ${job.dropoffLocation}`,
+      formatDate(job.date),
+      `${job.pickupLocation} → ${job.dropoffLocation}`,
       job.rounds.toString(),
       `${job.vehicleType} | ${job.licensePlate}`,
       job.driverName,
@@ -441,8 +468,8 @@ const DataTable: React.FC = () => {
       head: [tableColumn],
       body: tableRows,
       startY: 130,
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [124, 58, 237], textColor: 255 },
+      styles: { fontSize: 10, cellPadding: 2, font: 'THSarabunNew' },
+      headStyles: { fillColor: [124, 58, 237], textColor: 255, font: 'THSarabunNew' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
       columnStyles: {
         0: { cellWidth: 22 },
@@ -458,9 +485,10 @@ const DataTable: React.FC = () => {
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
-      doc.setFontSize(8);
+      doc.setFont('THSarabunNew');
+      doc.setFontSize(10);
       doc.setTextColor(150, 150, 150);
-      doc.text(`SFast Trucklog Report - Generated: ${new Date().toLocaleString('en-US')} - Page ${i}/${pageCount}`, pageWidth / 2, 290, { align: 'center' });
+      doc.text(`SFast Trucklog - สร้างเมื่อ ${new Date().toLocaleString('th-TH')} - หน้า ${i}/${pageCount}`, pageWidth / 2, 290, { align: 'center' });
     }
 
     if (forPrint) {
