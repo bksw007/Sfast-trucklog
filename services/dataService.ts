@@ -1,0 +1,191 @@
+import { AppData, JobEntry, OptionCategory } from '../types';
+import { INITIAL_DATA } from '../constants';
+
+const STORAGE_KEY = 'sfast_trucklog_data_v1';
+
+// Get the Google Apps Script URL from environment variables
+const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || '';
+
+// Helper to get data from local storage
+const getStoredData = (): AppData => {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (!stored) {
+    return INITIAL_DATA;
+  }
+  return JSON.parse(stored);
+};
+
+// Helper to save data to local storage
+const setStoredData = (data: AppData) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+};
+
+// Helper for API calls with error handling
+const apiCall = async (method: 'GET' | 'POST', body?: object): Promise<any> => {
+  if (!SCRIPT_URL) {
+    console.warn('Google Apps Script URL not configured. Using local storage only.');
+    return null;
+  }
+
+  try {
+    const options: RequestInit = {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    };
+
+    if (method === 'POST' && body) {
+      options.body = JSON.stringify(body);
+    }
+
+    const response = await fetch(SCRIPT_URL, options);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    if (result.error) {
+      throw new Error(result.error);
+    }
+
+    return result;
+  } catch (error) {
+    console.error('API call failed:', error);
+    return null;
+  }
+};
+
+export const dataService = {
+  /**
+   * Get all data from Google Sheets (or localStorage as fallback)
+   */
+  getAllData: async (): Promise<AppData> => {
+    // Try to fetch from Google Sheets first
+    const remoteData = await apiCall('GET');
+    
+    if (remoteData && remoteData.jobs) {
+      // Update local storage with remote data
+      const appData: AppData = {
+        jobs: remoteData.jobs,
+        options: remoteData.options
+      };
+      setStoredData(appData);
+      return appData;
+    }
+    
+    // Fallback to local storage
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(getStoredData()), 300);
+    });
+  },
+
+  /**
+   * Add a new job entry
+   */
+  addJob: async (job: Omit<JobEntry, 'id' | 'timestamp'>): Promise<JobEntry> => {
+    // Create new job locally first
+    const newJob: JobEntry = {
+      ...job,
+      id: Math.random().toString(36).substring(2, 9),
+      timestamp: Date.now(),
+    };
+    
+    // Update local storage
+    const data = getStoredData();
+    data.jobs.unshift(newJob);
+    setStoredData(data);
+
+    // Sync to Google Sheets
+    const result = await apiCall('POST', {
+      action: 'addJob',
+      job: job
+    });
+
+    // If successful, update with server-generated ID
+    if (result && result.job) {
+      const updatedData = getStoredData();
+      const index = updatedData.jobs.findIndex(j => j.id === newJob.id);
+      if (index !== -1) {
+        updatedData.jobs[index] = result.job;
+        setStoredData(updatedData);
+        return result.job;
+      }
+    }
+
+    return newJob;
+  },
+
+  /**
+   * Update an existing job
+   */
+  updateJob: async (job: JobEntry): Promise<JobEntry> => {
+    // Update local storage
+    const data = getStoredData();
+    const index = data.jobs.findIndex(j => j.id === job.id);
+    if (index !== -1) {
+      data.jobs[index] = job;
+      setStoredData(data);
+    }
+
+    // Sync to Google Sheets
+    await apiCall('POST', {
+      action: 'updateJob',
+      job
+    });
+
+    return job;
+  },
+
+  /**
+   * Add a new option to a category
+   */
+  addOption: async (category: OptionCategory, value: string): Promise<void> => {
+    const data = getStoredData();
+    
+    if (!data.options[category].includes(value)) {
+      data.options[category].push(value);
+      setStoredData(data);
+    }
+
+    // Sync to Google Sheets
+    await apiCall('POST', {
+      action: 'addOption',
+      category,
+      value
+    });
+  },
+
+  /**
+   * Delete a job by ID
+   */
+  deleteJob: async (id: string): Promise<void> => {
+    // Update local storage
+    const data = getStoredData();
+    data.jobs = data.jobs.filter(j => j.id !== id);
+    setStoredData(data);
+
+    // Sync to Google Sheets
+    await apiCall('POST', {
+      action: 'deleteJob',
+      id
+    });
+  },
+
+  /**
+   * Initialize Google Sheets structure
+   */
+  initializeSheets: async (): Promise<boolean> => {
+    const result = await apiCall('POST', { action: 'setup' });
+    return result && result.success;
+  },
+
+  /**
+   * Check if Google Sheets integration is configured
+   */
+  isRemoteConfigured: (): boolean => {
+    return Boolean(SCRIPT_URL);
+  }
+};

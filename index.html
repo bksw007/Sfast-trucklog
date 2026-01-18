@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="th" class="light">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SFast Trucklog - บันทึกงานวิ่งรถ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Kanit", "sans-serif"],
+            },
+            colors: {
+              // Light theme colors
+              "light-bg": "#f8fafc",
+              "light-card": "#ffffff",
+              "light-text": "#1e293b",
+              "light-muted": "#64748b",
+              // Dark theme colors (Tokyo Night inspired)
+              "dark-bg": "#1a1b26",
+              "dark-card": "#24283b",
+              "dark-text": "#c0caf5",
+              "dark-muted": "#565f89",
+              // Shared accent colors
+              "accent-primary": "#7c3aed",
+              "accent-secondary": "#0ea5e9",
+              "accent-success": "#22c55e",
+              "accent-warning": "#f59e0b",
+              "accent-danger": "#ef4444",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      /* Light theme */
+      .light {
+        --bg: #f8fafc;
+        --card: #ffffff;
+        --text: #1e293b;
+        --muted: #64748b;
+        --border: #e2e8f0;
+      }
+
+      /* Dark theme */
+      .dark {
+        --bg: #1a1b26;
+        --card: #24283b;
+        --text: #c0caf5;
+        --muted: #565f89;
+        --border: #414868;
+      }
+
+      body {
+        background-color: var(--bg);
+        color: var(--text);
+        transition:
+          background-color 0.3s ease,
+          color 0.3s ease;
+      }
+
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--bg);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--muted);
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--text);
+      }
+
+      /* Animations */
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .animate-fade-in {
+        animation: fadeIn 0.3s ease-out;
+      }
+
+      /* Theme transition */
+      .theme-transition {
+        transition:
+          background-color 0.3s ease,
+          color 0.3s ease,
+          border-color 0.3s ease;
+      }
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "recharts": "https://esm.sh/recharts@^3.6.0",
+          "react/": "https://esm.sh/react@^19.2.3/",
+          "react": "https://esm.sh/react@^19.2.3",
+          "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+          "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+          "jspdf-autotable": "https://esm.sh/jspdf-autotable@^5.0.7",
+          "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
+          "jspdf": "https://esm.sh/jspdf@^4.0.0"
+        }
+      }
+    </script>
+    <link rel="stylesheet" href="/index.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

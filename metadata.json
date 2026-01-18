@@ -1,0 +1,5 @@
+{
+  "name": "TruckLog Pro",
+  "description": "A comprehensive web application for tracking vehicle delivery jobs with Google Sheets integration capabilities, dashboard analytics, and dark pastel aesthetics.",
+  "requestFramePermissions": []
+}
