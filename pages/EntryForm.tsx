@@ -25,9 +25,17 @@ const EntryForm: React.FC = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+  // Helper to get local date string YYYY-MM-DD
+  const getLocalDate = () => {
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const local = new Date(now.getTime() - offset);
+    return local.toISOString().split('T')[0];
+  };
+
   // Form State
   const [formData, setFormData] = useState<Omit<JobEntry, 'id' | 'timestamp'>>({
-    date: new Date().toISOString().split('T')[0],
+    date: getLocalDate(),
     pickupLocation: '',
     dropoffLocation: '',
     rounds: 1,
@@ -76,7 +84,7 @@ const EntryForm: React.FC = () => {
       
       // Reset form for next entry
       setFormData({
-        date: new Date().toISOString().split('T')[0],
+        date: getLocalDate(),
         pickupLocation: '',
         dropoffLocation: '',
         rounds: 1,
