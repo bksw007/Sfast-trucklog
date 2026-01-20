@@ -1,4 +1,29 @@
 /* SFast Trucklog - Global Styles */
+@import "tailwindcss";
+
+/* Custom theme configuration */
+@theme {
+  --font-family-sans: 'Kanit', sans-serif;
+  
+  /* Light theme colors */
+  --color-light-bg: #f8fafc;
+  --color-light-card: #ffffff;
+  --color-light-text: #1e293b;
+  --color-light-muted: #64748b;
+  
+  /* Dark theme colors (Tokyo Night inspired) */
+  --color-dark-bg: #1a1b26;
+  --color-dark-card: #24283b;
+  --color-dark-text: #c0caf5;
+  --color-dark-muted: #565f89;
+  
+  /* Shared accent colors */
+  --color-accent-primary: #7c3aed;
+  --color-accent-secondary: #0ea5e9;
+  --color-accent-success: #22c55e;
+  --color-accent-warning: #f59e0b;
+  --color-accent-danger: #ef4444;
+}
 
 /* Animation keyframes */
 @keyframes fadeIn {
