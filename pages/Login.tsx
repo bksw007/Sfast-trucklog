@@ -5,29 +5,45 @@ import { Loader2, Mail, Lock, Truck } from 'lucide-react';
 
 const Login: React.FC = () => {
   const { theme } = useTheme();
-  const { loginWithEmail, loginWithGoogle } = useAuth();
+  const { loginWithEmail, signupWithEmail, loginWithGoogle } = useAuth();
   const isDark = theme === 'dark';
   
+  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     
+    if (!isLogin && password !== confirmPassword) {
+      setError('รหัสผ่านไม่ตรงกัน');
+      setLoading(false);
+      return;
+    }
+
     try {
-      await loginWithEmail(email, password);
+      if (isLogin) {
+        await loginWithEmail(email, password);
+      } else {
+        await signupWithEmail(email, password);
+      }
     } catch (err: any) {
-      console.error('Login error:', err);
+      console.error('Auth error:', err);
       if (err.code === 'auth/invalid-credential') {
         setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
       } else if (err.code === 'auth/user-not-found') {
         setError('ไม่พบบัญชีผู้ใช้นี้');
       } else if (err.code === 'auth/wrong-password') {
         setError('รหัสผ่านไม่ถูกต้อง');
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError('อีเมลนี้ถูกใช้งานแล้ว');
+      } else if (err.code === 'auth/weak-password') {
+        setError('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร');
       } else {
         setError('เกิดข้อผิดพลาด กรุณาลองใหม่');
       }
@@ -72,7 +88,7 @@ const Login: React.FC = () => {
             SFast Trucklog
           </h1>
           <p className={`text-sm mt-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
-            เข้าสู่ระบบเพื่อจัดการงานวิ่ง
+            {isLogin ? 'เข้าสู่ระบบเพื่อจัดการงานวิ่ง' : 'สมัครสมาชิกใหม่'}
           </p>
         </div>
 
@@ -84,7 +100,7 @@ const Login: React.FC = () => {
         )}
 
         {/* Email/Password Form */}
-        <form onSubmit={handleEmailLogin} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
               อีเมล
@@ -127,15 +143,57 @@ const Login: React.FC = () => {
             </div>
           </div>
 
+          {!isLogin && (
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                ยืนยันรหัสผ่าน
+              </label>
+              <div className="relative">
+                <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`} size={18} />
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  className={`w-full pl-12 pr-4 py-3 rounded-xl border transition-all focus:ring-2 focus:ring-accent-primary focus:outline-none ${
+                    isDark 
+                      ? 'bg-dark-bg border-dark-muted/30 text-dark-text placeholder-dark-muted/50' 
+                      : 'bg-light-bg border-light-muted/30 text-light-text placeholder-light-muted/50'
+                  }`}
+                />
+              </div>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading}
             className="w-full py-3 rounded-xl font-bold text-white bg-gradient-to-r from-accent-primary to-accent-secondary hover:brightness-110 transition-all shadow-lg shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? <Loader2 className="animate-spin" size={20} /> : null}
-            {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
+            {loading ? 'กำลังดำเนินการ...' : (isLogin ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก')}
           </button>
         </form>
+
+        {/* Toggle Login/Signup */}
+        <div className="mt-6 text-center">
+          <p className={`text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+            {isLogin ? 'ยังไม่มีบัญชีใช่ไหม? ' : 'มีบัญชีอยู่แล้ว? '}
+            <button
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setError('');
+                setEmail('');
+                setPassword('');
+                setConfirmPassword('');
+              }}
+              className="text-accent-primary font-semibold hover:underline focus:outline-none"
+            >
+              {isLogin ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
+            </button>
+          </p>
+        </div>
 
         {/* Divider */}
         <div className="flex items-center gap-4 my-6">

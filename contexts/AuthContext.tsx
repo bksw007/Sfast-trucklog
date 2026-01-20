@@ -3,6 +3,7 @@ import {
   User,
   signInWithEmailAndPassword, 
   signInWithPopup,
+  createUserWithEmailAndPassword,
   GoogleAuthProvider,
   signOut,
   onAuthStateChanged
@@ -13,6 +14,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   loginWithEmail: (email: string, password: string) => Promise<void>;
+  signupWithEmail: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -48,6 +50,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     await signInWithEmailAndPassword(auth, email, password);
   };
 
+  const signupWithEmail = async (email: string, password: string) => {
+    await createUserWithEmailAndPassword(auth, email, password);
+  };
+
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     await signInWithPopup(auth, provider);
@@ -58,7 +64,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, loginWithEmail, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, loading, loginWithEmail, signupWithEmail, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );
