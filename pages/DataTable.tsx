@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { dataService } from '../services/dataService';
+import { deleteJob as firebaseDeleteJob, updateJob as firebaseUpdateJob } from '../services/firebaseService';
 import { JobEntry, AppData } from '../types';
-import { Download, Printer, Filter, X, ChevronDown, Edit2, Eye } from 'lucide-react';
+import { Download, Printer, Filter, X, ChevronDown, Edit2, Eye, Image as ImageIcon } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useData } from '../contexts/DataContext';
 import ConfirmModal from '../components/ConfirmModal';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { THSarabunNewBase64 } from '../fonts/THSarabunNew';
+import { formatDate } from '../utils/formatters';
 
 const MONTHS = [
   { value: 1, label: 'มกราคม' },
@@ -57,27 +58,19 @@ const DataTable: React.FC = () => {
   const [showConfirmEdit, setShowConfirmEdit] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  
+  // New Image for Edit
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
 
+  // Use real-time data from context
   useEffect(() => {
-    loadJobs();
-  }, []);
-
-  const loadJobs = async () => {
-    setLoading(true);
-    const data = await dataService.getAllData();
-    setJobs(data.jobs.sort((a, b) => b.timestamp - a.timestamp));
-    setLoading(false);
-  };
-
-  // Helper to format date - handles ISO string or date string
-  const formatDate = (dateStr: string): string => {
-    if (!dateStr) return '-';
-    // If it's ISO format with time, extract just the date part
-    if (dateStr.includes('T')) {
-      dateStr = dateStr.split('T')[0];
+    if (appData?.jobs) {
+      setJobs(appData.jobs.sort((a, b) => b.timestamp - a.timestamp));
+      setLoading(false);
     }
-    return dateStr;
-  };
+  }, [appData]);
+
+
 
   // Extract unique years from data
   const availableYears = useMemo(() => {
@@ -141,6 +134,7 @@ const DataTable: React.FC = () => {
   const handleRowClick = (job: JobEntry) => {
     setSelectedJob(job);
     setEditData({ ...job });
+    setEditImageFile(null); // Reset image file
     setIsEditing(false);
     setIsDetailModalOpen(true);
   };
@@ -162,27 +156,19 @@ const DataTable: React.FC = () => {
     setShowConfirmEdit(true);
   };
 
-  // Confirm save edit
+  // Confirm save edit - use Firebase updateJob
   const confirmSaveEdit = async () => {
     setShowConfirmEdit(false);
     if (editData) {
-      await dataService.deleteJob(editData.id);
-      await dataService.addJob({
-        date: editData.date,
-        pickupLocation: editData.pickupLocation,
-        dropoffLocation: editData.dropoffLocation,
-        rounds: editData.rounds,
-        vehicleType: editData.vehicleType,
-        driverName: editData.driverName,
-        licensePlate: editData.licensePlate,
-        jobNo: editData.jobNo,
-        invNo: editData.invNo,
-        remarks: editData.remarks
-      });
-      await loadJobs();
-      await refreshData();
-      setIsDetailModalOpen(false);
-      setShowSuccessModal(true);
+      try {
+        await firebaseUpdateJob(editData, editImageFile || undefined);
+        setIsDetailModalOpen(false);
+        setShowSuccessModal(true);
+        setEditImageFile(null);
+      } catch (error) {
+        console.error('Failed to update job:', error);
+        alert('เกิดข้อผิดพลาดในการแก้ไข');
+      }
     }
   };
 
@@ -191,13 +177,17 @@ const DataTable: React.FC = () => {
     setShowConfirmDelete(true);
   };
 
+  // Use Firebase deleteJob
   const confirmDelete = async () => {
     setShowConfirmDelete(false);
     if (selectedJob) {
-      await dataService.deleteJob(selectedJob.id);
-      await loadJobs();
-      await refreshData();
-      setIsDetailModalOpen(false);
+      try {
+        await firebaseDeleteJob(selectedJob);
+        setIsDetailModalOpen(false);
+      } catch (error) {
+        console.error('Failed to delete job:', error);
+        alert('เกิดข้อผิดพลาดในการลบ');
+      }
     }
   };
 
@@ -222,7 +212,8 @@ const DataTable: React.FC = () => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `sfast_trucklog_${new Date().toISOString().slice(0,10)}.csv`);
+    const timestamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15).replace('T', '_');
+    link.setAttribute("download", `sfast_trucklog_${timestamp}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -235,7 +226,8 @@ const DataTable: React.FC = () => {
     const colors = ['#7c3aed', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444'];
     
     // Title
-    doc.setFontSize(10);
+    doc.setFont('THSarabunNew');
+    doc.setFontSize(14);
     doc.setTextColor(80, 80, 80);
     doc.text(title, x + width / 2, y, { align: 'center' });
     
@@ -254,14 +246,16 @@ const DataTable: React.FC = () => {
       doc.rect(barX + 2, barY, barWidth - 4, barHeight, 'F');
       
       // Value on top
-      doc.setFontSize(8);
+      doc.setFont('THSarabunNew');
+      doc.setFontSize(10);
       doc.setTextColor(60, 60, 60);
       doc.text(item.value.toString(), barX + barWidth / 2, barY - 2, { align: 'center' });
       
-      // Label - truncate if too long
-      const label = item.label.length > 8 ? item.label.substring(0, 8) + '..' : item.label;
-      doc.setFontSize(7);
-      doc.text(label, barX + barWidth / 2, y + height - 5, { align: 'center' });
+      // Label - wrap text
+      doc.setFont('THSarabunNew');
+      doc.setFontSize(10);
+      const splitLabel = doc.splitTextToSize(item.label, barWidth);
+      doc.text(splitLabel, barX + barWidth / 2, y + height - 5, { align: 'center' });
     });
   };
 
@@ -271,7 +265,8 @@ const DataTable: React.FC = () => {
     const colors = ['#7c3aed', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
     
     // Title
-    doc.setFontSize(10);
+    doc.setFont('THSarabunNew');
+    doc.setFontSize(14);
     doc.setTextColor(80, 80, 80);
     doc.text(title, x, y - radius - 5, { align: 'center' });
     
@@ -326,7 +321,8 @@ const DataTable: React.FC = () => {
       doc.setFillColor(r, g, b);
       doc.rect(x - 25, legendY - 3, 6, 6, 'F');
       
-      doc.setFontSize(7);
+      doc.setFont('THSarabunNew');
+      doc.setFontSize(10);
       doc.setTextColor(60, 60, 60);
       const pct = Math.round((item.value / total) * 100);
       const label = item.label.length > 10 ? item.label.substring(0, 10) + '..' : item.label;
@@ -343,7 +339,15 @@ const DataTable: React.FC = () => {
     // Register Thai font
     doc.addFileToVFS('THSarabunNew.ttf', THSarabunNewBase64);
     doc.addFont('THSarabunNew.ttf', 'THSarabunNew', 'normal');
+    doc.addFont('THSarabunNew.ttf', 'THSarabunNew', 'bold'); // Cheat: use normal font for bold requests
     doc.setFont('THSarabunNew');
+    
+    // Set document properties - helps with filename in new window
+    const timestampTitle = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15).replace('T', '_');
+    doc.setProperties({
+      title: `TruckLog_${timestampTitle}`,
+      author: 'SFast Trucklog'
+    });
     
     // Title
     doc.setFontSize(28);
@@ -450,34 +454,34 @@ const DataTable: React.FC = () => {
       .map(([label, value]) => ({ label, value }));
     
     if (vehicleChartData.length > 0) {
-      drawPieChart(doc, vehicleChartData, 150, 100, 20, 'ประเภทรถ');
+      drawPieChart(doc, vehicleChartData, 150, 92, 12, 'ประเภทรถ');
     }
     
     // Table - Thai headers
     const tableColumn = ['วันที่', 'เส้นทาง', 'รอบ', 'รถ/ทะเบียน', 'คนขับ', 'Job/Inv'];
     const tableRows = filteredJobs.map(job => [
       formatDate(job.date),
-      `${job.pickupLocation} → ${job.dropoffLocation}`,
+      `${job.pickupLocation} > ${job.dropoffLocation}`,
       job.rounds.toString(),
-      `${job.vehicleType} | ${job.licensePlate}`,
+      `${job.vehicleType}\n${job.licensePlate}`,
       job.driverName,
-      `${job.jobNo || '-'} / ${job.invNo || '-'}`
+      `${job.jobNo || '-'}\n${job.invNo || '-'}`
     ]);
 
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
       startY: 130,
-      styles: { fontSize: 10, cellPadding: 2, font: 'THSarabunNew' },
-      headStyles: { fillColor: [124, 58, 237], textColor: 255, font: 'THSarabunNew' },
+      styles: { fontSize: 9, cellPadding: 2, font: 'THSarabunNew' }, // Reduced font size to 9
+      headStyles: { fillColor: [124, 58, 237], textColor: 255, font: 'THSarabunNew', halign: 'center' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
       columnStyles: {
-        0: { cellWidth: 22 },
-        1: { cellWidth: 50 },
-        2: { cellWidth: 15, halign: 'center' },
-        3: { cellWidth: 35 },
-        4: { cellWidth: 30 },
-        5: { cellWidth: 30 }
+        0: { cellWidth: 25 }, // Date - wider to prevent wrap
+        1: { cellWidth: 'auto' }, // Route
+        2: { cellWidth: 15, halign: 'center' }, // Round
+        3: { cellWidth: 35, halign: 'center' }, // Vehicle - center
+        4: { cellWidth: 30, halign: 'center' }, // Driver - center
+        5: { cellWidth: 35, halign: 'center' }  // Job/Inv - center
       }
     });
 
@@ -492,17 +496,14 @@ const DataTable: React.FC = () => {
     }
 
     if (forPrint) {
-      // Open in new window and print
+      // Auto print
+      doc.autoPrint();
       const pdfBlob = doc.output('blob');
       const pdfUrl = URL.createObjectURL(pdfBlob);
-      const printWindow = window.open(pdfUrl, '_blank');
-      if (printWindow) {
-        printWindow.addEventListener('load', () => {
-          printWindow.print();
-        });
-      }
+      window.open(pdfUrl, '_blank');
     } else {
-      doc.save(`sfast_trucklog_report_${new Date().toISOString().slice(0,10)}.pdf`);
+      const timestamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15).replace('T', '_');
+      doc.save(`TruckLog_${timestamp}.pdf`);
     }
   };
 
@@ -571,23 +572,33 @@ const DataTable: React.FC = () => {
                 <div className="space-y-3">
                   <div>
                     <label className={`text-xs ${isDark ? 'text-dark-muted' : 'text-slate-500'}`}>สถานที่รับ</label>
-                    <input
+                    <select
                       value={editData.pickupLocation}
                       onChange={(e) => handleEditChange('pickupLocation', e.target.value)}
                       className={`w-full mt-1 border rounded-xl px-4 py-2 ${
                         isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200 text-slate-700'
                       }`}
-                    />
+                    >
+                      <option value="">เลือกสถานที่</option>
+                      {appData?.options.locations.sort((a,b)=>a.localeCompare(b, 'th')).map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className={`text-xs ${isDark ? 'text-dark-muted' : 'text-slate-500'}`}>สถานที่ส่ง</label>
-                    <input
+                    <select
                       value={editData.dropoffLocation}
                       onChange={(e) => handleEditChange('dropoffLocation', e.target.value)}
                       className={`w-full mt-1 border rounded-xl px-4 py-2 ${
                         isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200 text-slate-700'
                       }`}
-                    />
+                    >
+                      <option value="">เลือกสถานที่</option>
+                      {appData?.options.locations.sort((a,b)=>a.localeCompare(b, 'th')).map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               ) : (
@@ -611,14 +622,19 @@ const DataTable: React.FC = () => {
               <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
                 <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>📅 วันที่</div>
                 {isEditing ? (
-                  <input
-                    type="date"
-                    value={editData.date}
-                    onChange={(e) => handleEditChange('date', e.target.value)}
-                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
-                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
-                    }`}
-                  />
+                  <div className="relative" onClick={(e) => {
+                    const input = e.currentTarget.querySelector('input');
+                    if (input && 'showPicker' in input) (input as any).showPicker();
+                  }}>
+                    <input
+                      type="date"
+                      value={editData.date}
+                      onChange={(e) => handleEditChange('date', e.target.value)}
+                      className={`w-full border rounded-lg px-3 py-1 text-sm cursor-pointer dark:[color-scheme:dark] ${
+                        isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
+                      }`}
+                    />
+                  </div>
                 ) : (
                   <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{formatDate(selectedJob.date)}</div>
                 )}
@@ -645,13 +661,18 @@ const DataTable: React.FC = () => {
               <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
                 <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🚛 ประเภทรถ</div>
                 {isEditing ? (
-                  <input
+                  <select
                     value={editData.vehicleType}
                     onChange={(e) => handleEditChange('vehicleType', e.target.value)}
                     className={`w-full border rounded-lg px-3 py-1 text-sm ${
                       isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
                     }`}
-                  />
+                  >
+                    <option value="">เลือกประเภทรถ</option>
+                    {appData?.options.vehicleTypes.sort((a,b)=>a.localeCompare(b, 'th')).map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
                 ) : (
                   <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.vehicleType}</div>
                 )}
@@ -661,13 +682,18 @@ const DataTable: React.FC = () => {
               <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
                 <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🔢 ทะเบียน</div>
                 {isEditing ? (
-                  <input
+                  <select
                     value={editData.licensePlate}
                     onChange={(e) => handleEditChange('licensePlate', e.target.value)}
                     className={`w-full border rounded-lg px-3 py-1 text-sm ${
                       isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
                     }`}
-                  />
+                  >
+                    <option value="">เลือกทะเบียน</option>
+                    {appData?.options.licensePlates.sort((a,b)=>a.localeCompare(b, 'th')).map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
                 ) : (
                   <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.licensePlate}</div>
                 )}
@@ -677,13 +703,18 @@ const DataTable: React.FC = () => {
               <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
                 <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>👤 คนขับ</div>
                 {isEditing ? (
-                  <input
+                  <select
                     value={editData.driverName}
                     onChange={(e) => handleEditChange('driverName', e.target.value)}
                     className={`w-full border rounded-lg px-3 py-1 text-sm ${
                       isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
                     }`}
-                  />
+                  >
+                    <option value="">เลือกคนขับ</option>
+                    {appData?.options.drivers.sort((a,b)=>a.localeCompare(b, 'th')).map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
                 ) : (
                   <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.driverName}</div>
                 )}
@@ -706,7 +737,7 @@ const DataTable: React.FC = () => {
               </div>
             </div>
 
-            {/* Invoice & Remarks */}
+            {/* Invoice & Remarks & Image */}
             <div className="space-y-4">
               <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
                 <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🧾 Invoice No.</div>
@@ -736,6 +767,55 @@ const DataTable: React.FC = () => {
                   />
                 ) : (
                   <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-amber-800'}`}>{selectedJob.remarks || '-'}</div>
+                )}
+              </div>
+
+              {/* Image Section */}
+              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-blue-50/50'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <ImageIcon size={16} className={isDark ? 'text-dark-muted' : 'text-blue-500'} />
+                  <span className={`text-xs ${isDark ? 'text-dark-muted' : 'text-blue-600'}`}>รูปภาพแนบ</span>
+                </div>
+                
+                {isEditing ? (
+                  <div className="space-y-2">
+                    {(editData.imageUrl || editImageFile) && (
+                      <div className="relative w-full h-48 rounded-lg overflow-hidden border border-slate-200">
+                        <img 
+                          src={editImageFile ? URL.createObjectURL(editImageFile) : editData.imageUrl} 
+                          alt="Attached" 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setEditImageFile(e.target.files[0]);
+                        }
+                      }}
+                      className="block w-full text-sm text-slate-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-violet-50 file:text-violet-700
+                        hover:file:bg-violet-100"
+                    />
+                  </div>
+                ) : (
+                  selectedJob.imageUrl ? (
+                    <div className="relative w-full h-64 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.open(selectedJob.imageUrl, '_blank')}>
+                      <img 
+                        src={selectedJob.imageUrl} 
+                        alt="Job Attachment" 
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" 
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-sm text-slate-400 italic text-center py-4">ไม่มีรูปภาพแนบ</div>
+                  )
                 )}
               </div>
             </div>

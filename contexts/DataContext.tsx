@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { AppData } from '../types';
-import { dataService } from '../services/dataService';
+import { AppData, JobEntry } from '../types';
+import { subscribeToJobs, subscribeToOptions, initializeDefaultOptions } from '../services/firebaseService';
 
 interface DataContextType {
   data: AppData | null;
@@ -14,44 +14,72 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-const DATA_LAST_UPDATE_KEY = 'sfast_trucklog_last_update';
-
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [data, setData] = useState<AppData | null>(null);
+  const [jobs, setJobs] = useState<JobEntry[]>([]);
+  const [options, setOptions] = useState<AppData['options']>({
+    locations: [],
+    vehicleTypes: [],
+    drivers: [],
+    licensePlates: [],
+  });
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [initialSyncComplete, setInitialSyncComplete] = useState(false);
 
+  // Combine jobs and options into AppData
+  const data: AppData | null = jobs || options ? { jobs, options } : null;
+
+  // RefreshData is now a no-op since we use real-time subscriptions
+  // But we keep it for API compatibility
   const refreshData = useCallback(async () => {
-    try {
-      setSyncing(true);
-      setError(null);
-      const result = await dataService.getAllData();
-      setData(result);
-      const now = new Date();
-      setLastUpdate(now);
-      localStorage.setItem(DATA_LAST_UPDATE_KEY, now.toISOString());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load data');
-    } finally {
-      setSyncing(false);
-      setLoading(false);
-      setInitialSyncComplete(true);
-    }
+    console.log('[DataContext] refreshData called - using real-time subscription');
+    // Real-time subscriptions automatically update data
   }, []);
 
   useEffect(() => {
-    // Load last update time from localStorage
-    const storedLastUpdate = localStorage.getItem(DATA_LAST_UPDATE_KEY);
-    if (storedLastUpdate) {
-      setLastUpdate(new Date(storedLastUpdate));
-    }
-    
-    // Initial data fetch
-    refreshData();
-  }, [refreshData]);
+    console.log('[DataContext] Setting up Firebase real-time subscriptions...');
+
+    // Initialize default options if needed
+    initializeDefaultOptions().catch(console.error);
+
+    // Subscribe to jobs collection
+    const unsubscribeJobs = subscribeToJobs(
+      (newJobs) => {
+        console.log(`[DataContext] Received ${newJobs.length} jobs from Firebase`);
+        setJobs(newJobs);
+        setLastUpdate(new Date());
+        setLoading(false);
+        setSyncing(false);
+        setInitialSyncComplete(true);
+      },
+      (err) => {
+        console.error('[DataContext] Jobs subscription error:', err);
+        setError(err.message);
+        setLoading(false);
+        setSyncing(false);
+      }
+    );
+
+    // Subscribe to options collection
+    const unsubscribeOptions = subscribeToOptions(
+      (newOptions) => {
+        console.log('[DataContext] Received options from Firebase:', newOptions);
+        setOptions(newOptions);
+      },
+      (err) => {
+        console.error('[DataContext] Options subscription error:', err);
+      }
+    );
+
+    // Cleanup subscriptions on unmount
+    return () => {
+      console.log('[DataContext] Cleaning up Firebase subscriptions...');
+      unsubscribeJobs();
+      unsubscribeOptions();
+    };
+  }, []);
 
   return (
     <DataContext.Provider value={{ 

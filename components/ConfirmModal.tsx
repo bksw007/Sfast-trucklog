@@ -14,6 +14,7 @@ interface ConfirmModalProps {
   data?: { label: string; value: string }[];
   showCancel?: boolean;
   showConfirm?: boolean;
+  imagePreview?: string | null;
 }
 
 const ConfirmModal: React.FC<ConfirmModalProps> = ({ 
@@ -27,7 +28,8 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   cancelText = 'ยกเลิก',
   data,
   showCancel = true,
-  showConfirm = true
+  showConfirm = true,
+  imagePreview
 }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -96,6 +98,13 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
           <p className={`text-center text-sm mb-4 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
             {message}
           </p>
+        )}
+
+        {/* Image Preview */}
+        {imagePreview && (
+          <div className="mb-4 rounded-xl overflow-hidden shadow-sm h-40 flex justify-center items-center bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <img src={imagePreview} alt="Preview" className="h-full object-contain" />
+          </div>
         )}
 
         {/* Data Review */}

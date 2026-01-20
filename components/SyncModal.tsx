@@ -59,7 +59,7 @@ const SyncModal: React.FC<SyncModalProps> = ({ isOpen, status, onClose, errorMes
 
         {/* Description */}
         <p className={`text-sm mb-4 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
-          {status === 'syncing' && 'กำลังเชื่อมต่อกับ Google Sheets...'}
+          {status === 'syncing' && 'กำลังเชื่อมต่อกับ Firebase...'}
           {status === 'success' && 'ข้อมูลอัพเดทล่าสุดแล้ว'}
           {status === 'error' && (errorMessage || 'ไม่สามารถเชื่อมต่อได้')}
         </p>

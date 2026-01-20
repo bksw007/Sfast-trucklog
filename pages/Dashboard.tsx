@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AppData, JobEntry } from '../types';
-import { dataService } from '../services/dataService';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import { Truck, MapPin, Calendar, CheckCircle2, Filter, X, ChevronDown } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useData } from '../contexts/DataContext';
 
 const MONTHS = [
   { value: 1, label: 'มกราคม' },
@@ -30,8 +30,8 @@ interface Filters {
 
 const Dashboard: React.FC = () => {
   const { theme } = useTheme();
+  const { data } = useData();
   const isDark = theme === 'dark';
-  const [data, setData] = useState<AppData | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Filters>({
     month: null,
@@ -40,10 +40,6 @@ const Dashboard: React.FC = () => {
     vehicleType: '',
     licensePlate: ''
   });
-
-  useEffect(() => {
-    dataService.getAllData().then(setData);
-  }, []);
 
   // Extract unique years from data
   const availableYears = useMemo(() => {
@@ -118,6 +114,7 @@ const Dashboard: React.FC = () => {
   const chartGridColor = isDark ? '#414868' : '#e2e8f0';
   const tooltipBg = isDark ? '#1a1b26' : '#ffffff';
   const tooltipBorder = isDark ? '#414868' : '#e2e8f0';
+  const tooltipTextColor = isDark ? '#e0e7ff' : '#1e293b';
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -326,8 +323,10 @@ const Dashboard: React.FC = () => {
                   <XAxis dataKey="name" stroke={chartTextColor} tick={{fill: chartTextColor}} />
                   <YAxis stroke={chartTextColor} tick={{fill: chartTextColor}} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '8px' }}
+                    contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '8px', color: tooltipTextColor }}
                     cursor={{fill: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}}
+                    itemStyle={{ color: tooltipTextColor }}
+                    labelStyle={{ color: tooltipTextColor }}
                   />
                   <Bar dataKey="jobs" fill="#7c3aed" radius={[4, 4, 0, 0]}>
                     {driverChartData.map((entry, index) => (
@@ -368,7 +367,10 @@ const Dashboard: React.FC = () => {
                       <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '8px' }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '8px', color: tooltipTextColor }}
+                    itemStyle={{ color: tooltipTextColor }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             ) : (

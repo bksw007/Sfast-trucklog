@@ -1,18 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { AppData, JobEntry, OptionCategory } from '../types';
-import { dataService } from '../services/dataService';
+import React, { useState, useRef, useMemo } from 'react';
+import { JobEntry, OptionCategory } from '../types';
+import { addJob, addOption } from '../services/firebaseService';
 import { useData } from '../contexts/DataContext';
-import { Plus, Save, Loader2, ChevronDown } from 'lucide-react';
+import { Plus, Save, Loader2, Camera, X, Image as ImageIcon } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import Modal from '../components/Modal';
 import ConfirmModal from '../components/ConfirmModal';
+import { formatDate } from '../utils/formatters';
 
 const EntryForm: React.FC = () => {
   const { theme } = useTheme();
-  const { refreshData } = useData();
+  const { data } = useData();
   const isDark = theme === 'dark';
-  const [data, setData] = useState<AppData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Image State
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Modal States
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -34,7 +39,7 @@ const EntryForm: React.FC = () => {
   };
 
   // Form State
-  const [formData, setFormData] = useState<Omit<JobEntry, 'id' | 'timestamp'>>({
+  const [formData, setFormData] = useState<Omit<JobEntry, 'id' | 'timestamp' | 'imageUrl'>>({
     date: getLocalDate(),
     pickupLocation: '',
     dropoffLocation: '',
@@ -47,21 +52,41 @@ const EntryForm: React.FC = () => {
     remarks: ''
   });
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    const d = await dataService.getAllData();
-    setData(d);
-  };
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: name === 'rounds' ? parseInt(value) || 0 : value
     }));
+  };
+
+  // Image handling
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('กรุณาเลือกไฟล์รูปภาพเท่านั้น');
+        return;
+      }
+      
+      setSelectedImage(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleSubmitClick = (e: React.FormEvent) => {
@@ -75,8 +100,8 @@ const EntryForm: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      await dataService.addJob(formData);
-      await refreshData();
+      // Use Firebase service directly
+      await addJob(formData, selectedImage || undefined);
       setIsSubmitting(false);
       
       // Show success modal
@@ -97,9 +122,11 @@ const EntryForm: React.FC = () => {
         invNo: '',
         remarks: ''
       });
+      handleRemoveImage();
     } catch (error) {
       setIsSubmitting(false);
       console.error('Failed to save:', error);
+      alert('เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่');
     }
   };
 
@@ -114,8 +141,7 @@ const EntryForm: React.FC = () => {
       setIsSavingOption(true);
       
       try {
-        await dataService.addOption(modalCategory, newOptionValue.trim());
-        await loadData();
+        await addOption(modalCategory, newOptionValue.trim());
         
         const fieldMap: Record<OptionCategory, keyof typeof formData | null> = {
           [OptionCategory.LOCATION]: null,
@@ -155,10 +181,20 @@ const EntryForm: React.FC = () => {
       remarks: 'หมายเหตุ'
     };
 
-    return Object.entries(formData).map(([key, value]) => ({
+    const data = Object.entries(formData).map(([key, value]) => ({
       label: labels[key] || key,
-      value: String(value)
+      value: key === 'date' ? formatDate(String(value)) : String(value)
     }));
+
+    // Add image info if selected
+    if (selectedImage) {
+      data.push({
+        label: 'รูปภาพ',
+        value: `${selectedImage.name} (${(selectedImage.size / 1024 / 1024).toFixed(2)} MB)`
+      });
+    }
+
+    return data;
   };
 
   if (!data) return (
@@ -198,7 +234,7 @@ const EntryForm: React.FC = () => {
                 required
                 value={formData.date}
                 onChange={handleInputChange}
-                className={`${inputClass} cursor-pointer`}
+                className={`${inputClass} cursor-pointer dark:[color-scheme:dark]`}
                 onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
               />
             </div>
@@ -293,7 +329,59 @@ const EntryForm: React.FC = () => {
           </FormGroup>
         </div>
 
-        {/* Row 5: Remarks */}
+        {/* Row 5: Image Upload */}
+        <FormGroup label="รูปภาพ (Photo)" isDark={isDark}>
+          <div className="space-y-3">
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+            
+            {/* Image preview or upload button */}
+            {imagePreview ? (
+              <div className="relative inline-block">
+                <img 
+                  src={imagePreview} 
+                  alt="Preview" 
+                  className="max-h-48 rounded-xl border border-dark-muted/20"
+                />
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-lg"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`flex items-center gap-2 px-4 py-3 rounded-xl border transition-all ${
+                    isDark
+                      ? 'bg-dark-bg border-dark-muted/30 text-dark-text hover:border-accent-primary'
+                      : 'bg-light-bg border-light-muted/30 text-light-text hover:border-accent-primary'
+                  }`}
+                >
+                  <Camera size={20} className="text-accent-primary" />
+                  <span>ถ่ายรูป / เลือกรูป</span>
+                </button>
+              </div>
+            )}
+            
+            <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+              รูปภาพจะถูกบีบอัดอัตโนมัติก่อนอัพโหลด (สูงสุด 10MB)
+            </p>
+          </div>
+        </FormGroup>
+
+        {/* Row 6: Remarks */}
         <FormGroup label="หมายเหตุ (Remarks)" isDark={isDark}>
           <textarea 
             name="remarks"
@@ -312,7 +400,7 @@ const EntryForm: React.FC = () => {
             className="flex items-center gap-2 bg-gradient-to-r from-accent-primary to-accent-secondary hover:brightness-110 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg shadow-accent-primary/25 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? <Loader2 className="animate-spin" /> : <Save size={20} />}
-            บันทึกข้อมูล
+            {isSubmitting ? 'กำลังบันทึก...' : 'บันทึกข้อมูล'}
           </button>
         </div>
       </form>
@@ -382,6 +470,7 @@ const EntryForm: React.FC = () => {
         confirmText="ยืนยันบันทึก"
         cancelText="แก้ไข"
         data={getConfirmData()}
+        imagePreview={imagePreview}
       />
 
       {/* Success Modal */}
@@ -423,6 +512,8 @@ const SelectWithAdd: React.FC<{
       : 'bg-light-bg border-light-muted/30 text-light-text'
   }`;
 
+  const sortedOptions = useMemo(() => [...options].sort((a, b) => a.localeCompare(b, 'th')), [options]);
+
   return (
     <FormGroup label={label} isDark={isDark}>
       <div className="flex gap-2">
@@ -435,7 +526,7 @@ const SelectWithAdd: React.FC<{
             className={selectClass}
           >
             <option value="" disabled>เลือกรายการ...</option>
-            {options.map(opt => (
+            {sortedOptions.map(opt => (
               <option key={opt} value={opt}>{opt}</option>
             ))}
           </select>

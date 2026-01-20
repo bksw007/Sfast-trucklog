@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, Table2, Truck, Sun, Moon, Menu, X, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Table2, Truck, Sun, Moon, Menu, X, ChevronLeft, ChevronRight, RefreshCw, LogOut, Settings } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useData } from '../contexts/DataContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,6 +13,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { lastUpdate, syncing, refreshData } = useData();
+  const { user, logout } = useAuth();
   // Default to collapsed (false)
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -20,6 +22,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/', label: 'แดชบอร์ด', icon: LayoutDashboard },
     { path: '/entry', label: 'บันทึกงาน', icon: PlusCircle },
     { path: '/data', label: 'ข้อมูลงานวิ่ง', icon: Table2 },
+    { path: '/settings', label: 'ตั้งค่า', icon: Settings },
   ];
 
   const isDark = theme === 'dark';
@@ -107,30 +110,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           })}
         </div>
         
-        {/* Last Update - Mobile */}
+
+        {/* Mobile Bottom Section */}
         <div className={`absolute bottom-20 left-0 right-0 px-4 py-3 border-t ${
           isDark ? 'border-dark-muted/20' : 'border-light-muted/20'
         }`}>
-          <div className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
-            อัพเดทล่าสุด:
-          </div>
-          <div className={`text-sm font-medium ${isDark ? 'text-dark-text' : 'text-light-text'}`}>
-            {formatLastUpdate(lastUpdate)}
-          </div>
           <button
             onClick={() => {
-              refreshData();
+              logout();
               setMobileMenuOpen(false);
             }}
-            disabled={syncing}
-            className={`mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-              isDark 
-                ? 'bg-white/5 hover:bg-white/10 text-dark-text' 
-                : 'bg-black/5 hover:bg-black/10 text-light-text'
-            } ${syncing ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-red-500 bg-red-500/10 hover:bg-red-500/20 transition-all"
           >
-            <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
-            {syncing ? 'กำลังซิงค์...' : 'รีเฟรช'}
+            <LogOut size={14} />
+            ออกจากระบบ
           </button>
         </div>
       </nav>
@@ -142,20 +135,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         } ${isDark ? 'bg-dark-card/50 border-dark-muted/20' : 'bg-light-card border-light-muted/20 shadow-sm'}`}>
           {/* Logo */}
           <div className={`p-6 flex items-center ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
-            <div className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center'}`}>
+            <div className={`flex items-center transition-all duration-300 ${sidebarOpen ? 'gap-3' : 'gap-0 justify-center'}`}>
               <div className="w-10 h-10 bg-gradient-to-br from-accent-primary to-accent-secondary rounded-xl flex items-center justify-center shadow-lg shadow-accent-primary/20 flex-shrink-0">
                 <Truck className="text-white" size={24} />
               </div>
-              {sidebarOpen && (
+              <div className={`overflow-hidden transition-all duration-300 ${sidebarOpen ? 'w-40 opacity-100' : 'w-0 opacity-0'}`}>
                 <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-accent-primary to-accent-secondary whitespace-nowrap">
                   SFast Trucklog
                 </h1>
-              )}
+              </div>
             </div>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-2 space-y-2">
+          <nav className="flex-1 px-4 py-2 space-y-2 overflow-x-hidden">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
@@ -163,9 +156,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  title={item.label}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
-                    !sidebarOpen && 'justify-center'
+                  title={!sidebarOpen ? item.label : ''}
+                  className={`flex items-center px-4 py-3 rounded-xl transition-all duration-200 group whitespace-nowrap ${
+                    sidebarOpen ? 'gap-3' : 'gap-0 justify-center'
                   } ${
                     isActive 
                       ? 'bg-accent-primary/20 text-accent-primary shadow-lg shadow-accent-primary/10' 
@@ -174,87 +167,65 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         : 'text-light-muted hover:bg-black/5 hover:text-light-text'
                   }`}
                 >
-                  <Icon size={20} className={isActive ? 'text-accent-primary' : ''} />
-                  {sidebarOpen && <span className="font-medium">{item.label}</span>}
+                  <Icon size={20} className={`flex-shrink-0 ${isActive ? 'text-accent-primary' : ''}`} />
+                  <span className={`font-medium transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
+                    {item.label}
+                  </span>
                 </Link>
               );
             })}
           </nav>
 
-          {/* Last Update Section */}
-          {sidebarOpen && (
-            <div className={`mx-4 mb-4 p-3 rounded-xl ${
-              isDark ? 'bg-dark-bg/50' : 'bg-light-bg/50'
-            }`}>
-              <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
-                อัพเดทล่าสุด:
-              </div>
-              <div className={`text-sm font-medium mb-2 ${isDark ? 'text-dark-text' : 'text-light-text'}`}>
-                {formatLastUpdate(lastUpdate)}
-              </div>
-              <button
-                onClick={refreshData}
-                disabled={syncing}
-                className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                  syncing
-                    ? 'opacity-50 cursor-not-allowed'
-                    : 'hover:brightness-110'
-                } bg-gradient-to-r from-accent-primary to-accent-secondary text-white`}
-              >
-                <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
-                {syncing ? 'กำลังซิงค์...' : 'รีเฟรช'}
-              </button>
-            </div>
-          )}
 
-          {/* Refresh button when collapsed */}
-          {!sidebarOpen && (
-            <div className="px-4 mb-4">
-              <button
-                onClick={refreshData}
-                disabled={syncing}
-                title="รีเฟรชข้อมูล"
-                className={`w-full flex items-center justify-center p-3 rounded-xl transition-all ${
-                  syncing
-                    ? 'opacity-50 cursor-not-allowed'
-                    : 'hover:brightness-110'
-                } bg-gradient-to-r from-accent-primary to-accent-secondary text-white`}
-              >
-                <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
-              </button>
-            </div>
-          )}
 
           {/* Bottom Controls */}
-          <div className={`p-4 border-t ${isDark ? 'border-dark-muted/20' : 'border-light-muted/20'}`}>
+          <div className={`p-4 border-t ${isDark ? 'border-dark-muted/20' : 'border-light-muted/20'} overflow-x-hidden`}>
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                !sidebarOpen && 'justify-center'
+              className={`w-full flex items-center px-4 py-3 rounded-xl transition-all whitespace-nowrap ${
+                sidebarOpen ? 'gap-3' : 'gap-0 justify-center'
               } ${isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}
             >
-              {isDark ? (
-                <Sun size={20} className="text-yellow-400" />
-              ) : (
-                <Moon size={20} className="text-slate-600" />
-              )}
-              {sidebarOpen && (
-                <span className={`font-medium ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
-                  {isDark ? 'โหมดสว่าง' : 'โหมดมืด'}
-                </span>
-              )}
+              <div className="flex-shrink-0">
+                {isDark ? (
+                  <Sun size={20} className="text-yellow-400" />
+                ) : (
+                  <Moon size={20} className="text-slate-600" />
+                )}
+              </div>
+              <span className={`font-medium transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'} ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                {isDark ? 'โหมดสว่าง' : 'โหมดมืด'}
+              </span>
             </button>
 
-            {/* Collapse Toggle */}
+            {/* Logout Button */}
+            <button
+              onClick={logout}
+              title={!sidebarOpen ? "ออกจากระบบ" : ''}
+              className={`w-full flex items-center px-4 py-3 rounded-xl transition-all mt-2 whitespace-nowrap ${
+                sidebarOpen ? 'gap-3' : 'gap-0 justify-center'
+              } text-red-500 hover:bg-red-500/10`}
+            >
+              <LogOut size={20} className="flex-shrink-0" />
+              <span className={`font-medium transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
+                ออกจากระบบ
+              </span>
+            </button>
+
+            {/* Collapse Toggle - At the very bottom */}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all mt-2 ${
-                !sidebarOpen && 'justify-center'
+              className={`w-full flex items-center px-4 py-3 rounded-xl transition-all mt-2 whitespace-nowrap ${
+                sidebarOpen ? 'gap-3' : 'gap-0 justify-center'
               } ${isDark ? 'hover:bg-white/5 text-dark-muted' : 'hover:bg-black/5 text-light-muted'}`}
             >
-              {sidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
-              {sidebarOpen && <span className="font-medium">ย่อเมนู</span>}
+              <div className="flex-shrink-0">
+                {sidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+              </div>
+              <span className={`font-medium transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
+                ย่อเมนู
+              </span>
             </button>
           </div>
         </aside>

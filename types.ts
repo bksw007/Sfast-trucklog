@@ -10,6 +10,7 @@ export interface JobEntry {
   jobNo: string;
   invNo: string;
   remarks: string;
+  imageUrl?: string; // Optional image URL from Firebase Storage
   timestamp: number;
 }
 
