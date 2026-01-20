@@ -76,15 +76,15 @@ const Login: React.FC = () => {
         ? 'bg-gradient-to-br from-dark-bg via-purple-900/10 to-dark-bg' 
         : 'bg-gradient-to-br from-purple-50 via-white to-blue-50'
     }`}>
-      <div className={`w-full max-w-md rounded-3xl shadow-2xl p-8 ${
+      <div className={`w-full max-w-md rounded-3xl shadow-2xl p-6 ${
         isDark ? 'bg-dark-card/90 backdrop-blur-xl' : 'bg-white/90 backdrop-blur-xl'
       }`}>
         {/* Logo & Title */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-accent-primary to-accent-secondary mb-4 shadow-lg shadow-purple-500/30">
-            <Truck className="text-white" size={32} />
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-accent-primary to-accent-secondary mb-3 shadow-lg shadow-purple-500/30">
+            <Truck className="text-white" size={24} />
           </div>
-          <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <h1 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
             SFast Trucklog
           </h1>
           <p className={`text-sm mt-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
@@ -106,14 +106,14 @@ const Login: React.FC = () => {
               อีเมล
             </label>
             <div className="relative">
-              <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`} size={18} />
+              <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`} size={18} />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
                 required
-                className={`w-full pl-12 pr-4 py-3 rounded-xl border transition-all focus:ring-2 focus:ring-accent-primary focus:outline-none ${
+                className={`w-full pl-10 pr-4 py-2.5 rounded-xl border transition-all focus:ring-2 focus:ring-accent-primary focus:outline-none ${
                   isDark 
                     ? 'bg-dark-bg border-dark-muted/30 text-dark-text placeholder-dark-muted/50' 
                     : 'bg-light-bg border-light-muted/30 text-light-text placeholder-light-muted/50'
@@ -127,14 +127,14 @@ const Login: React.FC = () => {
               รหัสผ่าน
             </label>
             <div className="relative">
-              <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`} size={18} />
+              <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`} size={18} />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className={`w-full pl-12 pr-4 py-3 rounded-xl border transition-all focus:ring-2 focus:ring-accent-primary focus:outline-none ${
+                className={`w-full pl-10 pr-4 py-2.5 rounded-xl border transition-all focus:ring-2 focus:ring-accent-primary focus:outline-none ${
                   isDark 
                     ? 'bg-dark-bg border-dark-muted/30 text-dark-text placeholder-dark-muted/50' 
                     : 'bg-light-bg border-light-muted/30 text-light-text placeholder-light-muted/50'
@@ -149,14 +149,14 @@ const Login: React.FC = () => {
                 ยืนยันรหัสผ่าน
               </label>
               <div className="relative">
-                <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`} size={18} />
+                <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`} size={18} />
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className={`w-full pl-12 pr-4 py-3 rounded-xl border transition-all focus:ring-2 focus:ring-accent-primary focus:outline-none ${
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border transition-all focus:ring-2 focus:ring-accent-primary focus:outline-none ${
                     isDark 
                       ? 'bg-dark-bg border-dark-muted/30 text-dark-text placeholder-dark-muted/50' 
                       : 'bg-light-bg border-light-muted/30 text-light-text placeholder-light-muted/50'
@@ -169,7 +169,7 @@ const Login: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-xl font-bold text-white bg-gradient-to-r from-accent-primary to-accent-secondary hover:brightness-110 transition-all shadow-lg shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-accent-primary to-accent-secondary hover:brightness-110 transition-all shadow-lg shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? <Loader2 className="animate-spin" size={20} /> : null}
             {loading ? 'กำลังดำเนินการ...' : (isLogin ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก')}
@@ -177,7 +177,7 @@ const Login: React.FC = () => {
         </form>
 
         {/* Toggle Login/Signup */}
-        <div className="mt-6 text-center">
+        <div className="mt-4 text-center">
           <p className={`text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
             {isLogin ? 'ยังไม่มีบัญชีใช่ไหม? ' : 'มีบัญชีอยู่แล้ว? '}
             <button
@@ -196,7 +196,7 @@ const Login: React.FC = () => {
         </div>
 
         {/* Divider */}
-        <div className="flex items-center gap-4 my-6">
+        <div className="flex items-center gap-4 my-4">
           <div className={`flex-1 h-px ${isDark ? 'bg-dark-muted/30' : 'bg-light-muted/30'}`} />
           <span className={`text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>หรือ</span>
           <div className={`flex-1 h-px ${isDark ? 'bg-dark-muted/30' : 'bg-light-muted/30'}`} />
@@ -206,7 +206,7 @@ const Login: React.FC = () => {
         <button
           onClick={handleGoogleLogin}
           disabled={loading}
-          className={`w-full py-3 rounded-xl font-medium border transition-all flex items-center justify-center gap-3 ${
+          className={`w-full py-2.5 rounded-xl font-medium border transition-all flex items-center justify-center gap-3 ${
             isDark 
               ? 'bg-dark-bg border-dark-muted/30 text-dark-text hover:bg-white/5' 
               : 'bg-white border-light-muted/30 text-light-text hover:bg-black/5'
