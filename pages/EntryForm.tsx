@@ -18,6 +18,7 @@ const EntryForm: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   
   // Modal States
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -86,6 +87,9 @@ const EntryForm: React.FC = () => {
     setImagePreview(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = '';
     }
   };
 
@@ -332,17 +336,24 @@ const EntryForm: React.FC = () => {
         {/* Row 5: Image Upload */}
         <FormGroup label="รูปภาพ (Photo)" isDark={isDark}>
           <div className="space-y-3">
-            {/* Hidden file input */}
+            {/* Hidden file inputs */}
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
-
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
               onChange={handleImageSelect}
               className="hidden"
             />
             
-            {/* Image preview or upload button */}
+            {/* Image preview or upload buttons */}
             {imagePreview ? (
               <div className="relative inline-block">
                 <img 
@@ -359,18 +370,30 @@ const EntryForm: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-xl border transition-all ${
+                  onClick={() => cameraInputRef.current?.click()}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border transition-all ${
                     isDark
                       ? 'bg-dark-bg border-dark-muted/30 text-dark-text hover:border-accent-primary'
                       : 'bg-light-bg border-light-muted/30 text-light-text hover:border-accent-primary'
                   }`}
                 >
                   <Camera size={20} className="text-accent-primary" />
-                  <span>ถ่ายรูป / เลือกรูป</span>
+                  <span>ถ่ายรูป</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border transition-all ${
+                    isDark
+                      ? 'bg-dark-bg border-dark-muted/30 text-dark-text hover:border-accent-secondary'
+                      : 'bg-light-bg border-light-muted/30 text-light-text hover:border-accent-secondary'
+                  }`}
+                >
+                  <ImageIcon size={20} className="text-accent-secondary" />
+                  <span>เลือกรูป</span>
                 </button>
               </div>
             )}
