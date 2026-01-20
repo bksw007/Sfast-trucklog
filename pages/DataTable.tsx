@@ -7,7 +7,7 @@ import { useData } from '../contexts/DataContext';
 import ConfirmModal from '../components/ConfirmModal';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { THSarabunNewBase64 } from '../fonts/THSarabunNew';
+import { NotoSansThaiBase64 } from '../fonts/NotoSansThai';
 import { formatDate } from '../utils/formatters';
 
 const MONTHS = [
@@ -226,7 +226,7 @@ const DataTable: React.FC = () => {
     const colors = ['#7c3aed', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444'];
     
     // Title
-    doc.setFont('THSarabunNew');
+    doc.setFont('NotoSansThai');
     doc.setFontSize(14);
     doc.setTextColor(80, 80, 80);
     doc.text(title, x + width / 2, y, { align: 'center' });
@@ -246,13 +246,13 @@ const DataTable: React.FC = () => {
       doc.rect(barX + 2, barY, barWidth - 4, barHeight, 'F');
       
       // Value on top
-      doc.setFont('THSarabunNew');
+      doc.setFont('NotoSansThai');
       doc.setFontSize(10);
       doc.setTextColor(60, 60, 60);
       doc.text(item.value.toString(), barX + barWidth / 2, barY - 2, { align: 'center' });
       
       // Label - wrap text
-      doc.setFont('THSarabunNew');
+      doc.setFont('NotoSansThai');
       doc.setFontSize(10);
       const splitLabel = doc.splitTextToSize(item.label, barWidth);
       doc.text(splitLabel, barX + barWidth / 2, y + height - 5, { align: 'center' });
@@ -265,7 +265,7 @@ const DataTable: React.FC = () => {
     const colors = ['#7c3aed', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
     
     // Title
-    doc.setFont('THSarabunNew');
+    doc.setFont('NotoSansThai');
     doc.setFontSize(14);
     doc.setTextColor(80, 80, 80);
     doc.text(title, x, y - radius - 5, { align: 'center' });
@@ -321,7 +321,7 @@ const DataTable: React.FC = () => {
       doc.setFillColor(r, g, b);
       doc.rect(x - 25, legendY - 3, 6, 6, 'F');
       
-      doc.setFont('THSarabunNew');
+      doc.setFont('NotoSansThai');
       doc.setFontSize(10);
       doc.setTextColor(60, 60, 60);
       const pct = Math.round((item.value / total) * 100);
@@ -337,10 +337,10 @@ const DataTable: React.FC = () => {
     const pageWidth = doc.internal.pageSize.getWidth();
     
     // Register Thai font
-    doc.addFileToVFS('THSarabunNew.ttf', THSarabunNewBase64);
-    doc.addFont('THSarabunNew.ttf', 'THSarabunNew', 'normal');
-    doc.addFont('THSarabunNew.ttf', 'THSarabunNew', 'bold'); // Cheat: use normal font for bold requests
-    doc.setFont('THSarabunNew');
+    doc.addFileToVFS('NotoSansThai.ttf', NotoSansThaiBase64);
+    doc.addFont('NotoSansThai.ttf', 'NotoSansThai', 'normal');
+    doc.addFont('NotoSansThai.ttf', 'NotoSansThai', 'bold'); // Cheat: use normal font for bold requests
+    doc.setFont('NotoSansThai');
     
     // Set document properties - helps with filename in new window
     const timestampTitle = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15).replace('T', '_');
@@ -472,8 +472,8 @@ const DataTable: React.FC = () => {
       head: [tableColumn],
       body: tableRows,
       startY: 130,
-      styles: { fontSize: 9, cellPadding: 2, font: 'THSarabunNew' }, // Reduced font size to 9
-      headStyles: { fillColor: [124, 58, 237], textColor: 255, font: 'THSarabunNew', halign: 'center' },
+      styles: { fontSize: 9, cellPadding: 2, font: 'NotoSansThai' }, // Reduced font size to 9
+      headStyles: { fillColor: [124, 58, 237], textColor: 255, font: 'NotoSansThai', halign: 'center' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
       columnStyles: {
         0: { cellWidth: 25 }, // Date - wider to prevent wrap
@@ -489,7 +489,7 @@ const DataTable: React.FC = () => {
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
-      doc.setFont('THSarabunNew');
+      doc.setFont('NotoSansThai');
       doc.setFontSize(10);
       doc.setTextColor(150, 150, 150);
       doc.text(`SFast Trucklog - สร้างเมื่อ ${new Date().toLocaleString('th-TH')} - หน้า ${i}/${pageCount}`, pageWidth / 2, 290, { align: 'center' });
