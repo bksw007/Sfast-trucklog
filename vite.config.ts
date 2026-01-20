@@ -18,6 +18,20 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
+      },
+      build: {
+        chunkSizeWarningLimit: 1000, // Upgrade limit to 1MB
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              vendor: ['react', 'react-dom', 'react-router-dom'],
+              firebase: ['firebase/app', 'firebase/firestore', 'firebase/auth', 'firebase/storage'],
+              pdf: ['jspdf', 'jspdf-autotable', 'html2canvas'],
+              charts: ['recharts'],
+              ui: ['lucide-react']
+            }
+          }
+        }
       }
     };
 });
