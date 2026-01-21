@@ -162,7 +162,8 @@ export const subscribeToOptions = (
  */
 export const addJob = async (
   job: Omit<JobEntry, 'id' | 'timestamp'>,
-  imageFile?: File
+  originImageFile?: File,
+  destinationImageFile?: File
 ): Promise<JobEntry> => {
   const timestamp = Date.now();
   
@@ -170,24 +171,38 @@ export const addJob = async (
   const jobData = {
     ...job,
     timestamp,
-    imageUrl: '',
+    originImageUrl: '',
+    destinationImageUrl: '',
   };
 
   const docRef = await addDoc(collection(db, JOBS_COLLECTION), jobData);
   console.log('[Firebase] Job created with ID:', docRef.id);
 
-  // Upload image if provided
-  let imageUrl = '';
-  if (imageFile) {
-    imageUrl = await uploadImage(imageFile, docRef.id);
-    await updateDoc(docRef, { imageUrl });
+  // Upload images if provided
+  let originImageUrl = '';
+  let destinationImageUrl = '';
+  
+  if (originImageFile) {
+    originImageUrl = await uploadImage(originImageFile, docRef.id);
+    console.log('[Firebase] Origin image uploaded');
+  }
+  
+  if (destinationImageFile) {
+    destinationImageUrl = await uploadImage(destinationImageFile, docRef.id);
+    console.log('[Firebase] Destination image uploaded');
+  }
+  
+  // Update document with image URLs
+  if (originImageUrl || destinationImageUrl) {
+    await updateDoc(docRef, { originImageUrl, destinationImageUrl });
   }
 
   return {
     ...job,
     id: docRef.id,
     timestamp,
-    imageUrl,
+    originImageUrl,
+    destinationImageUrl,
   };
 };
 
@@ -196,20 +211,34 @@ export const addJob = async (
  */
 export const updateJob = async (
   job: JobEntry,
-  newImageFile?: File
+  newOriginImageFile?: File,
+  newDestinationImageFile?: File
 ): Promise<JobEntry> => {
   const jobRef = doc(db, JOBS_COLLECTION, job.id);
   
-  let imageUrl = job.imageUrl || '';
+  let originImageUrl = job.originImageUrl || '';
+  let destinationImageUrl = job.destinationImageUrl || '';
   
-  // Handle image update
-  if (newImageFile) {
-    // Delete old image if exists
-    if (job.imageUrl) {
-      await deleteImage(job.imageUrl);
+  // Handle origin image update
+  if (newOriginImageFile) {
+    // Delete old origin image if exists
+    if (job.originImageUrl) {
+      await deleteImage(job.originImageUrl);
     }
-    // Upload new image
-    imageUrl = await uploadImage(newImageFile, job.id);
+    // Upload new origin image
+    originImageUrl = await uploadImage(newOriginImageFile, job.id);
+    console.log('[Firebase] Origin image updated');
+  }
+  
+  // Handle destination image update
+  if (newDestinationImageFile) {
+    // Delete old destination image if exists
+    if (job.destinationImageUrl) {
+      await deleteImage(job.destinationImageUrl);
+    }
+    // Upload new destination image
+    destinationImageUrl = await uploadImage(newDestinationImageFile, job.id);
+    console.log('[Firebase] Destination image updated');
   }
 
   const updateData = {
@@ -223,22 +252,28 @@ export const updateJob = async (
     jobNo: job.jobNo,
     invNo: job.invNo,
     remarks: job.remarks,
-    imageUrl,
+    originImageUrl,
+    destinationImageUrl,
   };
 
   await updateDoc(jobRef, updateData);
   console.log('[Firebase] Job updated:', job.id);
 
-  return { ...job, imageUrl };
+  return { ...job, originImageUrl, destinationImageUrl };
 };
 
 /**
  * Delete a job
  */
 export const deleteJob = async (job: JobEntry): Promise<void> => {
-  // Delete image if exists
-  if (job.imageUrl) {
-    await deleteImage(job.imageUrl);
+  // Delete origin image if exists
+  if (job.originImageUrl) {
+    await deleteImage(job.originImageUrl);
+  }
+  
+  // Delete destination image if exists
+  if (job.destinationImageUrl) {
+    await deleteImage(job.destinationImageUrl);
   }
 
   // Delete job document

@@ -59,8 +59,9 @@ const DataTable: React.FC = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   
-  // New Image for Edit
-  const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  // New Images for Edit
+  const [editOriginImageFile, setEditOriginImageFile] = useState<File | null>(null);
+  const [editDestinationImageFile, setEditDestinationImageFile] = useState<File | null>(null);
 
   // Use real-time data from context
   useEffect(() => {
@@ -134,7 +135,8 @@ const DataTable: React.FC = () => {
   const handleRowClick = (job: JobEntry) => {
     setSelectedJob(job);
     setEditData({ ...job });
-    setEditImageFile(null); // Reset image file
+    setEditOriginImageFile(null); // Reset origin image file
+    setEditDestinationImageFile(null); // Reset destination image file
     setIsEditing(false);
     setIsDetailModalOpen(true);
   };
@@ -161,10 +163,11 @@ const DataTable: React.FC = () => {
     setShowConfirmEdit(false);
     if (editData) {
       try {
-        await firebaseUpdateJob(editData, editImageFile || undefined);
+        await firebaseUpdateJob(editData, editOriginImageFile || undefined, editDestinationImageFile || undefined);
         setIsDetailModalOpen(false);
         setShowSuccessModal(true);
-        setEditImageFile(null);
+        setEditOriginImageFile(null);
+        setEditDestinationImageFile(null);
       } catch (error) {
         console.error('Failed to update job:', error);
         alert('เกิดข้อผิดพลาดในการแก้ไข');
@@ -770,20 +773,20 @@ const DataTable: React.FC = () => {
                 )}
               </div>
 
-              {/* Image Section */}
+              {/* Origin Image Section (รูปภาพต้นทาง) */}
               <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-blue-50/50'}`}>
                 <div className="flex items-center gap-2 mb-2">
                   <ImageIcon size={16} className={isDark ? 'text-dark-muted' : 'text-blue-500'} />
-                  <span className={`text-xs ${isDark ? 'text-dark-muted' : 'text-blue-600'}`}>รูปภาพแนบ</span>
+                  <span className={`text-xs ${isDark ? 'text-dark-muted' : 'text-blue-600'}`}>รูปภาพต้นทาง</span>
                 </div>
                 
                 {isEditing ? (
                   <div className="space-y-2">
-                    {(editData.imageUrl || editImageFile) && (
+                    {(editData.originImageUrl || editOriginImageFile) && (
                       <div className="relative w-full h-48 rounded-lg overflow-hidden border border-slate-200">
                         <img 
-                          src={editImageFile ? URL.createObjectURL(editImageFile) : editData.imageUrl} 
-                          alt="Attached" 
+                          src={editOriginImageFile ? URL.createObjectURL(editOriginImageFile) : editData.originImageUrl} 
+                          alt="Origin" 
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -793,7 +796,7 @@ const DataTable: React.FC = () => {
                       accept="image/*"
                       onChange={(e) => {
                         if (e.target.files && e.target.files[0]) {
-                          setEditImageFile(e.target.files[0]);
+                          setEditOriginImageFile(e.target.files[0]);
                         }
                       }}
                       className="block w-full text-sm text-slate-500
@@ -805,16 +808,65 @@ const DataTable: React.FC = () => {
                     />
                   </div>
                 ) : (
-                  selectedJob.imageUrl ? (
-                    <div className="relative w-full h-64 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.open(selectedJob.imageUrl, '_blank')}>
+                  selectedJob.originImageUrl ? (
+                    <div className="relative w-full h-48 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.open(selectedJob.originImageUrl, '_blank')}>
                       <img 
-                        src={selectedJob.imageUrl} 
-                        alt="Job Attachment" 
+                        src={selectedJob.originImageUrl} 
+                        alt="Origin" 
                         className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" 
                       />
                     </div>
                   ) : (
-                    <div className="text-sm text-slate-400 italic text-center py-4">ไม่มีรูปภาพแนบ</div>
+                    <div className="text-sm text-slate-400 italic text-center py-4">ไม่มีรูปภาพต้นทาง</div>
+                  )
+                )}
+              </div>
+
+              {/* Destination Image Section (รูปภาพปลายทาง) */}
+              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-green-50/50'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <ImageIcon size={16} className={isDark ? 'text-dark-muted' : 'text-green-500'} />
+                  <span className={`text-xs ${isDark ? 'text-dark-muted' : 'text-green-600'}`}>รูปภาพปลายทาง</span>
+                </div>
+                
+                {isEditing ? (
+                  <div className="space-y-2">
+                    {(editData.destinationImageUrl || editDestinationImageFile) && (
+                      <div className="relative w-full h-48 rounded-lg overflow-hidden border border-slate-200">
+                        <img 
+                          src={editDestinationImageFile ? URL.createObjectURL(editDestinationImageFile) : editData.destinationImageUrl} 
+                          alt="Destination" 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setEditDestinationImageFile(e.target.files[0]);
+                        }
+                      }}
+                      className="block w-full text-sm text-slate-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-green-50 file:text-green-700
+                        hover:file:bg-green-100"
+                    />
+                  </div>
+                ) : (
+                  selectedJob.destinationImageUrl ? (
+                    <div className="relative w-full h-48 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.open(selectedJob.destinationImageUrl, '_blank')}>
+                      <img 
+                        src={selectedJob.destinationImageUrl} 
+                        alt="Destination" 
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" 
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-sm text-slate-400 italic text-center py-4">ไม่มีรูปภาพปลายทาง</div>
                   )
                 )}
               </div>
