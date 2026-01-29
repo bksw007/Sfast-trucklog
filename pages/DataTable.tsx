@@ -1280,16 +1280,16 @@ const DataTable: React.FC = () => {
           <table className="w-full text-left text-sm">
             <thead className={`uppercase font-medium ${isDark ? 'bg-slate-900/50 text-accent-primary' : 'bg-slate-100 text-accent-primary'}`}>
               <tr>
-                <th className="px-6 py-4">วันที่</th>
-                <th className="px-6 py-4">เส้นทาง</th>
-                <th className="px-6 py-4 text-center">รอบ</th>
-                <th className="px-6 py-4">รถ / ทะเบียน</th>
-                <th className="px-6 py-4">คนขับ</th>
-                <th className="px-6 py-4">Job / Inv</th>
+                <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap">วันที่</th>
+                <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap">เส้นทาง</th>
+                <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm text-center whitespace-nowrap">รอบ</th>
+                <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap">รถ / ทะเบียน</th>
+                <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap">คนขับ</th>
+                <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap">Job / Inv</th>
                 {isAdmin && (
                   <>
-                    <th className="px-6 py-4 text-right">ราคาลูกค้า</th>
-                    <th className="px-6 py-4 text-right">ราคารถร่วม</th>
+                    <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm text-right whitespace-nowrap">ราคาลูกค้า</th>
+                    <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm text-right whitespace-nowrap">ราคารถร่วม</th>
                   </>
                 )}
               </tr>
@@ -1314,43 +1314,43 @@ const DataTable: React.FC = () => {
                     onClick={() => handleRowClick(job)}
                     className={`transition-colors cursor-pointer ${isDark ? 'hover:bg-white/5' : 'hover:bg-accent-primary/5'}`}
                   >
-                    <td className={`px-6 py-4 font-medium whitespace-nowrap ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    <td className={`px-2 py-2 md:px-6 md:py-4 font-medium whitespace-nowrap text-xs md:text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
                       {formatDate(job.date)}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-2 py-2 md:px-6 md:py-4">
                       <div className="flex flex-col gap-1">
-                        <span className="flex items-center gap-1 text-accent-secondary">
-                          <span className="w-1.5 h-1.5 rounded-full bg-accent-secondary"></span>
+                        <span className="flex items-center gap-1 text-accent-secondary text-xs md:text-sm whitespace-nowrap">
+                          <span className="w-1.5 h-1.5 rounded-full bg-accent-secondary shrink-0"></span>
                           {job.pickupLocation}
                         </span>
-                        <span className="flex items-center gap-1 text-accent-warning">
-                          <span className="w-1.5 h-1.5 rounded-full bg-accent-warning"></span>
+                        <span className="flex items-center gap-1 text-accent-warning text-xs md:text-sm whitespace-nowrap">
+                          <span className="w-1.5 h-1.5 rounded-full bg-accent-warning shrink-0"></span>
                           {job.dropoffLocation}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`inline-block px-3 py-1 rounded-lg text-sm font-bold ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}>
+                    <td className="px-2 py-2 md:px-6 md:py-4 text-center">
+                      <span className={`inline-block px-2 py-0.5 md:px-3 md:py-1 rounded-lg text-xs md:text-sm font-bold ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}>
                         {job.rounds}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className={isDark ? 'text-white' : 'text-slate-900'}>{job.licensePlate}</div>
-                      <div className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{job.vehicleType}</div>
+                    <td className="px-2 py-2 md:px-6 md:py-4">
+                      <div className={`text-xs md:text-sm whitespace-nowrap ${isDark ? 'text-white' : 'text-slate-900'}`}>{job.licensePlate}</div>
+                      <div className={`text-[10px] md:text-xs whitespace-nowrap ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{job.vehicleType}</div>
                     </td>
-                    <td className={`px-6 py-4 ${isDark ? 'text-dark-text' : 'text-light-text'}`}>
+                    <td className={`px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap ${isDark ? 'text-dark-text' : 'text-light-text'}`}>
                       {job.driverName}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className={`font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>{job.jobNo || '-'}</div>
-                      <div className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{job.invNo || '-'}</div>
+                    <td className="px-2 py-2 md:px-6 md:py-4">
+                      <div className={`font-medium text-xs md:text-sm whitespace-nowrap ${isDark ? 'text-white' : 'text-slate-900'}`}>{job.jobNo || '-'}</div>
+                      <div className={`text-[10px] md:text-xs whitespace-nowrap ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{job.invNo || '-'}</div>
                     </td>
                     {isAdmin && (
                       <>
-                        <td className={`px-6 py-4 text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        <td className={`px-2 py-2 md:px-6 md:py-4 text-right text-xs md:text-sm whitespace-nowrap ${isDark ? 'text-white' : 'text-slate-900'}`}>
                           {job.customerPrice ? job.customerPrice.toLocaleString() : '-'}
                         </td>
-                        <td className={`px-6 py-4 text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        <td className={`px-2 py-2 md:px-6 md:py-4 text-right text-xs md:text-sm whitespace-nowrap ${isDark ? 'text-white' : 'text-slate-900'}`}>
                           {job.driverPrice ? job.driverPrice.toLocaleString() : '-'}
                         </td>
                       </>
