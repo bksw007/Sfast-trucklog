@@ -526,7 +526,6 @@ const EntryForm: React.FC = () => {
                 type="file"
                 accept="image/*"
                 multiple
-                capture="environment"
                 onChange={handleOriginImageSelect}
                 className="hidden"
               />
@@ -597,7 +596,6 @@ const EntryForm: React.FC = () => {
                 type="file"
                 accept="image/*"
                 multiple
-                capture="environment"
                 onChange={handleDestinationImageSelect}
                 className="hidden"
               />
@@ -668,7 +666,6 @@ const EntryForm: React.FC = () => {
                 type="file"
                 accept="image/*"
                 multiple
-                capture="environment"
                 onChange={handleDocumentImageSelect}
                 className="hidden"
               />
