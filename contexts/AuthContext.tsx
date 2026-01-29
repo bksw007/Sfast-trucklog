@@ -9,14 +9,18 @@ import {
   onAuthStateChanged
 } from 'firebase/auth';
 import { auth } from '../firebase';
+import { UserProfile } from '../types';
+import { getUserProfile, createUserProfile } from '../services/userService';
 
 interface AuthContextType {
   user: User | null;
+  userProfile: UserProfile | null;
   loading: boolean;
   loginWithEmail: (email: string, password: string) => Promise<void>;
   signupWithEmail: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,11 +39,30 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchProfile = async (currentUser: User) => {
+    try {
+      let profile = await getUserProfile(currentUser.uid);
+      if (!profile) {
+        // Create profile if not exist (e.g. first login)
+        profile = await createUserProfile(currentUser);
+      }
+      setUserProfile(profile);
+    } catch (error) {
+      console.error('Error in fetchProfile:', error);
+    }
+  };
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
+      if (user) {
+        await fetchProfile(user);
+      } else {
+        setUserProfile(null);
+      }
       setLoading(false);
     });
 
@@ -51,7 +74,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const signupWithEmail = async (email: string, password: string) => {
-    await createUserWithEmailAndPassword(auth, email, password);
+    const result = await createUserWithEmailAndPassword(auth, email, password);
+    // Profile creation is handled by onAuthStateChanged, but we can ensure it here if needed
+    // or just let the effect handle it.
   };
 
   const loginWithGoogle = async () => {
@@ -61,10 +86,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     await signOut(auth);
+    setUserProfile(null);
+  };
+
+  const refreshProfile = async () => {
+    if (user) {
+      await fetchProfile(user);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, loginWithEmail, signupWithEmail, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      userProfile, 
+      loading, 
+      loginWithEmail, 
+      signupWithEmail, 
+      loginWithGoogle, 
+      logout,
+      refreshProfile 
+    }}>
       {children}
     </AuthContext.Provider>
   );

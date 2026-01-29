@@ -4,6 +4,7 @@ import { JobEntry, AppData } from '../types';
 import { Download, Printer, Filter, X, ChevronDown, Edit2, Eye, Image as ImageIcon } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useData } from '../contexts/DataContext';
+import { useAuth } from '../contexts/AuthContext';
 import ConfirmModal from '../components/ConfirmModal';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -36,6 +37,8 @@ interface Filters {
 const DataTable: React.FC = () => {
   const { theme } = useTheme();
   const { data: appData, refreshData } = useData();
+  const { userProfile } = useAuth();
+  const isAdmin = userProfile?.role === 'admin';
   const isDark = theme === 'dark';
   const [jobs, setJobs] = useState<JobEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,8 +63,10 @@ const DataTable: React.FC = () => {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   
   // New Images for Edit
-  const [editOriginImageFile, setEditOriginImageFile] = useState<File | null>(null);
-  const [editDestinationImageFile, setEditDestinationImageFile] = useState<File | null>(null);
+  // New Images for Edit
+  const [editOriginImageFiles, setEditOriginImageFiles] = useState<File[]>([]);
+  const [editDestinationImageFiles, setEditDestinationImageFiles] = useState<File[]>([]);
+  const [editDocumentImageFiles, setEditDocumentImageFiles] = useState<File[]>([]);
 
   // Use real-time data from context
   useEffect(() => {
@@ -135,8 +140,9 @@ const DataTable: React.FC = () => {
   const handleRowClick = (job: JobEntry) => {
     setSelectedJob(job);
     setEditData({ ...job });
-    setEditOriginImageFile(null); // Reset origin image file
-    setEditDestinationImageFile(null); // Reset destination image file
+    setEditOriginImageFiles([]); // Reset origin image files
+    setEditDestinationImageFiles([]); // Reset destination image files
+    setEditDocumentImageFiles([]); // Reset document image files
     setIsEditing(false);
     setIsDetailModalOpen(true);
   };
@@ -163,11 +169,17 @@ const DataTable: React.FC = () => {
     setShowConfirmEdit(false);
     if (editData) {
       try {
-        await firebaseUpdateJob(editData, editOriginImageFile || undefined, editDestinationImageFile || undefined);
+        await firebaseUpdateJob(
+          editData, 
+          editOriginImageFiles.length > 0 ? editOriginImageFiles : undefined, 
+          editDestinationImageFiles.length > 0 ? editDestinationImageFiles : undefined,
+          editDocumentImageFiles.length > 0 ? editDocumentImageFiles : undefined
+        );
         setIsDetailModalOpen(false);
         setShowSuccessModal(true);
-        setEditOriginImageFile(null);
-        setEditDestinationImageFile(null);
+        setEditOriginImageFiles([]);
+        setEditDestinationImageFiles([]);
+        setEditDocumentImageFiles([]);
       } catch (error) {
         console.error('Failed to update job:', error);
         alert('เกิดข้อผิดพลาดในการแก้ไข');
@@ -738,6 +750,48 @@ const DataTable: React.FC = () => {
                   <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.jobNo || '-'}</div>
                 )}
               </div>
+
+              {/* Admin Only: Price Fields */}
+              {isAdmin && (
+                <div className="col-span-2 grid grid-cols-2 gap-4">
+                  <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+                    <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>💰 ราคาเก็บลูกค้า</div>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={editData.customerPrice || ''}
+                        onChange={(e) => handleEditChange('customerPrice', parseFloat(e.target.value))}
+                        className={`w-full border rounded-lg px-3 py-1 text-sm ${
+                          isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
+                        }`}
+                        placeholder="0.00"
+                      />
+                    ) : (
+                      <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>
+                        {selectedJob.customerPrice?.toLocaleString() || '-'}
+                      </div>
+                    )}
+                  </div>
+                  <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+                    <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>💸 ราคาจ่ายรถร่วม</div>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={editData.driverPrice || ''}
+                        onChange={(e) => handleEditChange('driverPrice', parseFloat(e.target.value))}
+                        className={`w-full border rounded-lg px-3 py-1 text-sm ${
+                          isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
+                        }`}
+                        placeholder="0.00"
+                      />
+                    ) : (
+                      <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>
+                        {selectedJob.driverPrice?.toLocaleString() || '-'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Invoice & Remarks & Image */}
@@ -781,23 +835,45 @@ const DataTable: React.FC = () => {
                 </div>
                 
                 {isEditing ? (
-                  <div className="space-y-2">
-                    {(editData.originImageUrl || editOriginImageFile) && (
-                      <div className="relative w-full h-48 rounded-lg overflow-hidden border border-slate-200">
-                        <img 
-                          src={editOriginImageFile ? URL.createObjectURL(editOriginImageFile) : editData.originImageUrl} 
-                          alt="Origin" 
-                          className="w-full h-full object-cover"
-                        />
+                  <div className="space-y-3">
+                    {/* Existing Images */}
+                    {editData.originImageUrls && editData.originImageUrls.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        {editData.originImageUrls.map((url, index) => (
+                           <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
+                            <img src={url} alt={`Origin ${index}`} className="w-full h-full object-cover" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : editData.originImageUrl ? (
+                       <div className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
+                        <img src={editData.originImageUrl} alt="Origin" className="w-full h-full object-cover" />
+                      </div>
+                    ) : null}
+
+                    {/* New Images Preview */}
+                    {editOriginImageFiles.length > 0 && (
+                      <div>
+                        <p className="text-xs text-slate-500 mb-1">รูปใหม่ที่จะเพิ่ม ({editOriginImageFiles.length}):</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {editOriginImageFiles.map((file, index) => (
+                            <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
+                              <img src={URL.createObjectURL(file)} alt={`New Origin ${index}`} className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
+                    
                     <input
                       type="file"
                       accept="image/*"
+                      multiple
                       onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          setEditOriginImageFile(e.target.files[0]);
-                        }
+                         if (e.target.files) {
+                           const files = Array.from(e.target.files);
+                           setEditOriginImageFiles(files);
+                         }
                       }}
                       className="block w-full text-sm text-slate-500
                         file:mr-4 file:py-2 file:px-4
@@ -806,9 +882,22 @@ const DataTable: React.FC = () => {
                         file:bg-violet-50 file:text-violet-700
                         hover:file:bg-violet-100"
                     />
+                    <p className="text-xs text-slate-400">*การอัพโหลดรูปใหม่จะแทนที่รูปเดิมทั้งหมด</p>
                   </div>
                 ) : (
-                  selectedJob.originImageUrl ? (
+                  (selectedJob.originImageUrls && selectedJob.originImageUrls.length > 0) ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      {selectedJob.originImageUrls.map((url, index) => (
+                        <div key={index} className="relative w-full h-32 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.open(url, '_blank')}>
+                          <img 
+                            src={url} 
+                            alt={`Origin ${index}`} 
+                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" 
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : selectedJob.originImageUrl ? (
                     <div className="relative w-full h-48 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.open(selectedJob.originImageUrl, '_blank')}>
                       <img 
                         src={selectedJob.originImageUrl} 
@@ -830,23 +919,45 @@ const DataTable: React.FC = () => {
                 </div>
                 
                 {isEditing ? (
-                  <div className="space-y-2">
-                    {(editData.destinationImageUrl || editDestinationImageFile) && (
-                      <div className="relative w-full h-48 rounded-lg overflow-hidden border border-slate-200">
-                        <img 
-                          src={editDestinationImageFile ? URL.createObjectURL(editDestinationImageFile) : editData.destinationImageUrl} 
-                          alt="Destination" 
-                          className="w-full h-full object-cover"
-                        />
+                  <div className="space-y-3">
+                    {/* Existing Images */}
+                    {editData.destinationImageUrls && editData.destinationImageUrls.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        {editData.destinationImageUrls.map((url, index) => (
+                           <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
+                            <img src={url} alt={`Destination ${index}`} className="w-full h-full object-cover" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : editData.destinationImageUrl ? (
+                       <div className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
+                        <img src={editData.destinationImageUrl} alt="Destination" className="w-full h-full object-cover" />
+                      </div>
+                    ) : null}
+
+                    {/* New Images Preview */}
+                    {editDestinationImageFiles.length > 0 && (
+                      <div>
+                        <p className="text-xs text-slate-500 mb-1">รูปใหม่ที่จะเพิ่ม ({editDestinationImageFiles.length}):</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {editDestinationImageFiles.map((file, index) => (
+                            <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
+                              <img src={URL.createObjectURL(file)} alt={`New Destination ${index}`} className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
+
                     <input
                       type="file"
                       accept="image/*"
+                      multiple
                       onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          setEditDestinationImageFile(e.target.files[0]);
-                        }
+                        if (e.target.files) {
+                           const files = Array.from(e.target.files);
+                           setEditDestinationImageFiles(files);
+                         }
                       }}
                       className="block w-full text-sm text-slate-500
                         file:mr-4 file:py-2 file:px-4
@@ -855,9 +966,22 @@ const DataTable: React.FC = () => {
                         file:bg-green-50 file:text-green-700
                         hover:file:bg-green-100"
                     />
+                    <p className="text-xs text-slate-400">*การอัพโหลดรูปใหม่จะแทนที่รูปเดิมทั้งหมด</p>
                   </div>
                 ) : (
-                  selectedJob.destinationImageUrl ? (
+                  (selectedJob.destinationImageUrls && selectedJob.destinationImageUrls.length > 0) ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      {selectedJob.destinationImageUrls.map((url, index) => (
+                        <div key={index} className="relative w-full h-32 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.open(url, '_blank')}>
+                          <img 
+                            src={url} 
+                            alt={`Destination ${index}`} 
+                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" 
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : selectedJob.destinationImageUrl ? (
                     <div className="relative w-full h-48 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.open(selectedJob.destinationImageUrl, '_blank')}>
                       <img 
                         src={selectedJob.destinationImageUrl} 
@@ -867,6 +991,90 @@ const DataTable: React.FC = () => {
                     </div>
                   ) : (
                     <div className="text-sm text-slate-400 italic text-center py-4">ไม่มีรูปภาพปลายทาง</div>
+                  )
+                )}
+              </div>
+
+               {/* Document Image Section (รูปภาพเอกสาร) */}
+              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-gray-50/50'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <ImageIcon size={16} className={isDark ? 'text-dark-muted' : 'text-gray-500'} />
+                  <span className={`text-xs ${isDark ? 'text-dark-muted' : 'text-gray-600'}`}>รูปภาพเอกสาร</span>
+                </div>
+                
+                {isEditing ? (
+                  <div className="space-y-3">
+                    {/* Existing Images */}
+                    {editData.documentImageUrls && editData.documentImageUrls.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        {editData.documentImageUrls.map((url, index) => (
+                           <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
+                            <img src={url} alt={`Document ${index}`} className="w-full h-full object-cover" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : editData.documentImageUrl ? (
+                       <div className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
+                        <img src={editData.documentImageUrl} alt="Document" className="w-full h-full object-cover" />
+                      </div>
+                    ) : null}
+
+                    {/* New Images Preview */}
+                    {editDocumentImageFiles.length > 0 && (
+                      <div>
+                        <p className="text-xs text-slate-500 mb-1">รูปใหม่ที่จะเพิ่ม ({editDocumentImageFiles.length}):</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {editDocumentImageFiles.map((file, index) => (
+                            <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
+                              <img src={URL.createObjectURL(file)} alt={`New Document ${index}`} className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => {
+                        if (e.target.files) {
+                           const files = Array.from(e.target.files);
+                           setEditDocumentImageFiles(files);
+                         }
+                      }}
+                      className="block w-full text-sm text-slate-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-gray-50 file:text-gray-700
+                        hover:file:bg-gray-100"
+                    />
+                    <p className="text-xs text-slate-400">*การอัพโหลดรูปใหม่จะแทนที่รูปเดิมทั้งหมด</p>
+                  </div>
+                ) : (
+                  (selectedJob.documentImageUrls && selectedJob.documentImageUrls.length > 0) ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      {selectedJob.documentImageUrls.map((url, index) => (
+                        <div key={index} className="relative w-full h-32 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.open(url, '_blank')}>
+                          <img 
+                            src={url} 
+                            alt={`Document ${index}`} 
+                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" 
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : selectedJob.documentImageUrl ? (
+                    <div className="relative w-full h-48 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.open(selectedJob.documentImageUrl, '_blank')}>
+                      <img 
+                        src={selectedJob.documentImageUrl} 
+                        alt="Document" 
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" 
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-sm text-slate-400 italic text-center py-4">ไม่มีรูปภาพเอกสาร</div>
                   )
                 )}
               </div>
@@ -1078,6 +1286,12 @@ const DataTable: React.FC = () => {
                 <th className="px-6 py-4">รถ / ทะเบียน</th>
                 <th className="px-6 py-4">คนขับ</th>
                 <th className="px-6 py-4">Job / Inv</th>
+                {isAdmin && (
+                  <>
+                    <th className="px-6 py-4 text-right">ราคาลูกค้า</th>
+                    <th className="px-6 py-4 text-right">ราคารถร่วม</th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody className={`divide-y ${isDark ? 'divide-dark-muted/10' : 'divide-light-muted/10'}`}>
@@ -1131,6 +1345,16 @@ const DataTable: React.FC = () => {
                       <div className={`font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>{job.jobNo || '-'}</div>
                       <div className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{job.invNo || '-'}</div>
                     </td>
+                    {isAdmin && (
+                      <>
+                        <td className={`px-6 py-4 text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                          {job.customerPrice ? job.customerPrice.toLocaleString() : '-'}
+                        </td>
+                        <td className={`px-6 py-4 text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                          {job.driverPrice ? job.driverPrice.toLocaleString() : '-'}
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))
               )}

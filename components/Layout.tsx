@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, Table2, Truck, Sun, Moon, Menu, X, ChevronLeft, ChevronRight, RefreshCw, LogOut, Settings } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Table2, Truck, Sun, Moon, Menu, X, ChevronLeft, ChevronRight, RefreshCw, LogOut, Settings, User, Users } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
+import UserProfileModal from './UserProfileModal';
+import UserManagementModal from './UserManagementModal';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -13,10 +15,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { lastUpdate, syncing, refreshData } = useData();
-  const { user, logout } = useAuth();
+  const { user, userProfile, logout } = useAuth();
   // Default to collapsed (false)
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showUserManagementModal, setShowUserManagementModal] = useState(false);
 
   const navItems = [
     { path: '/', label: 'แดชบอร์ด', icon: LayoutDashboard },
@@ -117,6 +121,34 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         }`}>
           <button
             onClick={() => {
+              setShowProfileModal(true);
+              setMobileMenuOpen(false);
+            }}
+            className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium mb-2 transition-all ${
+              isDark ? 'text-dark-text hover:bg-white/5' : 'text-light-text hover:bg-black/5'
+            }`}
+          >
+            <User size={14} />
+            โปรไฟล์
+          </button>
+          
+          {user?.uid && userProfile?.role === 'admin' && (
+            <button
+              onClick={() => {
+                setShowUserManagementModal(true);
+                setMobileMenuOpen(false);
+              }}
+              className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium mb-2 transition-all ${
+                isDark ? 'text-dark-text hover:bg-white/5' : 'text-light-text hover:bg-black/5'
+              }`}
+            >
+              <Users size={14} />
+              จัดการผู้ใช้
+            </button>
+          )}
+
+          <button
+            onClick={() => {
               logout();
               setMobileMenuOpen(false);
             }}
@@ -199,6 +231,36 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </span>
             </button>
 
+            {/* Profile Button */}
+            <button
+              onClick={() => setShowProfileModal(true)}
+              title={!sidebarOpen ? "โปรไฟล์" : ''}
+              className={`w-full flex items-center px-4 py-3 rounded-xl transition-all mt-2 whitespace-nowrap ${
+                sidebarOpen ? 'gap-3' : 'gap-0 justify-center'
+              } ${isDark ? 'text-dark-muted hover:bg-white/5 hover:text-dark-text' : 'text-light-muted hover:bg-black/5 hover:text-light-text'}`}
+            >
+              <User size={20} className="flex-shrink-0" />
+              <span className={`font-medium transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
+                โปรไฟล์
+              </span>
+            </button>
+
+            {/* Admin: User Management Button */}
+            {user?.uid && userProfile?.role === 'admin' && (
+              <button
+                onClick={() => setShowUserManagementModal(true)}
+                title={!sidebarOpen ? "จัดการผู้ใช้" : ''}
+                className={`w-full flex items-center px-4 py-3 rounded-xl transition-all mt-2 whitespace-nowrap ${
+                  sidebarOpen ? 'gap-3' : 'gap-0 justify-center'
+                } ${isDark ? 'text-dark-muted hover:bg-white/5 hover:text-dark-text' : 'text-light-muted hover:bg-black/5 hover:text-light-text'}`}
+              >
+                <Users size={20} className="flex-shrink-0" />
+                <span className={`font-medium transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
+                  จัดการผู้ใช้
+                </span>
+              </button>
+            )}
+
             {/* Logout Button */}
             <button
               onClick={logout}
@@ -239,6 +301,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
         </main>
       </div>
+
+      <UserProfileModal 
+        isOpen={showProfileModal} 
+        onClose={() => setShowProfileModal(false)} 
+      />
+      
+      <UserManagementModal
+        isOpen={showUserManagementModal}
+        onClose={() => setShowUserManagementModal(false)}
+      />
     </div>
   );
 };

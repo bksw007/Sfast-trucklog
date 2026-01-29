@@ -9,9 +9,18 @@ export interface JobEntry {
   licensePlate: string;
   jobNo: string;
   invNo: string;
+  workOrderNo?: string; // เลขที่ใบสั่งงาน
+  transportDocNo?: string; // เลขที่ใบขนส่งสินค้าฯ
+  fuelAndToll?: number; // ค่าน้ำมันและทางด่วน
   remarks: string;
-  originImageUrl?: string; // รูปภาพต้นทาง - Origin image URL from Firebase Storage
-  destinationImageUrl?: string; // รูปภาพปลายทาง - Destination image URL from Firebase Storage
+  originImageUrl?: string;
+  originImageUrls?: string[]; // New: Multiple images
+  destinationImageUrl?: string;
+  destinationImageUrls?: string[]; // New: Multiple images
+  documentImageUrl?: string; // รูปภาพเอกสาร
+  documentImageUrls?: string[]; // New: Multiple images
+  customerPrice?: number; // Admin only: ราคาเก็บลูกค้า
+  driverPrice?: number; // Admin only: ราคาจ่ายรถร่วม
   timestamp: number;
 }
 
@@ -30,4 +39,15 @@ export enum OptionCategory {
   VEHICLE = 'vehicleTypes',
   DRIVER = 'drivers',
   PLATE = 'licensePlates'
+}
+
+export type UserRole = 'admin' | 'user';
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  createdAt: number;
+  photoURL?: string;
 }

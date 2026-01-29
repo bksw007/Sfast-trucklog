@@ -318,9 +318,17 @@ const Dashboard: React.FC = () => {
           <div className="h-80">
             {driverChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={driverChartData}>
+                <BarChart data={driverChartData} margin={{ top: 5, right: 30, left: 20, bottom: 60 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} vertical={false} />
-                  <XAxis dataKey="name" stroke={chartTextColor} tick={{fill: chartTextColor}} />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke={chartTextColor} 
+                    tick={{fill: chartTextColor, fontSize: 12}} 
+                    angle={-45}
+                    textAnchor="end"
+                    height={70}
+                    interval={0}
+                  />
                   <YAxis stroke={chartTextColor} tick={{fill: chartTextColor}} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '8px', color: tooltipTextColor }}
@@ -356,11 +364,10 @@ const Dashboard: React.FC = () => {
                   <Pie
                     data={pieData}
                     cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    cy="45%"
+                    innerRadius={60}
                     outerRadius={100}
-                    fill="#8884d8"
+                    paddingAngle={2}
                     dataKey="value"
                   >
                     {pieData.map((entry, index) => (
@@ -370,6 +377,12 @@ const Dashboard: React.FC = () => {
                   <Tooltip 
                     contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '8px', color: tooltipTextColor }}
                     itemStyle={{ color: tooltipTextColor }}
+                  />
+                  <Legend 
+                    layout="horizontal" 
+                    verticalAlign="bottom" 
+                    align="center"
+                    wrapperStyle={{ paddingTop: '20px' }}
                   />
                 </PieChart>
               </ResponsiveContainer>

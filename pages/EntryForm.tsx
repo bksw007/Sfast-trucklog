@@ -2,7 +2,8 @@ import React, { useState, useRef, useMemo } from 'react';
 import { JobEntry, OptionCategory } from '../types';
 import { addJob, addOption } from '../services/firebaseService';
 import { useData } from '../contexts/DataContext';
-import { Plus, Save, Loader2, Camera, X, Image as ImageIcon } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { Plus, Save, Loader2, Camera, X, Image as ImageIcon, FileText } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import Modal from '../components/Modal';
 import ConfirmModal from '../components/ConfirmModal';
@@ -11,20 +12,25 @@ import { formatDate } from '../utils/formatters';
 const EntryForm: React.FC = () => {
   const { theme } = useTheme();
   const { data } = useData();
+  const { userProfile } = useAuth();
   const isDark = theme === 'dark';
+  const isAdmin = userProfile?.role === 'admin';
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Origin Image State (รูปภาพต้นทาง)
-  const [originImage, setOriginImage] = useState<File | null>(null);
-  const [originPreview, setOriginPreview] = useState<string | null>(null);
+  const [originImages, setOriginImages] = useState<File[]>([]);
+  const [originPreviews, setOriginPreviews] = useState<string[]>([]);
   const originFileInputRef = useRef<HTMLInputElement>(null);
-  const originCameraInputRef = useRef<HTMLInputElement>(null);
   
   // Destination Image State (รูปภาพปลายทาง)
-  const [destinationImage, setDestinationImage] = useState<File | null>(null);
-  const [destinationPreview, setDestinationPreview] = useState<string | null>(null);
+  const [destinationImages, setDestinationImages] = useState<File[]>([]);
+  const [destinationPreviews, setDestinationPreviews] = useState<string[]>([]);
   const destinationFileInputRef = useRef<HTMLInputElement>(null);
-  const destinationCameraInputRef = useRef<HTMLInputElement>(null);
+
+  // Document Image State (รูปภาพเอกสาร)
+  const [documentImages, setDocumentImages] = useState<File[]>([]);
+  const [documentPreviews, setDocumentPreviews] = useState<string[]>([]);
+  const documentFileInputRef = useRef<HTMLInputElement>(null);
   
   // Modal States
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -54,9 +60,12 @@ const EntryForm: React.FC = () => {
     vehicleType: '',
     driverName: '',
     licensePlate: '',
-    jobNo: '',
-    invNo: '',
-    remarks: ''
+    workOrderNo: '',
+    transportDocNo: '',
+    fuelAndToll: '' as any,
+    remarks: '',
+    customerPrice: '' as any,
+    driverPrice: '' as any
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -69,57 +78,103 @@ const EntryForm: React.FC = () => {
 
   // Origin Image handling (รูปภาพต้นทาง)
   const handleOriginImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        alert('กรุณาเลือกไฟล์รูปภาพเท่านั้น');
-        return;
-      }
-      setOriginImage(file);
+    const files = Array.from(e.target.files || []) as File[];
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length === 0) {
+      alert('กรุณาเลือกไฟล์รูปภาพเท่านั้น');
+      return;
+    }
+    
+    setOriginImages(prev => [...prev, ...imageFiles]);
+    
+    imageFiles.forEach(file => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setOriginPreview(reader.result as string);
+        setOriginPreviews(prev => [...prev, reader.result as string]);
       };
       reader.readAsDataURL(file);
-    }
+    });
   };
 
-  const handleRemoveOriginImage = () => {
-    setOriginImage(null);
-    setOriginPreview(null);
+  const handleRemoveOriginImage = (index: number) => {
+    setOriginImages(prev => prev.filter((_, i) => i !== index));
+    setOriginPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleRemoveAllOriginImages = () => {
+    setOriginImages([]);
+    setOriginPreviews([]);
     if (originFileInputRef.current) {
       originFileInputRef.current.value = '';
-    }
-    if (originCameraInputRef.current) {
-      originCameraInputRef.current.value = '';
     }
   };
   
   // Destination Image handling (รูปภาพปลายทาง)
   const handleDestinationImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        alert('กรุณาเลือกไฟล์รูปภาพเท่านั้น');
-        return;
-      }
-      setDestinationImage(file);
+    const files = Array.from(e.target.files || []) as File[];
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length === 0) {
+      alert('กรุณาเลือกไฟล์รูปภาพเท่านั้น');
+      return;
+    }
+    
+    setDestinationImages(prev => [...prev, ...imageFiles]);
+    
+    imageFiles.forEach(file => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setDestinationPreview(reader.result as string);
+        setDestinationPreviews(prev => [...prev, reader.result as string]);
       };
       reader.readAsDataURL(file);
-    }
+    });
   };
 
-  const handleRemoveDestinationImage = () => {
-    setDestinationImage(null);
-    setDestinationPreview(null);
+  const handleRemoveDestinationImage = (index: number) => {
+    setDestinationImages(prev => prev.filter((_, i) => i !== index));
+    setDestinationPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleRemoveAllDestinationImages = () => {
+    setDestinationImages([]);
+    setDestinationPreviews([]);
     if (destinationFileInputRef.current) {
       destinationFileInputRef.current.value = '';
     }
-    if (destinationCameraInputRef.current) {
-      destinationCameraInputRef.current.value = '';
+  };
+
+  // Document Image handling (รูปภาพเอกสาร)
+  const handleDocumentImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []) as File[];
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length === 0) {
+      alert('กรุณาเลือกไฟล์รูปภาพเท่านั้น');
+      return;
+    }
+    
+    setDocumentImages(prev => [...prev, ...imageFiles]);
+    
+    imageFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setDocumentPreviews(prev => [...prev, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleRemoveDocumentImage = (index: number) => {
+    setDocumentImages(prev => prev.filter((_, i) => i !== index));
+    setDocumentPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleRemoveAllDocumentImages = () => {
+    setDocumentImages([]);
+    setDocumentPreviews([]);
+    if (documentFileInputRef.current) {
+      documentFileInputRef.current.value = '';
     }
   };
 
@@ -134,8 +189,13 @@ const EntryForm: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      // Use Firebase service with dual images
-      await addJob(formData, originImage || undefined, destinationImage || undefined);
+      // Use Firebase service with multiple images
+      await addJob(
+        formData, 
+        originImages, 
+        destinationImages, 
+        documentImages
+      );
       setIsSubmitting(false);
       
       // Show success modal
@@ -154,10 +214,16 @@ const EntryForm: React.FC = () => {
         licensePlate: '',
         jobNo: '',
         invNo: '',
-        remarks: ''
+        workOrderNo: '',
+        transportDocNo: '',
+        fuelAndToll: '' as any,
+        remarks: '',
+        customerPrice: '' as any,
+        driverPrice: '' as any
       });
-      handleRemoveOriginImage();
-      handleRemoveDestinationImage();
+      handleRemoveAllOriginImages();
+      handleRemoveAllDestinationImages();
+      handleRemoveAllDocumentImages();
     } catch (error) {
       setIsSubmitting(false);
       console.error('Failed to save:', error);
@@ -213,7 +279,12 @@ const EntryForm: React.FC = () => {
       licensePlate: 'ป้ายทะเบียน',
       jobNo: 'Job No.',
       invNo: 'Invoice No.',
-      remarks: 'หมายเหตุ'
+      workOrderNo: 'เลขที่ใบสั่งงาน',
+      transportDocNo: 'เลขที่ใบขนส่ง',
+      fuelAndToll: 'ค่าน้ำมัน/ทางด่วน',
+      remarks: 'หมายเหตุ',
+      customerPrice: 'ราคาเก็บลูกค้า',
+      driverPrice: 'ราคาจ่ายรถร่วม'
     };
 
     const data = Object.entries(formData).map(([key, value]) => ({
@@ -222,18 +293,26 @@ const EntryForm: React.FC = () => {
     }));
 
     // Add origin image info if selected
-    if (originImage) {
+    if (originImages.length > 0) {
       data.push({
         label: 'รูปภาพต้นทาง',
-        value: `${originImage.name} (${(originImage.size / 1024 / 1024).toFixed(2)} MB)`
+        value: `${originImages.length} รูป`
       });
     }
     
     // Add destination image info if selected
-    if (destinationImage) {
+    if (destinationImages.length > 0) {
       data.push({
         label: 'รูปภาพปลายทาง',
-        value: `${destinationImage.name} (${(destinationImage.size / 1024 / 1024).toFixed(2)} MB)`
+        value: `${destinationImages.length} รูป`
+      });
+    }
+
+    // Add document image info
+    if (documentImages.length > 0) {
+      data.push({
+        label: 'รูปภาพเอกสาร',
+        value: `${documentImages.length} รูป`
       });
     }
 
@@ -372,147 +451,285 @@ const EntryForm: React.FC = () => {
           </FormGroup>
         </div>
 
-        {/* Row 5: Image Upload - Origin (รูปภาพต้นทาง) */}
-        <FormGroup label="รูปภาพต้นทาง (Origin Photo)" isDark={isDark}>
-          <div className="space-y-3">
-            {/* Hidden file inputs for origin */}
-            <input
-              ref={originFileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleOriginImageSelect}
-              className="hidden"
+        {/* Row 4.5: Work Order & Transport Doc */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormGroup label="เลขที่ใบสั่งงาน (Work Order)" isDark={isDark}>
+            <input 
+              type="text" 
+              name="workOrderNo"
+              value={formData.workOrderNo}
+              onChange={handleInputChange}
+              className={inputClass}
             />
-            <input
-              ref={originCameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleOriginImageSelect}
-              className="hidden"
+          </FormGroup>
+          <FormGroup label="เลขที่ใบขนส่ง (Transport Doc)" isDark={isDark}>
+            <input 
+              type="text" 
+              name="transportDocNo"
+              value={formData.transportDocNo}
+              onChange={handleInputChange}
+              className={inputClass}
             />
-            
-            {/* Origin image preview or upload buttons */}
-            {originPreview ? (
-              <div className="relative inline-block">
-                <img 
-                  src={originPreview} 
-                  alt="Origin Preview" 
-                  className="max-h-48 rounded-xl border border-dark-muted/20"
-                />
-                <button
-                  type="button"
-                  onClick={handleRemoveOriginImage}
-                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-lg"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            ) : (
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => originCameraInputRef.current?.click()}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border transition-all ${
-                    isDark
-                      ? 'bg-dark-bg border-dark-muted/30 text-dark-text hover:border-accent-primary'
-                      : 'bg-light-bg border-light-muted/30 text-light-text hover:border-accent-primary'
-                  }`}
-                >
-                  <Camera size={20} className="text-accent-primary" />
-                  <span>ถ่ายรูป</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => originFileInputRef.current?.click()}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border transition-all ${
-                    isDark
-                      ? 'bg-dark-bg border-dark-muted/30 text-dark-text hover:border-accent-secondary'
-                      : 'bg-light-bg border-light-muted/30 text-light-text hover:border-accent-secondary'
-                  }`}
-                >
-                  <ImageIcon size={20} className="text-accent-secondary" />
-                  <span>เลือกรูป</span>
-                </button>
-              </div>
-            )}
-            
-            <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
-              รูปภาพจะถูกบีบอัดอัตโนมัติก่อนอัพโหลด
-            </p>
-          </div>
-        </FormGroup>
+          </FormGroup>
+        </div>
 
-        {/* Row 5.5: Image Upload - Destination (รูปภาพปลายทาง) */}
-        <FormGroup label="รูปภาพปลายทาง (Destination Photo)" isDark={isDark}>
-          <div className="space-y-3">
-            {/* Hidden file inputs for destination */}
-            <input
-              ref={destinationFileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleDestinationImageSelect}
-              className="hidden"
+        {/* Row 4.6: Fuel/Toll & Admin Prices */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <FormGroup label="ค่าน้ำมัน/ทางด่วน" isDark={isDark}>
+            <input 
+              type="number" 
+              name="fuelAndToll"
+              value={formData.fuelAndToll}
+              onChange={handleInputChange}
+              className={inputClass}
+              placeholder="0.00"
             />
-            <input
-              ref={destinationCameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleDestinationImageSelect}
-              className="hidden"
-            />
-            
-            {/* Destination image preview or upload buttons */}
-            {destinationPreview ? (
-              <div className="relative inline-block">
-                <img 
-                  src={destinationPreview} 
-                  alt="Destination Preview" 
-                  className="max-h-48 rounded-xl border border-dark-muted/20"
-                />
-                <button
-                  type="button"
-                  onClick={handleRemoveDestinationImage}
-                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-lg"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            ) : (
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => destinationCameraInputRef.current?.click()}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border transition-all ${
-                    isDark
-                      ? 'bg-dark-bg border-dark-muted/30 text-dark-text hover:border-accent-primary'
-                      : 'bg-light-bg border-light-muted/30 text-light-text hover:border-accent-primary'
-                  }`}
-                >
-                  <Camera size={20} className="text-accent-primary" />
-                  <span>ถ่ายรูป</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => destinationFileInputRef.current?.click()}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border transition-all ${
-                    isDark
-                      ? 'bg-dark-bg border-dark-muted/30 text-dark-text hover:border-accent-secondary'
-                      : 'bg-light-bg border-light-muted/30 text-light-text hover:border-accent-secondary'
-                  }`}
-                >
-                  <ImageIcon size={20} className="text-accent-secondary" />
-                  <span>เลือกรูป</span>
-                </button>
-              </div>
-            )}
-            
-            <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
-              รูปภาพจะถูกบีบอัดอัตโนมัติก่อนอัพโหลด
-            </p>
-          </div>
-        </FormGroup>
+          </FormGroup>
+
+          {isAdmin && (
+            <>
+              <FormGroup label="ราคาเก็บลูกค้า (Admin Only)" isDark={isDark}>
+                <div className="relative">
+                  <input 
+                    type="number" 
+                    name="customerPrice"
+                    value={formData.customerPrice}
+                    onChange={handleInputChange}
+                    className={`${inputClass} border-accent-primary/50 bg-accent-primary/5`}
+                    placeholder="0.00"
+                  />
+                </div>
+              </FormGroup>
+              <FormGroup label="ราคาจ่ายรถร่วม (Admin Only)" isDark={isDark}>
+                <div className="relative">
+                  <input 
+                    type="number" 
+                    name="driverPrice"
+                    value={formData.driverPrice}
+                    onChange={handleInputChange}
+                    className={`${inputClass} border-red-500/30 bg-red-500/5`}
+                    placeholder="0.00"
+                  />
+                </div>
+              </FormGroup>
+            </>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Row 5: Image Upload - Origin (รูปภาพต้นทาง) */}
+          <FormGroup label="รูปภาพต้นทาง (Origin Photo)" isDark={isDark}>
+            <div className="space-y-3">
+              {/* Hidden file inputs for origin */}
+              <input
+                ref={originFileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                capture="environment"
+                onChange={handleOriginImageSelect}
+                className="hidden"
+              />
+              
+              {/* Origin image preview */}
+              {originPreviews.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className={`text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                      {originPreviews.length} รูป
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveAllOriginImages}
+                      className="text-xs text-red-500 hover:text-red-600"
+                    >
+                      ลบทั้งหมด
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    {originPreviews.map((preview, index) => (
+                      <div key={index} className="relative">
+                        <img 
+                          src={preview} 
+                          alt={`Origin ${index + 1}`} 
+                          className="w-full h-32 object-cover rounded-xl border border-dark-muted/20"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveOriginImage(index)}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-lg"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Single button for add image */}
+              <button
+                type="button"
+                onClick={() => originFileInputRef.current?.click()}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border transition-all ${
+                  isDark
+                    ? 'bg-dark-bg border-dark-muted/30 text-dark-text hover:border-accent-primary'
+                    : 'bg-light-bg border-light-muted/30 text-light-text hover:border-accent-primary'
+                }`}
+              >
+                <Camera size={20} className="text-accent-primary" />
+                <span>เพิ่มรูปภาพ</span>
+              </button>
+              
+              <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                รูปภาพจะถูกบีบอัดอัตโนมัติก่อนอัพโหลด
+              </p>
+            </div>
+          </FormGroup>
+
+          {/* Row 5.5: Image Upload - Destination (รูปภาพปลายทาง) */}
+          <FormGroup label="รูปภาพปลายทาง (Destination Photo)" isDark={isDark}>
+            <div className="space-y-3">
+              {/* Hidden file inputs for destination */}
+              <input
+                ref={destinationFileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                capture="environment"
+                onChange={handleDestinationImageSelect}
+                className="hidden"
+              />
+              
+              {/* Destination image preview */}
+              {destinationPreviews.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className={`text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                      {destinationPreviews.length} รูป
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveAllDestinationImages}
+                      className="text-xs text-red-500 hover:text-red-600"
+                    >
+                      ลบทั้งหมด
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    {destinationPreviews.map((preview, index) => (
+                      <div key={index} className="relative">
+                        <img 
+                          src={preview} 
+                          alt={`Destination ${index + 1}`} 
+                          className="w-full h-32 object-cover rounded-xl border border-dark-muted/20"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDestinationImage(index)}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-lg"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Single button for add image */}
+              <button
+                type="button"
+                onClick={() => destinationFileInputRef.current?.click()}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border transition-all ${
+                  isDark
+                    ? 'bg-dark-bg border-dark-muted/30 text-dark-text hover:border-accent-primary'
+                    : 'bg-light-bg border-light-muted/30 text-light-text hover:border-accent-primary'
+                }`}
+              >
+                <Camera size={20} className="text-accent-primary" />
+                <span>เพิ่มรูปภาพ</span>
+              </button>
+              
+              <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                รูปภาพจะถูกบีบอัดอัตโนมัติก่อนอัพโหลด
+              </p>
+            </div>
+          </FormGroup>
+
+          {/* Row 5.8: Image Upload - Document (รูปภาพเอกสาร) */}
+          <FormGroup label="รูปภาพเอกสาร (Document Photo)" isDark={isDark}>
+            <div className="space-y-3">
+              {/* Hidden file inputs for document */}
+              <input
+                ref={documentFileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                capture="environment"
+                onChange={handleDocumentImageSelect}
+                className="hidden"
+              />
+              
+              {/* Document image preview */}
+              {documentPreviews.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className={`text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                      {documentPreviews.length} รูป
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveAllDocumentImages}
+                      className="text-xs text-red-500 hover:text-red-600"
+                    >
+                      ลบทั้งหมด
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    {documentPreviews.map((preview, index) => (
+                      <div key={index} className="relative">
+                        <img 
+                          src={preview} 
+                          alt={`Document ${index + 1}`} 
+                          className="w-full h-32 object-cover rounded-xl border border-dark-muted/20"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDocumentImage(index)}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-lg"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Single button for add image */}
+              <button
+                type="button"
+                onClick={() => documentFileInputRef.current?.click()}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border transition-all ${
+                  isDark
+                    ? 'bg-dark-bg border-dark-muted/30 text-dark-text hover:border-accent-primary'
+                    : 'bg-light-bg border-light-muted/30 text-light-text hover:border-accent-primary'
+                }`}
+              >
+                <FileText size={20} className="text-accent-primary" />
+                <span>เพิ่มรูปภาพ</span>
+              </button>
+              
+              <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                รูปภาพเอกสารประกอบงาน
+              </p>
+            </div>
+          </FormGroup>
+        </div>
 
         {/* Row 6: Remarks */}
         <FormGroup label="หมายเหตุ (Remarks)" isDark={isDark}>
@@ -603,7 +820,7 @@ const EntryForm: React.FC = () => {
         confirmText="ยืนยันบันทึก"
         cancelText="แก้ไข"
         data={getConfirmData()}
-        imagePreview={originPreview || destinationPreview}
+        imagePreview={originPreviews[0] || destinationPreviews[0]}
       />
 
       {/* Success Modal */}

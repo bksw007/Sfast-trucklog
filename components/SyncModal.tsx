@@ -73,17 +73,13 @@ const SyncModal: React.FC<SyncModalProps> = ({ isOpen, status, onClose, errorMes
           </div>
         )}
 
-        {/* Close Button for success/error */}
-        {(status === 'success' || status === 'error') && onClose && (
+        {/* Close Button for error only (retry) */}
+        {status === 'error' && onClose && (
           <button
             onClick={onClose}
-            className={`mt-4 px-6 py-2 rounded-xl font-medium transition-all ${
-              status === 'success'
-                ? 'bg-green-500 hover:bg-green-600 text-white'
-                : 'bg-accent-danger hover:brightness-110 text-white'
-            }`}
+            className="mt-4 px-6 py-2 rounded-xl font-medium transition-all bg-accent-danger hover:brightness-110 text-white"
           >
-            {status === 'error' ? 'ลองใหม่' : 'ตกลง'}
+            ลองใหม่
           </button>
         )}
       </div>
