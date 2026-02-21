@@ -51,6 +51,28 @@ const DataTable: React.FC = () => {
     licensePlate: ''
   });
 
+  const getJobYearMonth = (dateStr: string): { year: number; month: number } | null => {
+    const datePart = dateStr?.split('T')[0];
+    if (datePart) {
+      const [yearStr, monthStr] = datePart.split('-');
+      const year = Number(yearStr);
+      const month = Number(monthStr);
+      if (Number.isInteger(year) && Number.isInteger(month) && month >= 1 && month <= 12) {
+        return { year, month };
+      }
+    }
+
+    const parsedDate = new Date(dateStr);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return null;
+    }
+
+    return {
+      year: parsedDate.getFullYear(),
+      month: parsedDate.getMonth() + 1
+    };
+  };
+
   // Detail Modal State
   const [selectedJob, setSelectedJob] = useState<JobEntry | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -80,16 +102,20 @@ const DataTable: React.FC = () => {
 
   // Extract unique years from data
   const availableYears = useMemo(() => {
-    const years = new Set<number>(jobs.map(job => new Date(job.date).getFullYear()));
+    const years = new Set<number>(
+      jobs
+        .map(job => getJobYearMonth(job.date)?.year)
+        .filter((year): year is number => typeof year === 'number')
+    );
     return Array.from(years).sort((a, b) => b - a);
   }, [jobs]);
 
   // Filter jobs
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
-      const jobDate = new Date(job.date);
-      const jobMonth = jobDate.getMonth() + 1;
-      const jobYear = jobDate.getFullYear();
+      const parsed = getJobYearMonth(job.date);
+      if (!parsed) return false;
+      const { month: jobMonth, year: jobYear } = parsed;
 
       if (filters.month && jobMonth !== filters.month) return false;
       if (filters.year && jobYear !== filters.year) return false;
@@ -112,29 +138,6 @@ const DataTable: React.FC = () => {
   };
 
   const hasActiveFilters = filters.month || filters.year || filters.driver || filters.vehicleType || filters.licensePlate;
-
-  // Generate filter description for report (English for PDF compatibility)
-  const getFilterDescriptionEN = () => {
-    const parts: string[] = [];
-    
-    if (filters.driver) parts.push(`Driver: ${filters.driver}`);
-    if (filters.licensePlate) parts.push(`Plate: ${filters.licensePlate}`);
-    if (filters.vehicleType) parts.push(`Type: ${filters.vehicleType}`);
-    
-    if (filters.month || filters.year) {
-      const monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const monthName = filters.month ? monthNames[filters.month] : '';
-      if (monthName && filters.year) {
-        parts.push(`${monthName} ${filters.year}`);
-      } else if (monthName) {
-        parts.push(monthName);
-      } else if (filters.year) {
-        parts.push(`Year ${filters.year}`);
-      }
-    }
-    
-    return parts.length > 0 ? parts.join(' | ') : 'All Data';
-  };
 
   // Handle row click
   const handleRowClick = (job: JobEntry) => {
@@ -234,11 +237,15 @@ const DataTable: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  // Draw bar chart on PDF
-  const drawBarChart = (doc: jsPDF, data: { label: string; value: number }[], x: number, y: number, width: number, height: number, title: string) => {
+  // Draw bar chart on PDF (left half)
+  const drawBarChart = (doc: jsPDF, data: { label: string; value: number }[], x: number, y: number, width: number, height: number, title: string): number => {
     const maxVal = Math.max(...data.map(d => d.value), 1);
-    const barWidth = (width - 20) / data.length;
+    const barWidth = (width - 16) / data.length;
     const colors = ['#7c3aed', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444'];
+    const barsTopY = y + 10;
+    const barsBottomY = y + height - 20;
+    const barsHeight = Math.max(12, barsBottomY - barsTopY);
+    const labelBaseY = y + height - 2;
     
     // Title
     doc.setFont('NotoSansThai');
@@ -248,9 +255,9 @@ const DataTable: React.FC = () => {
     
     // Draw bars
     data.forEach((item, i) => {
-      const barHeight = (item.value / maxVal) * (height - 25);
-      const barX = x + 10 + i * barWidth;
-      const barY = y + height - barHeight - 15;
+      const barHeight = (item.value / maxVal) * barsHeight;
+      const barX = x + 8 + i * barWidth;
+      const barY = barsBottomY - barHeight;
       
       // Bar
       const color = colors[i % colors.length];
@@ -258,7 +265,7 @@ const DataTable: React.FC = () => {
       const g = parseInt(color.slice(3, 5), 16);
       const b = parseInt(color.slice(5, 7), 16);
       doc.setFillColor(r, g, b);
-      doc.rect(barX + 2, barY, barWidth - 4, barHeight, 'F');
+      doc.rect(barX + 1.5, barY, barWidth - 3, barHeight, 'F');
       
       // Value on top
       doc.setFont('NotoSansThai');
@@ -266,18 +273,32 @@ const DataTable: React.FC = () => {
       doc.setTextColor(60, 60, 60);
       doc.text(item.value.toString(), barX + barWidth / 2, barY - 2, { align: 'center' });
       
-      // Label - wrap text
-      doc.setFont('NotoSansThai');
-      doc.setFontSize(10);
-      const splitLabel = doc.splitTextToSize(item.label, barWidth);
-      doc.text(splitLabel, barX + barWidth / 2, y + height - 5, { align: 'center' });
+      // Label: first name + surname on next line, slightly tilted
+      const nameParts = item.label.trim().split(/\s+/);
+      const firstName = nameParts[0] || item.label;
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+      const labelLines = lastName ? [firstName, lastName] : [firstName];
+      doc.setFontSize(9);
+      labelLines.forEach((line, lineIdx) => {
+        doc.text(line, barX + barWidth / 2, labelBaseY + lineIdx * 3.8, { align: 'center', angle: 20 });
+      });
     });
+
+    return labelBaseY + 8;
   };
 
   // Draw pie chart on PDF
-  const drawPieChart = (doc: jsPDF, data: { label: string; value: number }[], x: number, y: number, radius: number, title: string) => {
+  const drawPieChart = (
+    doc: jsPDF,
+    data: { label: string; value: number }[],
+    x: number,
+    y: number,
+    radius: number,
+    title: string,
+    legendStartY?: number
+  ): number => {
     const total = data.reduce((sum, d) => sum + d.value, 0) || 1;
-    const colors = ['#7c3aed', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
+    const colors = ['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#14b8a6', '#f97316'];
     
     // Title
     doc.setFont('NotoSansThai');
@@ -325,31 +346,71 @@ const DataTable: React.FC = () => {
       startAngle = endAngle;
     });
     
-    // Legend
-    let legendY = y + radius + 10;
-    data.forEach((item, i) => {
-      const color = colors[i % colors.length];
-      const r = parseInt(color.slice(1, 3), 16);
-      const g = parseInt(color.slice(3, 5), 16);
-      const b = parseInt(color.slice(5, 7), 16);
-      
-      doc.setFillColor(r, g, b);
-      doc.rect(x - 25, legendY - 3, 6, 6, 'F');
-      
+    // Legend (wrap only inside right half, centered in that area)
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const legendMinX = pageWidth / 2 + 8;
+    const legendMaxX = pageWidth - 15;
+    const legendRegionWidth = legendMaxX - legendMinX;
+    const legendLineHeight = 7;
+    const legendGap = 3;
+    const markerSize = 3.6; // close to text height
+    let legendY = Math.max(y + radius + 10, legendStartY ?? 0);
+
+    const legendItems = data.map((item, i) => {
+      const pct = Math.round((item.value / total) * 100);
+      const label = item.label.length > 14 ? item.label.substring(0, 14) + '..' : item.label;
+      const text = `${label} (${pct}%)`;
       doc.setFont('NotoSansThai');
       doc.setFontSize(10);
-      doc.setTextColor(60, 60, 60);
-      const pct = Math.round((item.value / total) * 100);
-      const label = item.label.length > 10 ? item.label.substring(0, 10) + '..' : item.label;
-      doc.text(`${label} (${pct}%)`, x - 17, legendY);
-      legendY += 8;
+      const width = markerSize + 2 + doc.getTextWidth(text) + legendGap;
+      return { i, text, width };
     });
+
+    const lines: typeof legendItems[] = [];
+    let currentLine: typeof legendItems = [];
+    let currentLineWidth = 0;
+    legendItems.forEach((legendItem) => {
+      if (currentLine.length > 0 && currentLineWidth + legendItem.width > legendRegionWidth) {
+        lines.push(currentLine);
+        currentLine = [legendItem];
+        currentLineWidth = legendItem.width;
+      } else {
+        currentLine.push(legendItem);
+        currentLineWidth += legendItem.width;
+      }
+    });
+    if (currentLine.length > 0) lines.push(currentLine);
+
+    lines.forEach((line) => {
+      const lineWidth = line.reduce((sum, lineItem) => sum + lineItem.width, 0);
+      let legendX = legendMinX + (legendRegionWidth - lineWidth) / 2;
+
+      line.forEach(({ i, text, width }) => {
+        const color = colors[i % colors.length];
+        const r = parseInt(color.slice(1, 3), 16);
+        const g = parseInt(color.slice(3, 5), 16);
+        const b = parseInt(color.slice(5, 7), 16);
+
+        doc.setFillColor(r, g, b);
+        doc.rect(legendX, legendY - markerSize + 0.8, markerSize, markerSize, 'F');
+        doc.setFont('NotoSansThai');
+        doc.setFontSize(10);
+        doc.setTextColor(60, 60, 60);
+        doc.text(text, legendX + markerSize + 2, legendY);
+        legendX += width;
+      });
+
+      legendY += legendLineHeight;
+    });
+
+    return legendY + 1;
   };
 
   // Generate PDF Report
   const generatePDFReport = (forPrint: boolean = false) => {
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pdfJobs = [...filteredJobs].sort((a, b) => a.date.localeCompare(b.date));
     
     // Register Thai font
     doc.addFileToVFS('NotoSansThai.ttf', NotoSansThaiBase64);
@@ -392,8 +453,8 @@ const DataTable: React.FC = () => {
     }
     
     // Date range
-    if (filteredJobs.length > 0) {
-      const dates = filteredJobs.map(j => new Date(j.date));
+    if (pdfJobs.length > 0) {
+      const dates = pdfJobs.map(j => new Date(j.date));
       const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
       const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
       
@@ -404,9 +465,9 @@ const DataTable: React.FC = () => {
     }
     
     // Stats summary boxes
-    const totalRounds = filteredJobs.reduce((acc, j) => acc + j.rounds, 0);
-    const uniqueDrivers = new Set(filteredJobs.map(j => j.driverName)).size;
-    const uniqueVehicles = new Set(filteredJobs.map(j => j.licensePlate)).size;
+    const totalRounds = pdfJobs.reduce((acc, j) => acc + j.rounds, 0);
+    const uniqueDrivers = new Set(pdfJobs.map(j => j.driverName)).size;
+    const uniqueVehicles = new Set(pdfJobs.map(j => j.licensePlate)).size;
     
     const boxY = 48;
     const boxH = 18;
@@ -418,7 +479,7 @@ const DataTable: React.FC = () => {
     doc.roundedRect(startX, boxY, boxW, boxH, 3, 3, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(16);
-    doc.text(filteredJobs.length.toString(), startX + boxW/2, boxY + 8, { align: 'center' });
+    doc.text(pdfJobs.length.toString(), startX + boxW/2, boxY + 8, { align: 'center' });
     doc.setFontSize(10);
     doc.text('จำนวนงาน', startX + boxW/2, boxY + 14, { align: 'center' });
     
@@ -449,32 +510,36 @@ const DataTable: React.FC = () => {
     // Charts section
     // Driver performance chart
     const driverData: { [key: string]: number } = {};
-    filteredJobs.forEach(j => {
+    pdfJobs.forEach(j => {
       driverData[j.driverName] = (driverData[j.driverName] || 0) + j.rounds;
     });
     const driverChartData = Object.entries(driverData)
       .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
       .slice(0, 5);
     
+    let barBottomY = 126;
     if (driverChartData.length > 0) {
-      drawBarChart(doc, driverChartData, 20, 75, 80, 45, 'รอบตามคนขับ');
+      barBottomY = drawBarChart(doc, driverChartData, 15, 75, 85, 58, 'รอบตามคนขับ');
     }
     
     // Vehicle type chart
     const vehicleData: { [key: string]: number } = {};
-    filteredJobs.forEach(j => {
+    pdfJobs.forEach(j => {
       vehicleData[j.vehicleType] = (vehicleData[j.vehicleType] || 0) + 1;
     });
     const vehicleChartData = Object.entries(vehicleData)
       .map(([label, value]) => ({ label, value }));
     
+    let pieLegendBottomY = 126;
     if (vehicleChartData.length > 0) {
-      drawPieChart(doc, vehicleChartData, 150, 92, 12, 'ประเภทรถ');
+      pieLegendBottomY = drawPieChart(doc, vehicleChartData, 155, 95, 16, 'ประเภทรถ', 126);
     }
+    const chartsBottomY = Math.max(barBottomY, pieLegendBottomY);
     
     // Table - Thai headers
     const tableColumn = ['วันที่', 'เส้นทาง', 'รอบ', 'รถ/ทะเบียน', 'คนขับ', 'Job/Inv'];
-    const tableRows = filteredJobs.map(job => [
+    const tableRows = pdfJobs.map(job => [
       formatDate(job.date),
       `${job.pickupLocation} > ${job.dropoffLocation}`,
       job.rounds.toString(),
@@ -486,7 +551,7 @@ const DataTable: React.FC = () => {
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
-      startY: 130,
+      startY: Math.max(130, chartsBottomY + 4),
       styles: { fontSize: 9, cellPadding: 2, font: 'NotoSansThai' }, // Reduced font size to 9
       headStyles: { fillColor: [124, 58, 237], textColor: 255, font: 'NotoSansThai', halign: 'center' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
@@ -516,6 +581,7 @@ const DataTable: React.FC = () => {
       const pdfBlob = doc.output('blob');
       const pdfUrl = URL.createObjectURL(pdfBlob);
       window.open(pdfUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(pdfUrl), 60_000);
     } else {
       const timestamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15).replace('T', '_');
       doc.save(`TruckLog_${timestamp}.pdf`);
