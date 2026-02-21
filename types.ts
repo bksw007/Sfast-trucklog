@@ -20,7 +20,7 @@ export interface JobEntry {
   documentImageUrl?: string; // รูปภาพเอกสาร
   documentImageUrls?: string[]; // New: Multiple images
   customerPrice?: number; // Admin only: ราคาเก็บลูกค้า
-  driverPrice?: number; // Admin only: ราคาจ่ายรถร่วม
+  jointPrice?: number; // Admin only: ราคาจ่ายรถร่วม
   timestamp: number;
 }
 

@@ -322,7 +322,7 @@ export const updateJob = async (
     destinationImageUrl: destinationImageUrls[0] || '',
     documentImageUrl: documentImageUrls[0] || '',
     customerPrice: job.customerPrice,
-    driverPrice: job.driverPrice,
+    jointPrice: job.jointPrice,
   };
 
   await updateDoc(jobRef, updateData);

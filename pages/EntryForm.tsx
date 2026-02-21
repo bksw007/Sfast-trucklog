@@ -65,7 +65,7 @@ const EntryForm: React.FC = () => {
     fuelAndToll: '' as any,
     remarks: '',
     customerPrice: '' as any,
-    driverPrice: '' as any
+    jointPrice: '' as any
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -219,7 +219,7 @@ const EntryForm: React.FC = () => {
         fuelAndToll: '' as any,
         remarks: '',
         customerPrice: '' as any,
-        driverPrice: '' as any
+        jointPrice: '' as any
       });
       handleRemoveAllOriginImages();
       handleRemoveAllDestinationImages();
@@ -284,7 +284,7 @@ const EntryForm: React.FC = () => {
       fuelAndToll: 'ค่าน้ำมัน/ทางด่วน',
       remarks: 'หมายเหตุ',
       customerPrice: 'ราคาเก็บลูกค้า',
-      driverPrice: 'ราคาจ่ายรถร่วม'
+      jointPrice: 'ราคาจ่ายรถร่วม'
     };
 
     const data = Object.entries(formData).map(([key, value]) => ({
@@ -504,8 +504,8 @@ const EntryForm: React.FC = () => {
                 <div className="relative">
                   <input 
                     type="number" 
-                    name="driverPrice"
-                    value={formData.driverPrice}
+                    name="jointPrice"
+                    value={formData.jointPrice}
                     onChange={handleInputChange}
                     className={`${inputClass} border-red-500/30 bg-red-500/5`}
                     placeholder="0.00"

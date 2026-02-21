@@ -211,30 +211,61 @@ const DataTable: React.FC = () => {
 
   // Export CSV
   const exportCSV = () => {
+    const escapeCsvValue = (value: string | number | null | undefined): string => {
+      const normalizedValue = String(value ?? '')
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n');
+      return `"${normalizedValue.replace(/"/g, '""')}"`;
+    };
+
+    const getDateSortValue = (dateValue: string): number => {
+      const normalizedDate = dateValue?.split('T')[0] || dateValue;
+      const parsedTime = new Date(normalizedDate).getTime();
+      return Number.isNaN(parsedTime) ? Number.POSITIVE_INFINITY : parsedTime;
+    };
+
     const headers = ["Date", "Pickup", "Dropoff", "Rounds", "Vehicle", "Plate", "Driver", "Job No", "Inv No", "Remarks"];
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
-      + headers.join(",") + "\n"
-      + filteredJobs.map(j => [
-          j.date, 
-          `"${j.pickupLocation}"`, 
-          `"${j.dropoffLocation}"`, 
-          j.rounds, 
-          `"${j.vehicleType}"`, 
+    if (isAdmin) {
+      headers.push("Customer Price", "Joint Price");
+    }
+    const rows = [...filteredJobs]
+      .sort((a, b) => {
+        const dateDiff = getDateSortValue(a.date) - getDateSortValue(b.date);
+        if (dateDiff !== 0) return dateDiff;
+        return (a.timestamp || 0) - (b.timestamp || 0);
+      })
+      .map(j => {
+        const baseValues: Array<string | number | null | undefined> = [
+          j.date?.split('T')[0] || j.date,
+          j.pickupLocation,
+          j.dropoffLocation,
+          j.rounds,
+          j.vehicleType,
           j.licensePlate,
-          `"${j.driverName}"`, 
+          j.driverName,
           j.jobNo,
           j.invNo,
-          `"${j.remarks}"`
-        ].join(",")).join("\n");
+          j.remarks
+        ];
 
-    const encodedUri = encodeURI(csvContent);
+        if (isAdmin) {
+          baseValues.push(j.customerPrice, j.jointPrice);
+        }
+
+        return baseValues.map(escapeCsvValue).join(",");
+      });
+
+    const csvContent = [headers.join(","), ...rows].join("\r\n");
+    const blob = new Blob([`\uFEFF${csvContent}`], { type: "text/csv;charset=utf-8;" });
+    const downloadUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    link.setAttribute("href", downloadUrl);
     const timestamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15).replace('T', '_');
     link.setAttribute("download", `sfast_trucklog_${timestamp}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(downloadUrl);
   };
 
   // Draw bar chart on PDF (left half)
@@ -843,8 +874,8 @@ const DataTable: React.FC = () => {
                     {isEditing ? (
                       <input
                         type="number"
-                        value={editData.driverPrice || ''}
-                        onChange={(e) => handleEditChange('driverPrice', parseFloat(e.target.value))}
+                        value={editData.jointPrice || ''}
+                        onChange={(e) => handleEditChange('jointPrice', parseFloat(e.target.value))}
                         className={`w-full border rounded-lg px-3 py-1 text-sm ${
                           isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
                         }`}
@@ -852,7 +883,7 @@ const DataTable: React.FC = () => {
                       />
                     ) : (
                       <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>
-                        {selectedJob.driverPrice?.toLocaleString() || '-'}
+                        {selectedJob.jointPrice?.toLocaleString() || '-'}
                       </div>
                     )}
                   </div>
@@ -1417,7 +1448,7 @@ const DataTable: React.FC = () => {
                           {job.customerPrice ? job.customerPrice.toLocaleString() : '-'}
                         </td>
                         <td className={`px-2 py-2 md:px-6 md:py-4 text-right text-xs md:text-sm whitespace-nowrap ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                          {job.driverPrice ? job.driverPrice.toLocaleString() : '-'}
+                          {job.jointPrice ? job.jointPrice.toLocaleString() : '-'}
                         </td>
                       </>
                     )}
