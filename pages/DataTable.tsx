@@ -180,6 +180,7 @@ const DataTable: React.FC = () => {
         );
         setIsDetailModalOpen(false);
         setShowSuccessModal(true);
+        setTimeout(() => setShowSuccessModal(false), 1500);
         setEditOriginImageFiles([]);
         setEditDestinationImageFiles([]);
         setEditDocumentImageFiles([]);
@@ -1521,8 +1522,8 @@ const DataTable: React.FC = () => {
         title="บันทึกสำเร็จ!"
         message="ข้อมูลถูกแก้ไขเรียบร้อยแล้ว"
         type="success"
-        confirmText="ตกลง"
         showCancel={false}
+        showConfirm={false}
       />
 
       {/* Confirm Delete Modal */}
