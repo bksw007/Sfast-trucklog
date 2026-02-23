@@ -576,17 +576,14 @@ const DataTable: React.FC = () => {
     const chartsBottomY = Math.max(barBottomY, pieLegendBottomY);
     
     // Table - Thai headers
-    const tableColumn = ['วันที่', 'เส้นทาง', 'รอบ', 'รถ/ทะเบียน', 'คนขับ', 'Job/Inv', 'ค่าน้ำมัน/ทางด่วน'];
+    const tableColumn = ['วันที่', 'เส้นทาง', 'รอบ', 'รถ/ทะเบียน', 'คนขับ', 'Job/Inv'];
     const tableRows = pdfJobs.map(job => [
       formatDate(job.date),
       `${job.pickupLocation} > ${job.dropoffLocation}`,
       job.rounds.toString(),
       `${job.vehicleType}\n${job.licensePlate}`,
       job.driverName,
-      `${job.jobNo || '-'}\n${job.invNo || '-'}`,
-      job.fuelAndToll !== null && job.fuelAndToll !== undefined && job.fuelAndToll !== ''
-        ? Number(job.fuelAndToll).toLocaleString()
-        : '-'
+      `${job.jobNo || '-'}\n${job.invNo || '-'}`
     ]);
 
     autoTable(doc, {
@@ -602,8 +599,7 @@ const DataTable: React.FC = () => {
         2: { cellWidth: 15, halign: 'center' }, // Round
         3: { cellWidth: 35, halign: 'center' }, // Vehicle - center
         4: { cellWidth: 30, halign: 'center' }, // Driver - center
-        5: { cellWidth: 35, halign: 'center' }, // Job/Inv - center
-        6: { cellWidth: 30, halign: 'right' } // Fuel/Toll
+        5: { cellWidth: 35, halign: 'center' }  // Job/Inv - center
       }
     });
 
@@ -1414,12 +1410,12 @@ const DataTable: React.FC = () => {
             <thead className={`uppercase font-medium ${isDark ? 'bg-slate-900/50 text-accent-primary' : 'bg-slate-100 text-accent-primary'}`}>
               <tr>
                 <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap">วันที่</th>
-                <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap">เส้นทาง</th>
-                <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm text-center whitespace-nowrap">รอบ</th>
+                <th className="px-2 py-2 md:px-4 md:py-4 text-xs md:text-sm whitespace-nowrap w-[210px] md:w-[250px]">เส้นทาง</th>
+                <th className="px-2 py-2 md:px-3 md:py-4 text-xs md:text-sm text-center whitespace-nowrap w-[70px] md:w-[80px]">รอบ</th>
                 <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap">รถ / ทะเบียน</th>
                 <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap">คนขับ</th>
-                <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap">Job / Inv</th>
-                <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm text-right whitespace-nowrap">ค่าน้ำมัน/ทางด่วน</th>
+                <th className="px-2 py-2 md:px-3 md:py-4 text-xs md:text-sm whitespace-nowrap w-[130px] md:w-[150px]">Job / Inv</th>
+                <th className="px-2 py-2 md:px-3 md:py-4 text-xs md:text-sm text-right whitespace-nowrap w-[110px] md:w-[130px]">ค่าน้ำมัน/ทางด่วน</th>
                 {isAdmin && (
                   <>
                     <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm text-right whitespace-nowrap">ราคาลูกค้า</th>
@@ -1451,19 +1447,19 @@ const DataTable: React.FC = () => {
                     <td className={`px-2 py-2 md:px-6 md:py-4 font-medium whitespace-nowrap text-xs md:text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
                       {formatDate(job.date)}
                     </td>
-                    <td className="px-2 py-2 md:px-6 md:py-4">
+                    <td className="px-2 py-2 md:px-4 md:py-4 w-[210px] md:w-[250px]">
                       <div className="flex flex-col gap-1">
-                        <span className="flex items-center gap-1 text-accent-secondary text-xs md:text-sm whitespace-nowrap">
+                        <span className="flex items-center gap-1 text-accent-secondary text-xs md:text-sm break-words">
                           <span className="w-1.5 h-1.5 rounded-full bg-accent-secondary shrink-0"></span>
                           {job.pickupLocation}
                         </span>
-                        <span className="flex items-center gap-1 text-accent-warning text-xs md:text-sm whitespace-nowrap">
+                        <span className="flex items-center gap-1 text-accent-warning text-xs md:text-sm break-words">
                           <span className="w-1.5 h-1.5 rounded-full bg-accent-warning shrink-0"></span>
                           {job.dropoffLocation}
                         </span>
                       </div>
                     </td>
-                    <td className="px-2 py-2 md:px-6 md:py-4 text-center">
+                    <td className="px-2 py-2 md:px-3 md:py-4 text-center w-[70px] md:w-[80px]">
                       <span className={`inline-block px-2 py-0.5 md:px-3 md:py-1 rounded-lg text-xs md:text-sm font-bold ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}>
                         {job.rounds}
                       </span>
@@ -1475,11 +1471,11 @@ const DataTable: React.FC = () => {
                     <td className={`px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap ${isDark ? 'text-dark-text' : 'text-light-text'}`}>
                       {job.driverName}
                     </td>
-                    <td className="px-2 py-2 md:px-6 md:py-4">
-                      <div className={`font-medium text-xs md:text-sm whitespace-nowrap ${isDark ? 'text-white' : 'text-slate-900'}`}>{job.jobNo || '-'}</div>
-                      <div className={`text-[10px] md:text-xs whitespace-nowrap ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{job.invNo || '-'}</div>
+                    <td className="px-2 py-2 md:px-3 md:py-4 w-[130px] md:w-[150px]">
+                      <div className={`font-medium text-xs md:text-sm break-words ${isDark ? 'text-white' : 'text-slate-900'}`}>{job.jobNo || '-'}</div>
+                      <div className={`text-[10px] md:text-xs break-words ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{job.invNo || '-'}</div>
                     </td>
-                    <td className={`px-2 py-2 md:px-6 md:py-4 text-right text-xs md:text-sm whitespace-nowrap ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    <td className={`px-2 py-2 md:px-3 md:py-4 text-right text-xs md:text-sm whitespace-nowrap w-[110px] md:w-[130px] ${isDark ? 'text-white' : 'text-slate-900'}`}>
                       {job.fuelAndToll !== null && job.fuelAndToll !== undefined && job.fuelAndToll !== ''
                         ? Number(job.fuelAndToll).toLocaleString()
                         : '-'}

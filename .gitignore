@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local backups
+backups/
+
+# Local tool configs
+.config/
