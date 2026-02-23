@@ -211,6 +211,12 @@ const DataTable: React.FC = () => {
 
   // Export CSV
   const exportCSV = () => {
+    const formatNumericExportValue = (value: unknown): string | number => {
+      if (value === null || value === undefined || value === '') return '';
+      const numericValue = typeof value === 'number' ? value : Number(value);
+      return Number.isFinite(numericValue) ? numericValue : '';
+    };
+
     const escapeCsvValue = (value: string | number | null | undefined): string => {
       const normalizedValue = String(value ?? '')
         .replace(/\r\n/g, '\n')
@@ -224,7 +230,7 @@ const DataTable: React.FC = () => {
       return Number.isNaN(parsedTime) ? Number.POSITIVE_INFINITY : parsedTime;
     };
 
-    const headers = ["Date", "Pickup", "Dropoff", "Rounds", "Vehicle", "Plate", "Driver", "Job No", "Inv No", "Remarks"];
+    const headers = ["Date", "Pickup", "Dropoff", "Rounds", "Vehicle", "Plate", "Driver", "Job No", "Inv No", "Fuel/Toll", "Remarks"];
     if (isAdmin) {
       headers.push("Customer Price", "Joint Price");
     }
@@ -245,6 +251,7 @@ const DataTable: React.FC = () => {
           j.driverName,
           j.jobNo,
           j.invNo,
+          formatNumericExportValue(j.fuelAndToll),
           j.remarks
         ];
 
@@ -569,14 +576,17 @@ const DataTable: React.FC = () => {
     const chartsBottomY = Math.max(barBottomY, pieLegendBottomY);
     
     // Table - Thai headers
-    const tableColumn = ['วันที่', 'เส้นทาง', 'รอบ', 'รถ/ทะเบียน', 'คนขับ', 'Job/Inv'];
+    const tableColumn = ['วันที่', 'เส้นทาง', 'รอบ', 'รถ/ทะเบียน', 'คนขับ', 'Job/Inv', 'ค่าน้ำมัน/ทางด่วน'];
     const tableRows = pdfJobs.map(job => [
       formatDate(job.date),
       `${job.pickupLocation} > ${job.dropoffLocation}`,
       job.rounds.toString(),
       `${job.vehicleType}\n${job.licensePlate}`,
       job.driverName,
-      `${job.jobNo || '-'}\n${job.invNo || '-'}`
+      `${job.jobNo || '-'}\n${job.invNo || '-'}`,
+      job.fuelAndToll !== null && job.fuelAndToll !== undefined && job.fuelAndToll !== ''
+        ? Number(job.fuelAndToll).toLocaleString()
+        : '-'
     ]);
 
     autoTable(doc, {
@@ -592,7 +602,8 @@ const DataTable: React.FC = () => {
         2: { cellWidth: 15, halign: 'center' }, // Round
         3: { cellWidth: 35, halign: 'center' }, // Vehicle - center
         4: { cellWidth: 30, halign: 'center' }, // Driver - center
-        5: { cellWidth: 35, halign: 'center' }  // Job/Inv - center
+        5: { cellWidth: 35, halign: 'center' }, // Job/Inv - center
+        6: { cellWidth: 30, halign: 'right' } // Fuel/Toll
       }
     });
 
@@ -845,6 +856,31 @@ const DataTable: React.FC = () => {
                   />
                 ) : (
                   <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.jobNo || '-'}</div>
+                )}
+              </div>
+
+              {/* Fuel / Toll */}
+              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>⛽ ค่าน้ำมัน/ทางด่วน</div>
+                {isEditing ? (
+                  <input
+                    type="number"
+                    value={editData.fuelAndToll ?? ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      handleEditChange('fuelAndToll', value === '' ? '' : parseFloat(value));
+                    }}
+                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
+                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
+                    }`}
+                    placeholder="0.00"
+                  />
+                ) : (
+                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>
+                    {selectedJob.fuelAndToll !== null && selectedJob.fuelAndToll !== undefined && selectedJob.fuelAndToll !== ''
+                      ? Number(selectedJob.fuelAndToll).toLocaleString()
+                      : '-'}
+                  </div>
                 )}
               </div>
 
@@ -1383,6 +1419,7 @@ const DataTable: React.FC = () => {
                 <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap">รถ / ทะเบียน</th>
                 <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap">คนขับ</th>
                 <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap">Job / Inv</th>
+                <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm text-right whitespace-nowrap">ค่าน้ำมัน/ทางด่วน</th>
                 {isAdmin && (
                   <>
                     <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm text-right whitespace-nowrap">ราคาลูกค้า</th>
@@ -1394,13 +1431,13 @@ const DataTable: React.FC = () => {
             <tbody className={`divide-y ${isDark ? 'divide-dark-muted/10' : 'divide-light-muted/10'}`}>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className={`text-center py-10 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                  <td colSpan={isAdmin ? 9 : 7} className={`text-center py-10 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
                     Loading data...
                   </td>
                 </tr>
               ) : filteredJobs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className={`text-center py-10 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                  <td colSpan={isAdmin ? 9 : 7} className={`text-center py-10 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
                     ไม่พบข้อมูล
                   </td>
                 </tr>
@@ -1441,6 +1478,11 @@ const DataTable: React.FC = () => {
                     <td className="px-2 py-2 md:px-6 md:py-4">
                       <div className={`font-medium text-xs md:text-sm whitespace-nowrap ${isDark ? 'text-white' : 'text-slate-900'}`}>{job.jobNo || '-'}</div>
                       <div className={`text-[10px] md:text-xs whitespace-nowrap ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{job.invNo || '-'}</div>
+                    </td>
+                    <td className={`px-2 py-2 md:px-6 md:py-4 text-right text-xs md:text-sm whitespace-nowrap ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      {job.fuelAndToll !== null && job.fuelAndToll !== undefined && job.fuelAndToll !== ''
+                        ? Number(job.fuelAndToll).toLocaleString()
+                        : '-'}
                     </td>
                     {isAdmin && (
                       <>
