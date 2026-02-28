@@ -1,16 +1,33 @@
 {
   "name": "SFast Trucklog",
   "short_name": "Trucklog",
+  "id": "/",
+  "start_url": "/#/",
+  "scope": "/",
   "icons": [
     {
-      "src": "/icons/web-app-manifest-192x192.png",
+      "src": "/icons/web-app-manifest-192x192.png?v=20260228",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/icons/web-app-manifest-512x512.png",
+      "src": "/icons/web-app-manifest-512x512.png?v=20260228",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/web-app-manifest-192x192-maskable.png?v=20260228",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/web-app-manifest-512x512-maskable.png?v=20260228",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "theme_color": "#ffffff",

@@ -1402,8 +1402,88 @@ const DataTable: React.FC = () => {
       )}
 
 
-      {/* Table Container */}
-      <div className={`rounded-2xl border shadow-xl overflow-hidden ${
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-3">
+        {loading ? (
+          <div className={`text-center py-10 rounded-2xl border ${isDark ? 'bg-dark-card border-dark-muted/10 text-dark-muted' : 'bg-light-card border-light-muted/10 text-light-muted'}`}>
+            Loading data...
+          </div>
+        ) : filteredJobs.length === 0 ? (
+          <div className={`text-center py-10 rounded-2xl border ${isDark ? 'bg-dark-card border-dark-muted/10 text-dark-muted' : 'bg-light-card border-light-muted/10 text-light-muted'}`}>
+            ไม่พบข้อมูล
+          </div>
+        ) : (
+          filteredJobs.map((job) => (
+            <button
+              key={job.id}
+              onClick={() => handleRowClick(job)}
+              className={`w-full text-left p-4 rounded-2xl border transition-all ${
+                isDark
+                  ? 'bg-dark-card border-dark-muted/20 hover:bg-white/5'
+                  : 'bg-light-card border-light-muted/20 hover:border-accent-primary/40 shadow-sm'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div>
+                  <div className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{formatDate(job.date)}</div>
+                  <div className={`text-xs mt-1 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                    {job.jobNo || '-'} / {job.invNo || '-'}
+                  </div>
+                </div>
+                <span className={`inline-flex items-center justify-center min-w-8 h-8 px-2 rounded-lg text-sm font-bold ${isDark ? 'bg-slate-800 text-white' : 'bg-slate-200 text-slate-800'}`}>
+                  {job.rounds}
+                </span>
+              </div>
+
+              <div className="space-y-1.5 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent-secondary shrink-0"></span>
+                  <span className={`text-sm break-words ${isDark ? 'text-dark-text' : 'text-light-text'}`}>{job.pickupLocation}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent-warning shrink-0"></span>
+                  <span className={`text-sm break-words ${isDark ? 'text-dark-text' : 'text-light-text'}`}>{job.dropoffLocation}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className={`rounded-xl px-3 py-2 ${isDark ? 'bg-dark-bg text-dark-text' : 'bg-slate-50 text-slate-700'}`}>
+                  <div className={`text-[11px] ${isDark ? 'text-dark-muted' : 'text-slate-500'}`}>รถ / ทะเบียน</div>
+                  <div className="text-sm font-medium truncate">{job.vehicleType}</div>
+                  <div className="text-sm truncate">{job.licensePlate}</div>
+                </div>
+                <div className={`rounded-xl px-3 py-2 ${isDark ? 'bg-dark-bg text-dark-text' : 'bg-slate-50 text-slate-700'}`}>
+                  <div className={`text-[11px] ${isDark ? 'text-dark-muted' : 'text-slate-500'}`}>คนขับ</div>
+                  <div className="text-sm font-medium truncate">{job.driverName}</div>
+                </div>
+                <div className={`rounded-xl px-3 py-2 col-span-2 ${isDark ? 'bg-dark-bg text-dark-text' : 'bg-slate-50 text-slate-700'}`}>
+                  <div className={`text-[11px] ${isDark ? 'text-dark-muted' : 'text-slate-500'}`}>ค่าน้ำมัน/ทางด่วน</div>
+                  <div className="text-sm font-medium">
+                    {job.fuelAndToll !== null && job.fuelAndToll !== undefined && job.fuelAndToll !== ''
+                      ? Number(job.fuelAndToll).toLocaleString()
+                      : '-'}
+                  </div>
+                </div>
+                {isAdmin && (
+                  <>
+                    <div className={`rounded-xl px-3 py-2 ${isDark ? 'bg-dark-bg text-dark-text' : 'bg-slate-50 text-slate-700'}`}>
+                      <div className={`text-[11px] ${isDark ? 'text-dark-muted' : 'text-slate-500'}`}>ราคาลูกค้า</div>
+                      <div className="text-sm font-medium">{job.customerPrice ? job.customerPrice.toLocaleString() : '-'}</div>
+                    </div>
+                    <div className={`rounded-xl px-3 py-2 ${isDark ? 'bg-dark-bg text-dark-text' : 'bg-slate-50 text-slate-700'}`}>
+                      <div className={`text-[11px] ${isDark ? 'text-dark-muted' : 'text-slate-500'}`}>ราคารถร่วม</div>
+                      <div className="text-sm font-medium">{job.jointPrice ? job.jointPrice.toLocaleString() : '-'}</div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </button>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className={`hidden md:block rounded-2xl border shadow-xl overflow-hidden ${
         isDark ? 'bg-dark-card border-dark-muted/10' : 'bg-light-card border-light-muted/10'
       }`}>
         <div className="overflow-x-auto">
@@ -1440,8 +1520,8 @@ const DataTable: React.FC = () => {
                 </tr>
               ) : (
                 filteredJobs.map((job) => (
-                  <tr 
-                    key={job.id} 
+                  <tr
+                    key={job.id}
                     onClick={() => handleRowClick(job)}
                     className={`transition-colors cursor-pointer ${isDark ? 'hover:bg-white/5' : 'hover:bg-accent-primary/5'}`}
                   >

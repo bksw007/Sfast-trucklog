@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Settings as SettingsIcon, Plus, Trash2, RefreshCw, MapPin, Truck, User, Car, Loader2, Check, X } from 'lucide-react';
+import { Settings as SettingsIcon, Plus, Trash2, RefreshCw, MapPin, Truck, User, Car, Loader2, Check, X, Pencil, Save } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useData } from '../contexts/DataContext';
-import { addOption } from '../services/firebaseService';
+import { addOption, renameOptionAndSyncJobs } from '../services/firebaseService';
 import { OptionCategory } from '../types';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, deleteDoc } from 'firebase/firestore';
@@ -27,6 +27,9 @@ const Settings: React.FC = () => {
   const [newValue, setNewValue] = useState('');
   const [adding, setAdding] = useState(false);
   const [deletingItem, setDeletingItem] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [renamingItem, setRenamingItem] = useState<string | null>(null);
   const [manualSyncing, setManualSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<'success' | 'error' | null>(null);
 
@@ -82,6 +85,33 @@ const Settings: React.FC = () => {
       alert('เกิดข้อผิดพลาดในการลบ');
     } finally {
       setDeletingItem(null);
+    }
+  };
+
+  const startRename = (value: string) => {
+    setEditingItem(value);
+    setEditValue(value);
+  };
+
+  const cancelRename = () => {
+    setEditingItem(null);
+    setEditValue('');
+  };
+
+  const handleRename = async (oldValue: string) => {
+    const nextValue = editValue.trim();
+    if (!nextValue) return;
+
+    setRenamingItem(oldValue);
+    try {
+      await renameOptionAndSyncJobs(activeTab, oldValue, nextValue);
+      cancelRename();
+    } catch (error) {
+      console.error('Failed to rename option:', error);
+      const message = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดในการแก้ไขชื่อ';
+      alert(message);
+    } finally {
+      setRenamingItem(null);
     }
   };
 
@@ -220,18 +250,68 @@ const Settings: React.FC = () => {
             getCurrentOptions().map((item, index) => (
               <div
                 key={`${item}-${index}`}
-                className={`flex items-center justify-between px-4 py-3 border-b last:border-b-0 ${
+                onClick={() => {
+                  if (editingItem !== item) startRename(item);
+                }}
+                className={`flex items-center justify-between gap-2 px-4 py-3 border-b last:border-b-0 cursor-pointer ${
                   isDark ? 'border-dark-muted/10 hover:bg-white/5' : 'border-light-muted/10 hover:bg-black/5'
                 }`}
               >
-                <span className={isDark ? 'text-dark-text' : 'text-light-text'}>{item}</span>
-                <button
-                  onClick={() => handleDelete(item)}
-                  disabled={deletingItem === item}
-                  className="p-2 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                >
-                  {deletingItem === item ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                </button>
+                {editingItem === item ? (
+                  <>
+                    <input
+                      type="text"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleRename(item);
+                        if (e.key === 'Escape') cancelRename();
+                      }}
+                      className={`flex-1 px-3 py-2 rounded-lg border ${
+                        isDark
+                          ? 'bg-dark-bg border-dark-muted/30 text-dark-text'
+                          : 'bg-light-bg border-light-muted/30 text-light-text'
+                      }`}
+                      autoFocus
+                    />
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => handleRename(item)}
+                        disabled={renamingItem === item || !editValue.trim()}
+                        className="p-2 rounded-lg text-green-500 hover:bg-green-500/10 transition-colors disabled:opacity-50"
+                        title="บันทึก"
+                      >
+                        {renamingItem === item ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                      </button>
+                      <button
+                        onClick={cancelRename}
+                        disabled={renamingItem === item}
+                        className="p-2 rounded-lg text-slate-500 hover:bg-slate-500/10 transition-colors disabled:opacity-50"
+                        title="ยกเลิก"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={isDark ? 'text-dark-text truncate' : 'text-light-text truncate'}>{item}</span>
+                      <Pencil size={14} className={isDark ? 'text-dark-muted shrink-0' : 'text-light-muted shrink-0'} />
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(item);
+                      }}
+                      disabled={deletingItem === item}
+                      className="p-2 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                    >
+                      {deletingItem === item ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                    </button>
+                  </>
+                )}
               </div>
             ))
           )}
