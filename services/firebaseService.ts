@@ -10,6 +10,8 @@ import {
   orderBy,
   Timestamp,
   getDocs,
+  where,
+  writeBatch,
 } from 'firebase/firestore';
 import {
   ref,
@@ -19,11 +21,12 @@ import {
 } from 'firebase/storage';
 import imageCompression from 'browser-image-compression';
 import { db, storage } from '../firebase';
-import { JobEntry, AppData, OptionCategory } from '../types';
+import { JobEntry, AppData, OptionCategory, TodayJobEntry } from '../types';
 
 // Collection names
 const JOBS_COLLECTION = 'jobs';
 const OPTIONS_COLLECTION = 'options';
+const TODAY_JOBS_COLLECTION = 'today_jobs';
 
 // Image compression options
 const COMPRESSION_OPTIONS = {
@@ -253,6 +256,76 @@ export const addJob = async (
 };
 
 /**
+ * Add a dispatch document for "today jobs" page.
+ */
+export const addTodayJob = async (
+  job: Omit<TodayJobEntry, 'id' | 'timestamp'>
+): Promise<TodayJobEntry> => {
+  const timestamp = Date.now();
+  const docRef = await addDoc(collection(db, TODAY_JOBS_COLLECTION), {
+    ...job,
+    timestamp,
+  });
+
+  console.log('[Firebase] Today job created with ID:', docRef.id);
+
+  return {
+    ...job,
+    id: docRef.id,
+    timestamp,
+  };
+};
+
+/**
+ * Subscribe to today_jobs collection (real-time updates)
+ */
+export const subscribeToTodayJobs = (
+  callback: (jobs: TodayJobEntry[]) => void,
+  onError?: (error: Error) => void
+): (() => void) => {
+  const jobsQuery = query(
+    collection(db, TODAY_JOBS_COLLECTION),
+    orderBy('timestamp', 'desc')
+  );
+
+  const unsubscribe = onSnapshot(
+    jobsQuery,
+    (snapshot) => {
+      const jobs: TodayJobEntry[] = snapshot.docs.map((jobDoc) => ({
+        id: jobDoc.id,
+        ...jobDoc.data(),
+      })) as TodayJobEntry[];
+
+      callback(jobs);
+    },
+    (error) => {
+      console.error('[Firebase] Today jobs subscription error:', error);
+      onError?.(error);
+    }
+  );
+
+  return unsubscribe;
+};
+
+/**
+ * Update selected fields in today_jobs document
+ */
+export const updateTodayJob = async (
+  id: string,
+  updates: Partial<Omit<TodayJobEntry, 'id' | 'timestamp'>>
+): Promise<void> => {
+  const jobRef = doc(db, TODAY_JOBS_COLLECTION, id);
+  await updateDoc(jobRef, updates);
+};
+
+/**
+ * Delete a document in today_jobs collection
+ */
+export const deleteTodayJob = async (id: string): Promise<void> => {
+  await deleteDoc(doc(db, TODAY_JOBS_COLLECTION, id));
+};
+
+/**
  * Update an existing job
  */
 export const updateJob = async (
@@ -384,6 +457,106 @@ export const addOption = async (
 };
 
 /**
+ * Rename an option and propagate the new value to existing jobs.
+ */
+export const renameOptionAndSyncJobs = async (
+  category: OptionCategory,
+  oldValue: string,
+  newValue: string
+): Promise<void> => {
+  const trimmedOld = oldValue.trim();
+  const trimmedNew = newValue.trim();
+
+  if (!trimmedOld || !trimmedNew || trimmedOld === trimmedNew) {
+    return;
+  }
+
+  const optionsRef = collection(db, OPTIONS_COLLECTION);
+  const oldOptionQuery = query(
+    optionsRef,
+    where('category', '==', category),
+    where('value', '==', trimmedOld)
+  );
+  const newOptionQuery = query(
+    optionsRef,
+    where('category', '==', category),
+    where('value', '==', trimmedNew)
+  );
+
+  const [oldOptionSnapshot, newOptionSnapshot] = await Promise.all([
+    getDocs(oldOptionQuery),
+    getDocs(newOptionQuery),
+  ]);
+
+  if (oldOptionSnapshot.empty) {
+    throw new Error('ไม่พบข้อมูลเดิมที่ต้องการแก้ไข');
+  }
+
+  if (!newOptionSnapshot.empty) {
+    throw new Error('มีข้อมูลชื่อนี้อยู่แล้ว');
+  }
+
+  const jobsRef = collection(db, JOBS_COLLECTION);
+  const jobsToUpdate = new Map<string, Partial<JobEntry>>();
+
+  const collectJobsForField = async (field: keyof JobEntry) => {
+    const fieldQuery = query(jobsRef, where(field as string, '==', trimmedOld));
+    const snapshot = await getDocs(fieldQuery);
+    snapshot.docs.forEach((jobDoc) => {
+      const current = jobsToUpdate.get(jobDoc.id) ?? {};
+      jobsToUpdate.set(jobDoc.id, { ...current, [field]: trimmedNew });
+    });
+  };
+
+  switch (category) {
+    case OptionCategory.LOCATION:
+      await Promise.all([
+        collectJobsForField('pickupLocation'),
+        collectJobsForField('dropoffLocation'),
+      ]);
+      break;
+    case OptionCategory.VEHICLE:
+      await collectJobsForField('vehicleType');
+      break;
+    case OptionCategory.DRIVER:
+      await collectJobsForField('driverName');
+      break;
+    case OptionCategory.PLATE:
+      await collectJobsForField('licensePlate');
+      break;
+    default:
+      break;
+  }
+
+  const optionDoc = oldOptionSnapshot.docs[0];
+  const optionRef = doc(db, OPTIONS_COLLECTION, optionDoc.id);
+
+  const allUpdates: Array<{ ref: ReturnType<typeof doc>; data: Record<string, unknown> }> = [
+    { ref: optionRef, data: { value: trimmedNew } },
+  ];
+
+  jobsToUpdate.forEach((data, jobId) => {
+    allUpdates.push({
+      ref: doc(db, JOBS_COLLECTION, jobId),
+      data: data as Record<string, unknown>,
+    });
+  });
+
+  for (let i = 0; i < allUpdates.length; i += 500) {
+    const batch = writeBatch(db);
+    const chunk = allUpdates.slice(i, i + 500);
+    chunk.forEach(({ ref, data }) => {
+      batch.update(ref, data);
+    });
+    await batch.commit();
+  }
+
+  console.log(
+    `[Firebase] Option renamed: ${category} "${trimmedOld}" -> "${trimmedNew}" (updated ${jobsToUpdate.size} jobs)`
+  );
+};
+
+/**
  * Initialize default options (run once if options collection is empty)
  */
 export const initializeDefaultOptions = async (): Promise<void> => {
@@ -422,10 +595,15 @@ export const initializeDefaultOptions = async (): Promise<void> => {
 export const firebaseService = {
   subscribeToJobs,
   subscribeToOptions,
+  subscribeToTodayJobs,
   addJob,
+  addTodayJob,
+  updateTodayJob,
+  deleteTodayJob,
   updateJob,
   deleteJob,
   addOption,
+  renameOptionAndSyncJobs,
   uploadImage,
   uploadImages, // New
   deleteImage,

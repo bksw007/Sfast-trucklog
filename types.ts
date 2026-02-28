@@ -24,6 +24,38 @@ export interface JobEntry {
   timestamp: number;
 }
 
+export interface DispatchPoint {
+  location: string;
+  date: string;
+  time: string;
+  contact: string;
+}
+
+export interface TodayJobEntry {
+  id: string;
+  employerCompany: string;
+  jobNo: string;
+  workDate: string;
+  vehicleType: string;
+  ticketNo: string;
+  productName: string;
+  quantity: string;
+  pickup: DispatchPoint;
+  delivery: DispatchPoint;
+  driverName: string;
+  plateNo: string;
+  driverPhone: string;
+  importantNote: string;
+  summaryText: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  completedAt?: number | null;
+  autoNotifyLine?: boolean;
+  autoNotifyTelegram?: boolean;
+  createdByUid?: string;
+  createdByName?: string;
+  timestamp: number;
+}
+
 export interface AppData {
   jobs: JobEntry[];
   options: {

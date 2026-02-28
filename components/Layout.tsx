@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, Table2, Truck, Sun, Moon, Menu, X, ChevronLeft, ChevronRight, RefreshCw, LogOut, Settings, User, Users } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Table2, Truck, Sun, Moon, Menu, X, ChevronLeft, ChevronRight, RefreshCw, LogOut, Settings, User, Users, ClipboardList } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -25,6 +25,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navItems = [
     { path: '/', label: 'แดชบอร์ด', icon: LayoutDashboard },
     { path: '/entry', label: 'บันทึกงาน', icon: PlusCircle },
+    { path: '/today', label: 'งานวันนี้', icon: ClipboardList },
     { path: '/data', label: 'ข้อมูลงานวิ่ง', icon: Table2 },
     { path: '/settings', label: 'ตั้งค่า', icon: Settings },
   ];
@@ -116,7 +117,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         
 
         {/* Mobile Bottom Section */}
-        <div className={`absolute bottom-20 left-0 right-0 px-4 py-3 border-t ${
+        <div className={`absolute bottom-0 left-0 right-0 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t ${
           isDark ? 'border-dark-muted/20' : 'border-light-muted/20'
         }`}>
           <button

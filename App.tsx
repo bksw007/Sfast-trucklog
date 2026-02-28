@@ -10,6 +10,7 @@ import { Loader2 } from 'lucide-react';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const EntryForm = lazy(() => import('./pages/EntryForm'));
 const DataTable = lazy(() => import('./pages/DataTable'));
+const TodayJobs = lazy(() => import('./pages/TodayJobs'));
 const Login = lazy(() => import('./pages/Login'));
 const Settings = lazy(() => import('./pages/Settings'));
 
@@ -126,6 +127,13 @@ const AppRoutes: React.FC = () => {
           <Layout>
             <Suspense fallback={<PageLoader />}>
               <EntryForm />
+            </Suspense>
+          </Layout>
+        } />
+        <Route path="/today" element={
+          <Layout>
+            <Suspense fallback={<PageLoader />}>
+              <TodayJobs />
             </Suspense>
           </Layout>
         } />
