@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, Table2, Truck, Sun, Moon, Menu, X, ChevronLeft, ChevronRight, RefreshCw, LogOut, Settings, User, Users, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Table2, Sun, Moon, Menu, X, ChevronLeft, ChevronRight, RefreshCw, LogOut, Settings, User, Users, ClipboardList } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -31,6 +31,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   ];
 
   const isDark = theme === 'dark';
+  const appLogo = '/icons/truck-logo.png';
 
   const formatLastUpdate = (date: Date | null) => {
     if (!date) return 'ไม่ทราบ';
@@ -52,8 +53,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         isDark ? 'bg-dark-card border-dark-muted/20' : 'bg-light-card border-light-muted/20 shadow-sm'
       }`}>
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-accent-primary to-accent-secondary rounded-lg flex items-center justify-center shadow-lg">
-            <Truck className="text-white" size={18} />
+          <div className="w-8 h-8 rounded-lg overflow-hidden shadow-lg bg-white">
+            <img src={appLogo} alt="SFast Logo" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-accent-primary to-accent-secondary">
             SFast Trucklog
@@ -169,8 +170,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {/* Logo */}
           <div className={`p-6 flex items-center ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
             <div className={`flex items-center transition-all duration-300 ${sidebarOpen ? 'gap-3' : 'gap-0 justify-center'}`}>
-              <div className="w-10 h-10 bg-gradient-to-br from-accent-primary to-accent-secondary rounded-xl flex items-center justify-center shadow-lg shadow-accent-primary/20 flex-shrink-0">
-                <Truck className="text-white" size={24} />
+              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-accent-primary/20 flex-shrink-0 bg-white">
+                <img src={appLogo} alt="SFast Logo" className="w-full h-full object-cover" />
               </div>
               <div className={`overflow-hidden transition-all duration-300 ${sidebarOpen ? 'w-40 opacity-100' : 'w-0 opacity-0'}`}>
                 <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-accent-primary to-accent-secondary whitespace-nowrap">
