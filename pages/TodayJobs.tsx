@@ -149,20 +149,20 @@ const TodayJobs: React.FC = () => {
   const [showCardModal, setShowCardModal] = useState(false);
 
   const inputClass = isDark
-    ? 'w-full border-b border-dark-muted/50 bg-transparent px-1 py-1 text-sm text-dark-text focus:border-accent-primary focus:outline-none'
-    : 'w-full border-b border-light-muted/40 bg-transparent px-1 py-1 text-sm text-light-text focus:border-accent-primary focus:outline-none';
+    ? 'w-full min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/40 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none'
+    : 'w-full min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none';
 
   const pointInputClass = isDark
-    ? 'w-full rounded-lg border border-dark-muted/30 bg-dark-bg/40 px-2 py-1.5 text-sm text-dark-text focus:border-accent-primary focus:outline-none'
-    : 'w-full rounded-lg border border-light-muted/30 bg-white px-2 py-1.5 text-sm text-light-text focus:border-accent-primary focus:outline-none';
+    ? 'w-full min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/40 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none'
+    : 'w-full min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none';
 
   const cardClass = isDark
     ? 'rounded-2xl border border-dark-muted/30 bg-dark-card/70 shadow-xl shadow-black/20'
     : 'rounded-2xl border border-light-muted/20 bg-light-card shadow-xl shadow-slate-200/60';
 
   const selectClass = isDark
-    ? 'w-full rounded-lg border border-dark-muted/30 bg-dark-bg/40 px-2 py-1.5 text-sm text-dark-text focus:border-accent-primary focus:outline-none'
-    : 'w-full rounded-lg border border-light-muted/30 bg-white px-2 py-1.5 text-sm text-light-text focus:border-accent-primary focus:outline-none';
+    ? 'w-full min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/40 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none'
+    : 'w-full min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none';
 
   const options = appData?.options;
   const sortUniqueOptions = (items: string[]) =>
@@ -534,7 +534,7 @@ const TodayJobs: React.FC = () => {
         : 'bg-slate-500/15 text-slate-500';
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in overflow-x-hidden">
       <section className={`${cardClass} overflow-hidden`}>
         <div className="bg-gradient-to-r from-[#0f766e] via-[#0e7490] to-[#075985] px-6 py-4 text-white">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -656,7 +656,52 @@ const TodayJobs: React.FC = () => {
             <input className={inputClass} value={formData.productName} onChange={(e) => updateField('productName', e.target.value)} />
           </label>
 
-          <div className={`overflow-hidden rounded-xl border ${isDark ? 'border-dark-muted/30' : 'border-light-muted/30'}`}>
+          <div className={`space-y-3 md:hidden`}>
+            <div className={`rounded-xl border p-3 ${isDark ? 'border-dark-muted/30 bg-dark-bg/35' : 'border-light-muted/30 bg-slate-50'}`}>
+              <p className="mb-2 text-sm font-semibold">รับงาน</p>
+              <div className="space-y-3">
+                <label className="block text-sm">
+                  <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>สถานที่</span>
+                  <input list="location-options" className={selectClass} value={formData.pickup.location} onChange={(e) => updatePoint('pickup', 'location', e.target.value)} placeholder="พิมพ์ค้นหาสถานที่รับ" />
+                </label>
+                <label className="block text-sm">
+                  <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>วันที่</span>
+                  <input type="date" className={pointInputClass} value={formData.pickup.date} onChange={(e) => updatePoint('pickup', 'date', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
+                </label>
+                <label className="block text-sm">
+                  <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>เวลา</span>
+                  <input type="time" lang="en-GB" step={60} className={pointInputClass} value={formData.pickup.time} onChange={(e) => updatePoint('pickup', 'time', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
+                </label>
+                <label className="block text-sm">
+                  <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ติดต่อ</span>
+                  <input className={pointInputClass} value={formData.pickup.contact} onChange={(e) => updatePoint('pickup', 'contact', e.target.value)} />
+                </label>
+              </div>
+            </div>
+            <div className={`rounded-xl border p-3 ${isDark ? 'border-dark-muted/30 bg-dark-bg/35' : 'border-light-muted/30 bg-slate-50'}`}>
+              <p className="mb-2 text-sm font-semibold">ส่งงาน</p>
+              <div className="space-y-3">
+                <label className="block text-sm">
+                  <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>สถานที่</span>
+                  <input list="location-options" className={selectClass} value={formData.delivery.location} onChange={(e) => updatePoint('delivery', 'location', e.target.value)} placeholder="พิมพ์ค้นหาสถานที่ส่ง" />
+                </label>
+                <label className="block text-sm">
+                  <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>วันที่</span>
+                  <input type="date" className={pointInputClass} value={formData.delivery.date} onChange={(e) => updatePoint('delivery', 'date', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
+                </label>
+                <label className="block text-sm">
+                  <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>เวลา</span>
+                  <input type="time" lang="en-GB" step={60} className={pointInputClass} value={formData.delivery.time} onChange={(e) => updatePoint('delivery', 'time', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
+                </label>
+                <label className="block text-sm">
+                  <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ติดต่อ</span>
+                  <input className={pointInputClass} value={formData.delivery.contact} onChange={(e) => updatePoint('delivery', 'contact', e.target.value)} />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div className={`hidden overflow-hidden rounded-xl border md:block ${isDark ? 'border-dark-muted/30' : 'border-light-muted/30'}`}>
             <div className={`grid grid-cols-[120px_1fr_1fr] ${isDark ? 'bg-dark-bg/60' : 'bg-slate-100/70'}`}>
               <div className={`border-r px-3 py-2 text-center text-sm font-medium ${isDark ? 'border-dark-muted/30 text-dark-muted' : 'border-light-muted/30 text-light-muted'}`}>หัวข้อ</div>
               <div className={`border-r px-3 py-2 text-center text-sm font-semibold ${isDark ? 'border-dark-muted/30' : 'border-light-muted/30'}`}>รับงาน</div>
@@ -770,8 +815,8 @@ const TodayJobs: React.FC = () => {
             <p className={`mt-1 text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>คลิกที่แถวเพื่อเปิดรายละเอียด/แก้ไข/ลบ</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="ค้นหา เลขจ๊อบ/คนขับ/ทะเบียน" className={isDark ? 'rounded-lg border border-dark-muted/30 bg-dark-bg/50 px-3 py-2 text-sm text-dark-text focus:border-accent-primary focus:outline-none' : 'rounded-lg border border-light-muted/30 bg-white px-3 py-2 text-sm text-light-text focus:border-accent-primary focus:outline-none'} />
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | JobStatus)} className={isDark ? 'rounded-lg border border-dark-muted/30 bg-dark-bg/50 px-3 py-2 text-sm text-dark-text focus:border-accent-primary focus:outline-none' : 'rounded-lg border border-light-muted/30 bg-white px-3 py-2 text-sm text-light-text focus:border-accent-primary focus:outline-none'}>
+            <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="ค้นหา เลขจ๊อบ/คนขับ/ทะเบียน" className={isDark ? 'min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/50 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none' : 'min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none'} />
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | JobStatus)} className={isDark ? 'min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/50 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none' : 'min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none'}>
               <option value="all">ทุกสถานะ</option>
               <option value="pending">รอดำเนินการ</option>
               <option value="in_progress">กำลังทำงาน</option>
@@ -780,7 +825,41 @@ const TodayJobs: React.FC = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="space-y-3 p-4 md:hidden">
+          {filteredJobs.length === 0 ? (
+            <div className={`rounded-xl border px-4 py-6 text-center text-sm ${isDark ? 'border-dark-muted/25 text-dark-muted' : 'border-light-muted/30 text-light-muted'}`}>
+              ไม่พบข้อมูล
+            </div>
+          ) : (
+            filteredJobs.map((job) => (
+              <button
+                key={job.id}
+                type="button"
+                onClick={() => openJobDetail(job)}
+                className={`w-full rounded-xl border p-4 text-left transition ${isDark ? 'border-dark-muted/25 bg-dark-bg/30 hover:bg-dark-bg/55' : 'border-light-muted/30 bg-white hover:bg-slate-50'}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-xs text-accent-primary">{asDateOnly(job.workDate)}</p>
+                    <p className="text-base font-semibold">{job.jobNo || '-'}</p>
+                    <p className={`text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{job.employerCompany || '-'}</p>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs ${statusBadgeClass(job.status)}`}>
+                    {job.status === 'completed' ? <CheckCircle2 size={12} /> : job.status === 'in_progress' ? <CircleDashed size={12} /> : <Circle size={12} />}
+                    {statusLabelMap[job.status]}
+                  </span>
+                </div>
+                <div className="mt-3 grid grid-cols-1 gap-1 text-sm">
+                  <p>คนขับ: {job.driverName || '-'} ({job.plateNo || '-'})</p>
+                  <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>{job.pickup.location || '-'} → {job.delivery.location || '-'}</p>
+                  <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>{job.pickup.time || '-'} / {job.delivery.time || '-'}</p>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
           <table className="min-w-full text-sm">
             <thead className={isDark ? 'bg-dark-bg/60 text-dark-muted' : 'bg-slate-100 text-slate-600'}>
               <tr>
