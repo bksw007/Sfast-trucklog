@@ -10,7 +10,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '../firebase';
 import { UserProfile } from '../types';
-import { getUserProfile, createUserProfile } from '../services/userService';
+import { createUserProfile, ensureUserProfileDocument, getUserProfile } from '../services/userService';
 
 interface AuthContextType {
   user: User | null;
@@ -46,10 +46,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       let profile = await getUserProfile(currentUser.uid);
       if (!profile) {
-        // Create profile if not exist (e.g. first login)
-        profile = await createUserProfile(currentUser);
+        try {
+          profile = await createUserProfile(currentUser);
+        } catch (createError) {
+          console.error('createUserProfile failed, fallback to ensureUserProfile:', createError);
+          await ensureUserProfileDocument(currentUser);
+          profile = await getUserProfile(currentUser.uid);
+        }
       }
-      setUserProfile(profile);
+
+      if (!profile) {
+        await ensureUserProfileDocument(currentUser);
+        profile = await getUserProfile(currentUser.uid);
+      }
+      setUserProfile(profile || null);
     } catch (error) {
       console.error('Error in fetchProfile:', error);
     }

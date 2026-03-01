@@ -21,8 +21,9 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
-import { addTodayJob, deleteTodayJob, subscribeToTodayJobs, updateTodayJob } from '../services/firebaseService';
-import { DispatchPoint, TodayJobEntry } from '../types';
+import { addTodayJob, deleteTodayJob, subscribeToTodayJobs, triggerTodayJobNotification, updateTodayJob } from '../services/firebaseService';
+import { getAllUsers } from '../services/userService';
+import { DispatchPoint, TodayJobEntry, UserProfile } from '../types';
 import { NotoSansThaiBase64 } from '../fonts/NotoSansThai';
 import ConfirmModal from '../components/ConfirmModal';
 import Modal from '../components/Modal';
@@ -30,13 +31,14 @@ import Modal from '../components/Modal';
 type TodayJobForm = {
   employerCompany: string;
   jobNo: string;
+  workOrderNo: string;
   workDate: string;
   vehicleType: string;
-  ticketNo: string;
   productName: string;
   quantity: string;
   pickup: DispatchPoint;
   delivery: DispatchPoint;
+  assignedToUid: string;
   driverName: string;
   plateNo: string;
   driverPhone: string;
@@ -69,13 +71,14 @@ const parseDate = (dateStr: string) => {
 const initialFormData = (): TodayJobForm => ({
   employerCompany: 'MLT',
   jobNo: '',
+  workOrderNo: '',
   workDate: getLocalDate(),
   vehicleType: '',
-  ticketNo: '',
   productName: '',
   quantity: '',
   pickup: { location: '', date: '', time: '', contact: '' },
   delivery: { location: '', date: '', time: '', contact: '' },
+  assignedToUid: '',
   driverName: '',
   plateNo: '',
   driverPhone: '',
@@ -85,13 +88,14 @@ const initialFormData = (): TodayJobForm => ({
 const toEditableForm = (job: TodayJobEntry): TodayJobForm => ({
   employerCompany: job.employerCompany,
   jobNo: job.jobNo,
+  workOrderNo: job.workOrderNo || job.ticketNo || '',
   workDate: job.workDate,
   vehicleType: job.vehicleType,
-  ticketNo: job.ticketNo,
   productName: job.productName,
   quantity: job.quantity,
   pickup: { ...job.pickup },
   delivery: { ...job.delivery },
+  assignedToUid: job.assignedToUid || '',
   driverName: job.driverName,
   plateNo: job.plateNo,
   driverPhone: job.driverPhone,
@@ -101,6 +105,7 @@ const toEditableForm = (job: TodayJobEntry): TodayJobForm => ({
 const buildSummaryText = (data: TodayJobForm) => {
   const lines = [
     `งานวันนี้: ${data.jobNo || '-'}`,
+    `เลขที่ใบสั่งงาน: ${data.workOrderNo || '-'}`,
     `วันที่รับงาน: ${data.workDate || '-'}`,
     `ลูกค้า: ${data.employerCompany || '-'}`,
     `ชนิดรถ: ${data.vehicleType || '-'} | ทะเบียน: ${data.plateNo || '-'}`,
@@ -123,6 +128,7 @@ const TodayJobs: React.FC = () => {
   const isAdmin = userProfile?.role === 'admin';
 
   const [formData, setFormData] = useState<TodayJobForm>(initialFormData());
+  const [assignableUsers, setAssignableUsers] = useState<UserProfile[]>([]);
   const [jobs, setJobs] = useState<TodayJobEntry[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isCopySuccess, setIsCopySuccess] = useState(false);
@@ -180,6 +186,23 @@ const TodayJobs: React.FC = () => {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    getAllUsers()
+      .then((users) => {
+        setAssignableUsers(users);
+      })
+      .catch((error) => {
+        console.error('Load assignable users failed:', error);
+      });
+  }, [isAdmin]);
+
+  const selectedAssignedUser = useMemo(
+    () => assignableUsers.find((row) => row.uid === formData.assignedToUid) || null,
+    [assignableUsers, formData.assignedToUid]
+  );
 
   const summaryText = useMemo(() => buildSummaryText(formData), [formData]);
 
@@ -273,6 +296,7 @@ const TodayJobs: React.FC = () => {
 
       const haystack = [
         job.jobNo,
+        job.workOrderNo || job.ticketNo || '',
         job.employerCompany,
         job.driverName,
         job.plateNo,
@@ -295,6 +319,15 @@ const TodayJobs: React.FC = () => {
 
   const updateField = (field: keyof TodayJobForm, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const updateAssignedUser = (assignedToUid: string) => {
+    const assignedUser = assignableUsers.find((row) => row.uid === assignedToUid);
+    setFormData((prev) => ({
+      ...prev,
+      assignedToUid,
+      driverName: assignedUser?.displayName || prev.driverName,
+    }));
   };
 
   const updatePoint = (point: 'pickup' | 'delivery', field: keyof DispatchPoint, value: string) => {
@@ -338,10 +371,10 @@ const TodayJobs: React.FC = () => {
     doc.text('ใบสั่งงาน', 105, 26, { align: 'center' });
 
     drawLineField(doc, 'บริษัทผู้ว่าจ้าง :', formData.employerCompany, 12, 45, 40);
-    drawLineField(doc, 'เลขจ๊อบ :', formData.jobNo, 130, 154, 40);
+    drawLineField(doc, 'เลขที่ใบสั่งงาน :', formData.workOrderNo, 130, 154, 40);
     drawLineField(doc, 'วันที่รับงาน :', formData.workDate, 12, 45, 50);
     drawLineField(doc, 'ชนิดรถ :', formData.vehicleType, 84, 108, 50);
-    drawLineField(doc, 'เลขตั๋ว :', formData.ticketNo, 130, 154, 50);
+    drawLineField(doc, 'Job No. :', formData.jobNo, 130, 154, 50);
     drawLineField(doc, 'สินค้าที่รับ :', formData.productName, 12, 45, 60);
     drawLineField(doc, 'ปริมาณ :', formData.quantity, 130, 154, 60);
 
@@ -398,17 +431,35 @@ const TodayJobs: React.FC = () => {
       alert('ไม่พบผู้ใช้งานที่ล็อกอิน กรุณาออกแล้วเข้าใหม่');
       return;
     }
+    if (!formData.assignedToUid) {
+      alert('กรุณาระบุพนักงานผู้รับงาน');
+      return;
+    }
 
     setIsSaving(true);
     try {
-      await addTodayJob({
+      const assignedName = selectedAssignedUser?.displayName || formData.driverName || '-';
+      const createdJob = await addTodayJob({
         ...formData,
+        ticketNo: formData.workOrderNo,
+        assignedToName: assignedName,
         summaryText,
         status: 'pending',
+        readyToClose: false,
+        readyToCloseAt: null,
+        acceptedAt: null,
         completedAt: null,
+        completedByUid: '',
+        lastSavedAt: Date.now(),
+        updatedByUid: user.uid,
         createdByUid: user.uid,
         createdByName: userProfile?.displayName || user.email || 'unknown'
       });
+      try {
+        await triggerTodayJobNotification('create', createdJob.id);
+      } catch (notifyError) {
+        console.error('Notify create event failed:', notifyError);
+      }
       setShowSuccessModal(true);
       setTimeout(() => setShowSuccessModal(false), 1300);
       setFormData(initialFormData());
@@ -435,8 +486,25 @@ const TodayJobs: React.FC = () => {
     try {
       await updateTodayJob(jobId, {
         status,
+        readyToClose: status === 'in_progress' ? true : false,
+        readyToCloseAt: status === 'in_progress' ? Date.now() : null,
         completedAt: status === 'completed' ? Date.now() : null,
       });
+
+      if (status === 'in_progress') {
+        try {
+          await triggerTodayJobNotification('ready', jobId);
+        } catch (notifyError) {
+          console.error('Notify ready event failed:', notifyError);
+        }
+      }
+      if (status === 'completed') {
+        try {
+          await triggerTodayJobNotification('complete', jobId);
+        } catch (notifyError) {
+          console.error('Notify complete event failed:', notifyError);
+        }
+      }
     } catch (error) {
       console.error('Update status failed:', error);
       if (error instanceof FirebaseError) {
@@ -463,6 +531,11 @@ const TodayJobs: React.FC = () => {
     setEditForm((prev) => (prev ? { ...prev, [field]: value } : prev));
   };
 
+  const handleEditAssignedUser = (assignedToUid: string) => {
+    const assignedUser = assignableUsers.find((row) => row.uid === assignedToUid);
+    setEditForm((prev) => (prev ? { ...prev, assignedToUid, driverName: assignedUser?.displayName || prev.driverName } : prev));
+  };
+
   const handleEditPoint = (point: 'pickup' | 'delivery', field: keyof DispatchPoint, value: string) => {
     setEditForm((prev) => (prev ? { ...prev, [point]: { ...prev[point], [field]: value } } : prev));
   };
@@ -472,10 +545,24 @@ const TodayJobs: React.FC = () => {
     setIsEditingSave(true);
 
     try {
+      const assignedName =
+        assignableUsers.find((row) => row.uid === editForm.assignedToUid)?.displayName ||
+        editForm.driverName ||
+        '-';
+
       await updateTodayJob(editingJobId, {
         ...editForm,
+        ticketNo: editForm.workOrderNo,
+        assignedToName: assignedName,
         summaryText: buildSummaryText(editForm),
+        lastSavedAt: Date.now(),
+        updatedByUid: user?.uid || '',
       });
+      try {
+        await triggerTodayJobNotification('update', editingJobId);
+      } catch (notifyError) {
+        console.error('Notify update event failed:', notifyError);
+      }
       setEditingJobId(null);
       setEditForm(null);
     } catch (error) {
@@ -627,8 +714,8 @@ const TodayJobs: React.FC = () => {
               <input className={inputClass} value={formData.employerCompany} onChange={(e) => updateField('employerCompany', e.target.value)} />
             </label>
             <label className="text-sm">
-              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>เลขจ๊อบ</span>
-              <input className={inputClass} value={formData.jobNo} onChange={(e) => updateField('jobNo', e.target.value)} />
+              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>เลขที่ใบสั่งงาน (Work Order)</span>
+              <input className={inputClass} value={formData.workOrderNo} onChange={(e) => updateField('workOrderNo', e.target.value)} />
             </label>
           </div>
 
@@ -642,8 +729,8 @@ const TodayJobs: React.FC = () => {
               <input list="vehicle-type-options" className={selectClass} value={formData.vehicleType} onChange={(e) => updateField('vehicleType', e.target.value)} placeholder="พิมพ์ค้นหาหรือเลือกประเภทรถ" />
             </label>
             <label className="text-sm md:col-span-1">
-              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>เลขตั๋ว</span>
-              <input className={inputClass} value={formData.ticketNo} onChange={(e) => updateField('ticketNo', e.target.value)} />
+              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>Job No.</span>
+              <input className={inputClass} value={formData.jobNo} onChange={(e) => updateField('jobNo', e.target.value)} />
             </label>
             <label className="text-sm md:col-span-1">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ปริมาณ</span>
@@ -747,7 +834,22 @@ const TodayJobs: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <label className="text-sm">
+              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>มอบหมายพนักงาน (แอพ)</span>
+              <select
+                className={selectClass}
+                value={formData.assignedToUid}
+                onChange={(e) => updateAssignedUser(e.target.value)}
+              >
+                <option value="">เลือกผู้รับงาน</option>
+                {assignableUsers.map((staff) => (
+                  <option key={staff.uid} value={staff.uid}>
+                    {staff.displayName} ({staff.email}) {staff.role === 'admin' ? '[Admin]' : '[User]'}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="text-sm">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>พนักงานขับรถ</span>
               <input list="driver-options" className={selectClass} value={formData.driverName} onChange={(e) => updateField('driverName', e.target.value)} placeholder="พิมพ์ค้นหาคนขับ" />
@@ -762,6 +864,12 @@ const TodayJobs: React.FC = () => {
             <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>เบอร์ติดต่อ</span>
             <input className={inputClass} value={formData.driverPhone} onChange={(e) => updateField('driverPhone', e.target.value)} />
           </label>
+
+          {formData.assignedToUid && (
+            <div className={`rounded-xl border px-4 py-3 text-sm ${isDark ? 'border-dark-muted/25 bg-dark-bg/40 text-dark-muted' : 'border-sky-200 bg-sky-50 text-sky-700'}`}>
+              มอบหมายให้: {selectedAssignedUser?.displayName || formData.driverName || '-'}
+            </div>
+          )}
 
           <label className="block text-sm">
             <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>หมายเหตุสำคัญ</span>
@@ -815,7 +923,7 @@ const TodayJobs: React.FC = () => {
             <p className={`mt-1 text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>คลิกที่แถวเพื่อเปิดรายละเอียด/แก้ไข/ลบ</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="ค้นหา เลขจ๊อบ/คนขับ/ทะเบียน" className={isDark ? 'min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/50 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none' : 'min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none'} />
+            <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="ค้นหา Job No./คนขับ/ทะเบียน" className={isDark ? 'min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/50 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none' : 'min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none'} />
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | JobStatus)} className={isDark ? 'min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/50 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none' : 'min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none'}>
               <option value="all">ทุกสถานะ</option>
               <option value="pending">รอดำเนินการ</option>
@@ -851,6 +959,7 @@ const TodayJobs: React.FC = () => {
                 </div>
                 <div className="mt-3 grid grid-cols-1 gap-1 text-sm">
                   <p>คนขับ: {job.driverName || '-'} ({job.plateNo || '-'})</p>
+                  <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ผู้รับงานแอพ: {job.assignedToName || '-'}</p>
                   <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>{job.pickup.location || '-'} → {job.delivery.location || '-'}</p>
                   <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>{job.pickup.time || '-'} / {job.delivery.time || '-'}</p>
                 </div>
@@ -864,7 +973,7 @@ const TodayJobs: React.FC = () => {
             <thead className={isDark ? 'bg-dark-bg/60 text-dark-muted' : 'bg-slate-100 text-slate-600'}>
               <tr>
                 <th className="px-3 py-2 text-left">วันที่งาน</th>
-                <th className="px-3 py-2 text-left">เลขจ๊อบ</th>
+                <th className="px-3 py-2 text-left">Job No.</th>
                 <th className="px-3 py-2 text-left">ลูกค้า</th>
                 <th className="px-3 py-2 text-left">คนขับ/ทะเบียน</th>
                 <th className="px-3 py-2 text-left">ต้นทาง-ปลายทาง</th>
@@ -884,6 +993,7 @@ const TodayJobs: React.FC = () => {
                     <td className="px-3 py-3 align-top">{job.employerCompany || '-'}</td>
                     <td className="px-3 py-3 align-top">
                       <p>{job.driverName || '-'}</p>
+                      <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>แอพ: {job.assignedToName || '-'}</p>
                       <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{job.plateNo || '-'}</p>
                     </td>
                     <td className="px-3 py-3 align-top text-xs">
@@ -950,7 +1060,10 @@ const TodayJobs: React.FC = () => {
             <div className="grid grid-cols-2 gap-3">
               <div><span className="font-medium">ลูกค้า:</span> {selectedJob.employerCompany || '-'}</div>
               <div><span className="font-medium">วันที่งาน:</span> {asDateOnly(selectedJob.workDate)}</div>
+              <div><span className="font-medium">เลขที่ใบสั่งงาน:</span> {selectedJob.workOrderNo || selectedJob.ticketNo || '-'}</div>
+              <div><span className="font-medium">Job No.:</span> {selectedJob.jobNo || '-'}</div>
               <div><span className="font-medium">คนขับ:</span> {selectedJob.driverName || '-'}</div>
+              <div><span className="font-medium">ผู้รับงานแอพ:</span> {selectedJob.assignedToName || '-'}</div>
               <div><span className="font-medium">ทะเบียน:</span> {selectedJob.plateNo || '-'}</div>
               <div><span className="font-medium">ชนิดรถ:</span> {selectedJob.vehicleType || '-'}</div>
               <div><span className="font-medium">สินค้า:</span> {selectedJob.productName || '-'}</div>
@@ -980,8 +1093,17 @@ const TodayJobs: React.FC = () => {
         {editForm && (
           <div className="space-y-3 text-sm max-h-[70vh] overflow-y-auto pr-1">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <input className={selectClass} value={editForm.jobNo} onChange={(e) => handleEditField('jobNo', e.target.value)} placeholder="เลขจ๊อบ" />
+              <input className={selectClass} value={editForm.workOrderNo} onChange={(e) => handleEditField('workOrderNo', e.target.value)} placeholder="เลขที่ใบสั่งงาน (Work Order)" />
+              <input className={selectClass} value={editForm.jobNo} onChange={(e) => handleEditField('jobNo', e.target.value)} placeholder="Job No." />
               <input type="date" className={selectClass} value={editForm.workDate} onChange={(e) => handleEditField('workDate', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
+              <select className={selectClass} value={editForm.assignedToUid} onChange={(e) => handleEditAssignedUser(e.target.value)}>
+                <option value="">เลือกผู้รับงานแอพ</option>
+                {assignableUsers.map((staff) => (
+                  <option key={staff.uid} value={staff.uid}>
+                    {staff.displayName} ({staff.email}) {staff.role === 'admin' ? '[Admin]' : '[User]'}
+                  </option>
+                ))}
+              </select>
               <input list="driver-options" className={selectClass} value={editForm.driverName} onChange={(e) => handleEditField('driverName', e.target.value)} placeholder="คนขับ" />
               <input list="plate-options" className={selectClass} value={editForm.plateNo} onChange={(e) => handleEditField('plateNo', e.target.value)} placeholder="ทะเบียน" />
               <input list="vehicle-type-options" className={selectClass} value={editForm.vehicleType} onChange={(e) => handleEditField('vehicleType', e.target.value)} placeholder="ชนิดรถ" />

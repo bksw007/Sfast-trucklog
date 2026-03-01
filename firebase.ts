@@ -3,6 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getAuth } from 'firebase/auth';
+import { getFunctions } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -25,5 +26,8 @@ export const storage = getStorage(app);
 
 // Initialize Auth
 export const auth = getAuth(app);
+
+// Initialize Cloud Functions
+export const cloudFunctions = getFunctions(app, 'asia-southeast1');
 
 export default app;

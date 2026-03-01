@@ -1,16 +1,20 @@
 import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
+import DriverLayout from './components/DriverLayout';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider, useData } from './contexts/DataContext';
 import SyncModal from './components/SyncModal';
 import { Loader2 } from 'lucide-react';
+import type { DriverView } from './pages/DriverJobsBoard';
 
 // Lazy load pages for better performance
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const EntryForm = lazy(() => import('./pages/EntryForm'));
 const DataTable = lazy(() => import('./pages/DataTable'));
 const TodayJobs = lazy(() => import('./pages/TodayJobs'));
+const DriverJobsBoard = lazy(() => import('./pages/DriverJobsBoard'));
+const DriverProfile = lazy(() => import('./pages/DriverProfile'));
 const Login = lazy(() => import('./pages/Login'));
 const Settings = lazy(() => import('./pages/Settings'));
 
@@ -93,9 +97,90 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
+const DriverPage: React.FC<{ view: DriverView }> = ({ view }) => (
+  <DriverLayout>
+    <Suspense fallback={<PageLoader />}>
+      <DriverJobsBoard view={view} />
+    </Suspense>
+  </DriverLayout>
+);
+
+const AdminRoutes: React.FC = () => (
+  <ProtectedContent>
+    <Routes>
+      <Route path="/login" element={<Navigate to="/" replace />} />
+      <Route path="/" element={
+        <Layout>
+          <Suspense fallback={<PageLoader />}>
+            <Dashboard />
+          </Suspense>
+        </Layout>
+      } />
+      <Route path="/entry" element={
+        <Layout>
+          <Suspense fallback={<PageLoader />}>
+            <EntryForm />
+          </Suspense>
+        </Layout>
+      } />
+      <Route path="/today" element={
+        <Layout>
+          <Suspense fallback={<PageLoader />}>
+            <TodayJobs />
+          </Suspense>
+        </Layout>
+      } />
+      <Route path="/data" element={
+        <Layout>
+          <Suspense fallback={<PageLoader />}>
+            <DataTable />
+          </Suspense>
+        </Layout>
+      } />
+      <Route path="/settings" element={
+        <Layout>
+          <Suspense fallback={<PageLoader />}>
+            <Settings />
+          </Suspense>
+        </Layout>
+      } />
+      <Route path="/driver/*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  </ProtectedContent>
+);
+
+const DriverRoutes: React.FC = () => (
+  <Routes>
+    <Route path="/login" element={<Navigate to="/driver/today" replace />} />
+    <Route path="/driver/today" element={<DriverPage view="today" />} />
+    <Route path="/driver/active" element={<Navigate to="/driver/today" replace />} />
+    <Route path="/driver/ready-to-close" element={<DriverPage view="ready-to-close" />} />
+    <Route path="/driver/history" element={<DriverPage view="history" />} />
+    <Route path="/driver/entry" element={
+      <DataProvider>
+        <DriverLayout>
+          <Suspense fallback={<PageLoader />}>
+            <EntryForm />
+          </Suspense>
+        </DriverLayout>
+      </DataProvider>
+    } />
+    <Route path="/driver/profile" element={
+      <DriverLayout>
+        <Suspense fallback={<PageLoader />}>
+          <DriverProfile />
+        </Suspense>
+      </DriverLayout>
+    } />
+    <Route path="/driver" element={<Navigate to="/driver/today" replace />} />
+    <Route path="*" element={<Navigate to="/driver/today" replace />} />
+  </Routes>
+);
+
 // App Routes component (needs to be inside AuthProvider)
 const AppRoutes: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, userProfile, loading } = useAuth();
 
   if (loading) {
     return <AuthLoader />;
@@ -111,50 +196,9 @@ const AppRoutes: React.FC = () => {
     );
   }
 
-  // Authenticated - wrap with DataProvider
-  return (
-    <ProtectedContent>
-      <Routes>
-        <Route path="/login" element={<Navigate to="/" replace />} />
-        <Route path="/" element={
-          <Layout>
-            <Suspense fallback={<PageLoader />}>
-              <Dashboard />
-            </Suspense>
-          </Layout>
-        } />
-        <Route path="/entry" element={
-          <Layout>
-            <Suspense fallback={<PageLoader />}>
-              <EntryForm />
-            </Suspense>
-          </Layout>
-        } />
-        <Route path="/today" element={
-          <Layout>
-            <Suspense fallback={<PageLoader />}>
-              <TodayJobs />
-            </Suspense>
-          </Layout>
-        } />
-        <Route path="/data" element={
-          <Layout>
-            <Suspense fallback={<PageLoader />}>
-              <DataTable />
-            </Suspense>
-          </Layout>
-        } />
-        <Route path="/settings" element={
-          <Layout>
-            <Suspense fallback={<PageLoader />}>
-              <Settings />
-            </Suspense>
-          </Layout>
-        } />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </ProtectedContent>
-  );
+  if (userProfile?.role === 'admin') return <AdminRoutes />;
+
+  return <DriverRoutes />;
 };
 
 const App: React.FC = () => {

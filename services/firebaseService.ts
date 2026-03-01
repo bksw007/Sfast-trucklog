@@ -10,6 +10,7 @@ import {
   orderBy,
   Timestamp,
   getDocs,
+  getDoc,
   where,
   writeBatch,
 } from 'firebase/firestore';
@@ -19,14 +20,17 @@ import {
   getDownloadURL,
   deleteObject,
 } from 'firebase/storage';
+import { httpsCallable } from 'firebase/functions';
 import imageCompression from 'browser-image-compression';
-import { db, storage } from '../firebase';
+import { cloudFunctions, db, storage } from '../firebase';
 import { JobEntry, AppData, OptionCategory, TodayJobEntry } from '../types';
 
 // Collection names
 const JOBS_COLLECTION = 'jobs';
 const OPTIONS_COLLECTION = 'options';
 const TODAY_JOBS_COLLECTION = 'today_jobs';
+const NOTIFY_CALLABLE_NAME = 'dispatchTodayJobNotification';
+const SYNC_TODAY_JOB_CALLABLE_NAME = 'syncTodayJobToJobs';
 
 // Image compression options
 const COMPRESSION_OPTIONS = {
@@ -308,6 +312,40 @@ export const subscribeToTodayJobs = (
 };
 
 /**
+ * Subscribe to today_jobs by assigned user (driver view)
+ */
+export const subscribeToTodayJobsByAssignee = (
+  assignedToUid: string,
+  callback: (jobs: TodayJobEntry[]) => void,
+  onError?: (error: Error) => void
+): (() => void) => {
+  const jobsQuery = query(
+    collection(db, TODAY_JOBS_COLLECTION),
+    where('assignedToUid', '==', assignedToUid)
+  );
+
+  const unsubscribe = onSnapshot(
+    jobsQuery,
+    (snapshot) => {
+      const jobs: TodayJobEntry[] = snapshot.docs.map((jobDoc) => ({
+        id: jobDoc.id,
+        ...jobDoc.data(),
+      })) as TodayJobEntry[];
+
+      jobs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+      callback(jobs);
+    },
+    (error) => {
+      console.error('[Firebase] Today jobs by assignee subscription error:', error);
+      onError?.(error);
+    }
+  );
+
+  return unsubscribe;
+};
+
+/**
  * Update selected fields in today_jobs document
  */
 export const updateTodayJob = async (
@@ -323,6 +361,33 @@ export const updateTodayJob = async (
  */
 export const deleteTodayJob = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, TODAY_JOBS_COLLECTION, id));
+};
+
+export const getTodayJobById = async (id: string): Promise<TodayJobEntry | null> => {
+  const snapshot = await getDoc(doc(db, TODAY_JOBS_COLLECTION, id));
+  if (!snapshot.exists()) return null;
+  return {
+    id: snapshot.id,
+    ...snapshot.data(),
+  } as TodayJobEntry;
+};
+
+export const triggerTodayJobNotification = async (
+  eventType: 'create' | 'update' | 'accept' | 'ready' | 'complete',
+  jobId: string
+): Promise<void> => {
+  const callable = httpsCallable(cloudFunctions, NOTIFY_CALLABLE_NAME);
+  await callable({
+    eventType,
+    jobId,
+  });
+};
+
+export const syncTodayJobToJobs = async (todayJobId: string): Promise<void> => {
+  const callable = httpsCallable(cloudFunctions, SYNC_TODAY_JOB_CALLABLE_NAME);
+  await callable({
+    todayJobId,
+  });
 };
 
 /**
@@ -596,6 +661,10 @@ export const firebaseService = {
   subscribeToJobs,
   subscribeToOptions,
   subscribeToTodayJobs,
+  subscribeToTodayJobsByAssignee,
+  triggerTodayJobNotification,
+  syncTodayJobToJobs,
+  getTodayJobById,
   addJob,
   addTodayJob,
   updateTodayJob,

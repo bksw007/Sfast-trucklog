@@ -28,3 +28,8 @@ backups/
 
 # Local tool configs
 .config/
+
+# Firebase Functions local env (secrets)
+functions/.env
+functions/.env.*
+!functions/.env.example

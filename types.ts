@@ -37,9 +37,11 @@ export interface TodayJobEntry {
   jobNo: string;
   workDate: string;
   vehicleType: string;
-  ticketNo: string;
+  ticketNo?: string; // legacy field (used as Work Order in old records)
+  workOrderNo?: string;
   productName: string;
   quantity: string;
+  rounds?: number;
   pickup: DispatchPoint;
   delivery: DispatchPoint;
   driverName: string;
@@ -48,6 +50,15 @@ export interface TodayJobEntry {
   importantNote: string;
   summaryText: string;
   status: 'pending' | 'in_progress' | 'completed';
+  assignedToUid?: string;
+  assignedToName?: string;
+  readyToClose?: boolean;
+  readyToCloseAt?: number | null;
+  acceptedAt?: number | null;
+  acceptedByUid?: string;
+  completedByUid?: string;
+  lastSavedAt?: number | null;
+  updatedByUid?: string;
   completedAt?: number | null;
   autoNotifyLine?: boolean;
   autoNotifyTelegram?: boolean;
@@ -78,8 +89,20 @@ export type UserRole = 'admin' | 'user';
 export interface UserProfile {
   uid: string;
   email: string;
+  fullName?: string;
   displayName: string;
   role: UserRole;
   createdAt: number;
+  employeeCode?: string;
+  nickname?: string;
+  phoneNumber?: string;
+  lineUserId?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  address?: string;
+  personalNote?: string;
+  profileUpdatedAt?: number;
   photoURL?: string;
+  fcmTokens?: string[];
+  lastPushTokenUpdatedAt?: number;
 }

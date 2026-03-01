@@ -1,0 +1,34 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isImageUpload() {
+      return request.resource != null &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // Driver/Admin profile image
+    match /users/{userId}/profile/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() &&
+        request.auth.uid == userId &&
+        isImageUpload() &&
+        request.resource.size < 8 * 1024 * 1024;
+    }
+
+    // Existing job images
+    match /jobs/{jobId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() &&
+        isImageUpload() &&
+        request.resource.size < 12 * 1024 * 1024;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

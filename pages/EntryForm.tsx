@@ -1,6 +1,7 @@
-import React, { useState, useRef, useMemo } from 'react';
-import { JobEntry, OptionCategory } from '../types';
-import { addJob, addOption } from '../services/firebaseService';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import { JobEntry, OptionCategory, TodayJobEntry } from '../types';
+import { addJob, addOption, getTodayJobById, syncTodayJobToJobs, updateTodayJob } from '../services/firebaseService';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Plus, Save, Loader2, Camera, X, Image as ImageIcon, FileText } from 'lucide-react';
@@ -8,14 +9,50 @@ import { useTheme } from '../contexts/ThemeContext';
 import Modal from '../components/Modal';
 import ConfirmModal from '../components/ConfirmModal';
 import { formatDate } from '../utils/formatters';
+import { FirebaseError } from 'firebase/app';
+
+type DriverEntryRouteState = {
+  fromTodayJob?: {
+    id?: string;
+    jobNo?: string;
+    workOrderNo?: string;
+    date?: string;
+    pickupLocation?: string;
+    dropoffLocation?: string;
+    vehicleType?: string;
+    licensePlate?: string;
+    driverName?: string;
+    rounds?: number;
+  };
+};
+
+const toPositiveRounds = (value: unknown): number => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 1;
+  return Math.round(parsed);
+};
+
+const parseRoundsFromQuantity = (value?: string): number => {
+  const match = (value || '').match(/(\d+(\.\d+)?)/);
+  if (!match) return 1;
+  return toPositiveRounds(match[1]);
+};
 
 const EntryForm: React.FC = () => {
   const { theme } = useTheme();
   const { data } = useData();
-  const { userProfile } = useAuth();
+  const { user, userProfile } = useAuth();
+  const location = useLocation();
   const isDark = theme === 'dark';
   const isAdmin = userProfile?.role === 'admin';
+  const isDriverEntryMode = location.pathname === '/driver/entry';
+  const queryParams = new URLSearchParams(location.search);
+  const queryJobId = queryParams.get('jobId') || '';
+  const routeState = (location.state || null) as DriverEntryRouteState | null;
+  const fromTodayJob = routeState?.fromTodayJob;
+  const sourceJobId = fromTodayJob?.id || queryJobId;
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sourceTodayJob, setSourceTodayJob] = useState<TodayJobEntry | null>(null);
   
   // Origin Image State (รูปภาพต้นทาง)
   const [originImages, setOriginImages] = useState<File[]>([]);
@@ -67,6 +104,66 @@ const EntryForm: React.FC = () => {
     customerPrice: '' as any,
     jointPrice: '' as any
   });
+
+  const applyTodayJobData = (payload?: {
+    jobNo?: string;
+    workOrderNo?: string;
+    date?: string;
+    pickupLocation?: string;
+    dropoffLocation?: string;
+    vehicleType?: string;
+    licensePlate?: string;
+    driverName?: string;
+    rounds?: number;
+  }) => {
+    if (!payload) return;
+    setFormData((prev) => ({
+      ...prev,
+      date: payload.date || prev.date,
+      pickupLocation: payload.pickupLocation || prev.pickupLocation,
+      dropoffLocation: payload.dropoffLocation || prev.dropoffLocation,
+      vehicleType: payload.vehicleType || prev.vehicleType,
+      licensePlate: payload.licensePlate || prev.licensePlate,
+      driverName: payload.driverName || prev.driverName,
+      jobNo: payload.jobNo || prev.jobNo,
+      workOrderNo: payload.workOrderNo || prev.workOrderNo,
+      rounds: payload.rounds ? toPositiveRounds(payload.rounds) : prev.rounds,
+    }));
+  };
+
+  useEffect(() => {
+    if (!isDriverEntryMode) return;
+    applyTodayJobData(fromTodayJob);
+
+    if (!sourceJobId) return;
+
+    let cancelled = false;
+    const loadTodayJob = async () => {
+      try {
+        const row = await getTodayJobById(sourceJobId);
+        if (!row || cancelled) return;
+        setSourceTodayJob(row);
+        applyTodayJobData({
+          jobNo: row.jobNo,
+          workOrderNo: row.workOrderNo || row.ticketNo,
+          date: row.workDate,
+          pickupLocation: row.pickup?.location,
+          dropoffLocation: row.delivery?.location,
+          vehicleType: row.vehicleType,
+          licensePlate: row.plateNo,
+          driverName: row.driverName,
+          rounds: row.rounds || parseRoundsFromQuantity(row.quantity),
+        });
+      } catch (error) {
+        console.error('Failed to load today job for driver entry:', error);
+      }
+    };
+
+    void loadTodayJob();
+    return () => {
+      cancelled = true;
+    };
+  }, [fromTodayJob, isDriverEntryMode, queryJobId, sourceJobId]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -189,6 +286,63 @@ const EntryForm: React.FC = () => {
     setIsSubmitting(true);
     
     try {
+      if (isDriverEntryMode) {
+        if (!sourceJobId) {
+          setIsSubmitting(false);
+          alert('ไม่พบเลขอ้างอิงใบแจ้งงาน กรุณากลับไปเลือกงานใหม่');
+          return;
+        }
+
+        const latestTodayJob = sourceTodayJob || await getTodayJobById(sourceJobId);
+        if (!latestTodayJob) {
+          setIsSubmitting(false);
+          alert('ไม่พบข้อมูลใบแจ้งงานล่าสุด กรุณากลับไปหน้า งานวันนี้ แล้วเข้าใหม่');
+          return;
+        }
+        setSourceTodayJob(latestTodayJob);
+
+        const pickupBase = latestTodayJob.pickup || {
+          location: '',
+          date: '',
+          time: '',
+          contact: '',
+        };
+        const deliveryBase = latestTodayJob.delivery || {
+          location: '',
+          date: '',
+          time: '',
+          contact: '',
+        };
+
+        await updateTodayJob(sourceJobId, {
+          jobNo: formData.jobNo || latestTodayJob.jobNo || '',
+          workOrderNo: formData.workOrderNo || latestTodayJob.workOrderNo || latestTodayJob.ticketNo || '',
+          ticketNo: formData.workOrderNo || latestTodayJob.workOrderNo || latestTodayJob.ticketNo || '',
+          workDate: formData.date,
+          vehicleType: formData.vehicleType,
+          plateNo: formData.licensePlate,
+          driverName: formData.driverName,
+          rounds: toPositiveRounds(formData.rounds),
+          pickup: {
+            ...pickupBase,
+            location: formData.pickupLocation || pickupBase.location || '',
+          },
+          delivery: {
+            ...deliveryBase,
+            location: formData.dropoffLocation || deliveryBase.location || '',
+          },
+          importantNote: formData.remarks || latestTodayJob.importantNote || '',
+          lastSavedAt: Date.now(),
+          updatedByUid: user?.uid || latestTodayJob.updatedByUid || '',
+        });
+        await syncTodayJobToJobs(sourceJobId);
+
+        setIsSubmitting(false);
+        setShowSuccessModal(true);
+        setTimeout(() => setShowSuccessModal(false), 1500);
+        return;
+      }
+
       // Use Firebase service with multiple images
       await addJob(
         formData, 
@@ -227,7 +381,11 @@ const EntryForm: React.FC = () => {
     } catch (error) {
       setIsSubmitting(false);
       console.error('Failed to save:', error);
-      alert('เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่');
+      if (error instanceof FirebaseError) {
+        alert(`เกิดข้อผิดพลาดในการบันทึก: ${error.code}`);
+      } else {
+        alert('เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่');
+      }
     }
   };
 
@@ -287,7 +445,18 @@ const EntryForm: React.FC = () => {
       jointPrice: 'ราคาจ่ายรถร่วม'
     };
 
-    const data = Object.entries(formData).map(([key, value]) => ({
+    const hiddenFields = new Set<string>();
+    if (!isAdmin) {
+      hiddenFields.add('customerPrice');
+      hiddenFields.add('jointPrice');
+    }
+    if (isDriverEntryMode) {
+      hiddenFields.add('jobNo');
+    }
+
+    const data = Object.entries(formData)
+      .filter(([key]) => !hiddenFields.has(key))
+      .map(([key, value]) => ({
       label: labels[key] || key,
       value: key === 'date' ? formatDate(String(value)) : String(value)
     }));
@@ -333,145 +502,188 @@ const EntryForm: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
-       <header className="mb-8">
+      <header className="mb-8">
         <h2 className={`text-3xl font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-          บันทึกงานวิ่งรถ
+          {isDriverEntryMode ? 'บันทึกหน้างาน' : 'บันทึกงานวิ่งรถ'}
         </h2>
         <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>
-          กรอกข้อมูลงานวิ่งรถใหม่ลงในระบบ
+          {isDriverEntryMode ? 'อัปเดตข้อมูลหน้างานจากใบแจ้งงานที่ได้รับมอบหมาย' : 'กรอกข้อมูลงานวิ่งรถใหม่ลงในระบบ'}
         </p>
       </header>
 
       <form onSubmit={handleSubmitClick} className={`p-8 rounded-3xl border shadow-2xl space-y-6 ${
         isDark ? 'bg-dark-card border-dark-muted/10' : 'bg-light-card border-light-muted/10'
       }`}>
-        
-        {/* Row 1: Date & Rounds */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormGroup label="วันที่ (Date)" isDark={isDark}>
-            <div className="relative">
-              <input 
-                type="date" 
-                name="date"
-                required
-                value={formData.date}
+        {isDriverEntryMode ? (
+          <div className={`space-y-3 rounded-2xl border p-4 ${isDark ? 'border-dark-muted/30 bg-dark-bg/30' : 'border-light-muted/25 bg-slate-50'}`}>
+            <DisplayRow label="Job No." value={formData.jobNo || '-'} isDark={isDark} />
+            <DisplayRow label="เลขที่ใบสั่งงาน (Work Order)" value={formData.workOrderNo || '-'} isDark={isDark} />
+            <DisplayRow label="วันที่ (Date)" value={formatDate(formData.date || '-')} isDark={isDark} />
+            <DisplayRow label="สถานที่รับ (Pickup)" value={formData.pickupLocation || '-'} isDark={isDark} />
+            <DisplayRow label="สถานที่ส่ง (Dropoff)" value={formData.dropoffLocation || '-'} isDark={isDark} />
+            <DisplayRow label="ประเภทรถ (Type)" value={formData.vehicleType || '-'} isDark={isDark} />
+            <DisplayRow label="ป้ายทะเบียน (Plate)" value={formData.licensePlate || '-'} isDark={isDark} />
+            <DisplayRow label="พนักงานขับรถ (Driver)" value={formData.driverName || '-'} isDark={isDark} />
+          </div>
+        ) : (
+          <>
+            {/* Row 1: Date & Rounds */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormGroup label="วันที่ (Date)" isDark={isDark}>
+                <div className="relative">
+                  <input 
+                    type="date" 
+                    name="date"
+                    required
+                    value={formData.date}
+                    onChange={handleInputChange}
+                    className={`${inputClass} cursor-pointer dark:[color-scheme:dark]`}
+                    onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                  />
+                </div>
+              </FormGroup>
+              <FormGroup label="จำนวนรอบ (Rounds)" isDark={isDark}>
+                <input 
+                  type="number" 
+                  name="rounds"
+                  min="1"
+                  required
+                  value={formData.rounds}
+                  onChange={handleInputChange}
+                  className={inputClass}
+                />
+              </FormGroup>
+            </div>
+
+            {/* Row 2: Locations */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <SelectWithAdd 
+                label="สถานที่รับ (Pickup)" 
+                name="pickupLocation"
+                value={formData.pickupLocation}
+                options={data.options.locations}
                 onChange={handleInputChange}
-                className={`${inputClass} cursor-pointer dark:[color-scheme:dark]`}
-                onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                onAdd={() => openAddModal(OptionCategory.LOCATION)}
+                isDark={isDark}
+              />
+              <SelectWithAdd 
+                label="สถานที่ส่ง (Dropoff)" 
+                name="dropoffLocation"
+                value={formData.dropoffLocation}
+                options={data.options.locations}
+                onChange={handleInputChange}
+                onAdd={() => openAddModal(OptionCategory.LOCATION)}
+                isDark={isDark}
               />
             </div>
-          </FormGroup>
-          <FormGroup label="จำนวนรอบ (Rounds)" isDark={isDark}>
-            <input 
-              type="number" 
-              name="rounds"
-              min="1"
-              required
-              value={formData.rounds}
-              onChange={handleInputChange}
-              className={inputClass}
-            />
-          </FormGroup>
-        </div>
 
-        {/* Row 2: Locations */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <SelectWithAdd 
-            label="สถานที่รับ (Pickup)" 
-            name="pickupLocation"
-            value={formData.pickupLocation}
-            options={data.options.locations}
-            onChange={handleInputChange}
-            onAdd={() => openAddModal(OptionCategory.LOCATION)}
-            isDark={isDark}
-          />
-          <SelectWithAdd 
-            label="สถานที่ส่ง (Dropoff)" 
-            name="dropoffLocation"
-            value={formData.dropoffLocation}
-            options={data.options.locations}
-            onChange={handleInputChange}
-            onAdd={() => openAddModal(OptionCategory.LOCATION)}
-            isDark={isDark}
-          />
-        </div>
+            {/* Row 3: Vehicle Info */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <SelectWithAdd 
+                label="ประเภทรถ (Type)" 
+                name="vehicleType"
+                value={formData.vehicleType}
+                options={data.options.vehicleTypes}
+                onChange={handleInputChange}
+                onAdd={() => openAddModal(OptionCategory.VEHICLE)}
+                isDark={isDark}
+              />
+              <SelectWithAdd 
+                label="ป้ายทะเบียน (Plate)" 
+                name="licensePlate"
+                value={formData.licensePlate}
+                options={data.options.licensePlates}
+                onChange={handleInputChange}
+                onAdd={() => openAddModal(OptionCategory.PLATE)}
+                isDark={isDark}
+              />
+              <SelectWithAdd 
+                label="พนักงานขับรถ (Driver)" 
+                name="driverName"
+                value={formData.driverName}
+                options={data.options.drivers}
+                onChange={handleInputChange}
+                onAdd={() => openAddModal(OptionCategory.DRIVER)}
+                isDark={isDark}
+              />
+            </div>
+          </>
+        )}
 
-        {/* Row 3: Vehicle Info */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <SelectWithAdd 
-            label="ประเภทรถ (Type)" 
-            name="vehicleType"
-            value={formData.vehicleType}
-            options={data.options.vehicleTypes}
-            onChange={handleInputChange}
-            onAdd={() => openAddModal(OptionCategory.VEHICLE)}
-            isDark={isDark}
-          />
-          <SelectWithAdd 
-            label="ป้ายทะเบียน (Plate)" 
-            name="licensePlate"
-            value={formData.licensePlate}
-            options={data.options.licensePlates}
-            onChange={handleInputChange}
-            onAdd={() => openAddModal(OptionCategory.PLATE)}
-            isDark={isDark}
-          />
-           <SelectWithAdd 
-            label="พนักงานขับรถ (Driver)" 
-            name="driverName"
-            value={formData.driverName}
-            options={data.options.drivers}
-            onChange={handleInputChange}
-            onAdd={() => openAddModal(OptionCategory.DRIVER)}
-            isDark={isDark}
-          />
-        </div>
+        {isDriverEntryMode && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormGroup label="จำนวนรอบ (Rounds)" isDark={isDark}>
+              <input
+                type="number"
+                name="rounds"
+                min="1"
+                required
+                value={formData.rounds}
+                onChange={handleInputChange}
+                className={inputClass}
+              />
+            </FormGroup>
+            <FormGroup label="เลขที่ใบสั่งงาน (Work Order)" isDark={isDark}>
+              <input
+                type="text"
+                name="workOrderNo"
+                value={formData.workOrderNo}
+                onChange={handleInputChange}
+                className={inputClass}
+              />
+            </FormGroup>
+          </div>
+        )}
 
         {/* Row 4: Job & Invoice */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-           <FormGroup label="Job No." isDark={isDark}>
-            <input 
-              type="text" 
-              name="jobNo"
-              value={formData.jobNo}
-              onChange={handleInputChange}
-              placeholder="e.g. JOB-001"
-              className={inputClass}
-            />
-          </FormGroup>
-          <FormGroup label="Invoice No." isDark={isDark}>
-            <input 
-              type="text" 
-              name="invNo"
-              value={formData.invNo}
-              onChange={handleInputChange}
-              placeholder="e.g. INV-2023-001"
-              className={inputClass}
-            />
-          </FormGroup>
-        </div>
+        {!isDriverEntryMode && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormGroup label="Job No." isDark={isDark}>
+              <input 
+                type="text" 
+                name="jobNo"
+                value={formData.jobNo}
+                onChange={handleInputChange}
+                placeholder="e.g. JOB-001"
+                className={inputClass}
+              />
+            </FormGroup>
+            <FormGroup label="Invoice No." isDark={isDark}>
+              <input 
+                type="text" 
+                name="invNo"
+                value={formData.invNo}
+                onChange={handleInputChange}
+                placeholder="e.g. INV-2023-001"
+                className={inputClass}
+              />
+            </FormGroup>
+          </div>
+        )}
 
         {/* Row 4.5: Work Order & Transport Doc */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormGroup label="เลขที่ใบสั่งงาน (Work Order)" isDark={isDark}>
-            <input 
-              type="text" 
-              name="workOrderNo"
-              value={formData.workOrderNo}
-              onChange={handleInputChange}
-              className={inputClass}
-            />
-          </FormGroup>
-          <FormGroup label="เลขที่ใบขนส่ง (Transport Doc)" isDark={isDark}>
-            <input 
-              type="text" 
-              name="transportDocNo"
-              value={formData.transportDocNo}
-              onChange={handleInputChange}
-              className={inputClass}
-            />
-          </FormGroup>
-        </div>
+        {!isDriverEntryMode && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormGroup label="เลขที่ใบสั่งงาน (Work Order)" isDark={isDark}>
+              <input 
+                type="text" 
+                name="workOrderNo"
+                value={formData.workOrderNo}
+                onChange={handleInputChange}
+                className={inputClass}
+              />
+            </FormGroup>
+            <FormGroup label="เลขที่ใบขนส่ง (Transport Doc)" isDark={isDark}>
+              <input 
+                type="text" 
+                name="transportDocNo"
+                value={formData.transportDocNo}
+                onChange={handleInputChange}
+                className={inputClass}
+              />
+            </FormGroup>
+          </div>
+        )}
 
         {/* Row 4.6: Fuel/Toll & Admin Prices */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -841,6 +1053,13 @@ const FormGroup: React.FC<{ label: string; children: React.ReactNode; isDark: bo
   <div className="flex flex-col gap-2">
     <label className={`text-sm font-medium ${isDark ? 'text-dark-text' : 'text-light-text'}`}>{label}</label>
     {children}
+  </div>
+);
+
+const DisplayRow: React.FC<{ label: string; value: string; isDark: boolean }> = ({ label, value, isDark }) => (
+  <div className="space-y-1">
+    <p className={`text-xs font-medium ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{label}</p>
+    <p className={`text-sm font-semibold ${isDark ? 'text-dark-text' : 'text-slate-900'}`}>{value}</p>
   </div>
 );
 

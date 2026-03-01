@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "backfill:today-jobs-assignee": "node scripts/backfill-today-jobs-assignee.mjs",
+    "backfill:today-jobs-assignee:apply": "node scripts/backfill-today-jobs-assignee.mjs --apply"
   },
   "dependencies": {
     "browser-image-compression": "^2.0.2",
