@@ -43,9 +43,9 @@ const EntryForm: React.FC = () => {
   const { data } = useData();
   const { user, userProfile } = useAuth();
   const location = useLocation();
-  const isDark = theme === 'dark';
-  const isAdmin = userProfile?.role === 'admin';
   const isDriverEntryMode = location.pathname === '/driver/entry';
+  const isDark = isDriverEntryMode ? false : theme === 'dark';
+  const isAdmin = userProfile?.role === 'admin';
   const queryParams = new URLSearchParams(location.search);
   const queryJobId = queryParams.get('jobId') || '';
   const routeState = (location.state || null) as DriverEntryRouteState | null;
@@ -494,42 +494,62 @@ const EntryForm: React.FC = () => {
     </div>
   );
 
-  const inputClass = `w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-accent-primary transition-all ${
-    isDark 
-      ? 'bg-dark-bg border-dark-muted/30 text-dark-text placeholder-dark-muted/50' 
-      : 'bg-light-bg border-light-muted/30 text-light-text placeholder-light-muted/50'
-  }`;
+  const inputClass = isDriverEntryMode
+    ? 'driver-clay-input w-full rounded-xl px-4 py-3 text-light-text transition-all focus:outline-none'
+    : `w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-accent-primary transition-all ${
+        isDark
+          ? 'bg-dark-bg border-dark-muted/30 text-dark-text placeholder-dark-muted/50'
+          : 'bg-light-bg border-light-muted/30 text-light-text placeholder-light-muted/50'
+      }`;
+
+  const pageClass = isDriverEntryMode ? 'driver-clay rounded-[28px] p-2 sm:p-3' : '';
+  const headerTitleClass = isDriverEntryMode ? 'text-3xl font-black text-slate-700' : `text-3xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`;
+  const headerTextClass = isDriverEntryMode ? 'driver-clay-muted' : isDark ? 'text-dark-muted' : 'text-light-muted';
+  const mutedTextClass = isDriverEntryMode ? 'driver-clay-muted' : isDark ? 'text-dark-muted' : 'text-light-muted';
+  const uploadButtonClass = isDriverEntryMode
+    ? 'driver-clay-btn driver-clay-btn-info w-full'
+    : `w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border transition-all ${
+        isDark
+          ? 'bg-dark-bg border-dark-muted/30 text-dark-text hover:border-accent-primary'
+          : 'bg-light-bg border-light-muted/30 text-light-text hover:border-accent-primary'
+      }`;
+  const submitButtonClass = isDriverEntryMode
+    ? 'driver-clay-btn driver-clay-btn-primary rounded-xl px-8 py-3 font-bold'
+    : 'flex items-center gap-2 bg-gradient-to-r from-accent-primary to-accent-secondary hover:brightness-110 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg shadow-accent-primary/25 disabled:opacity-50 disabled:cursor-not-allowed';
+  const formClass = isDriverEntryMode
+    ? 'driver-clay-card space-y-6 rounded-3xl border p-6 shadow-2xl sm:p-8'
+    : `space-y-6 rounded-3xl border p-8 shadow-2xl ${
+        isDark ? 'bg-dark-card border-dark-muted/10' : 'bg-light-card border-light-muted/10'
+      }`;
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className={`mx-auto max-w-4xl ${pageClass}`}>
       <header className="mb-8">
-        <h2 className={`text-3xl font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+        <h2 className={`${headerTitleClass} mb-2`}>
           {isDriverEntryMode ? 'บันทึกหน้างาน' : 'บันทึกงานวิ่งรถ'}
         </h2>
-        <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>
+        <p className={headerTextClass}>
           {isDriverEntryMode ? 'อัปเดตข้อมูลหน้างานจากใบแจ้งงานที่ได้รับมอบหมาย' : 'กรอกข้อมูลงานวิ่งรถใหม่ลงในระบบ'}
         </p>
       </header>
 
-      <form onSubmit={handleSubmitClick} className={`p-8 rounded-3xl border shadow-2xl space-y-6 ${
-        isDark ? 'bg-dark-card border-dark-muted/10' : 'bg-light-card border-light-muted/10'
-      }`}>
+      <form onSubmit={handleSubmitClick} className={formClass}>
         {isDriverEntryMode ? (
-          <div className={`space-y-3 rounded-2xl border p-4 ${isDark ? 'border-dark-muted/30 bg-dark-bg/30' : 'border-light-muted/25 bg-slate-50'}`}>
-            <DisplayRow label="Job No." value={formData.jobNo || '-'} isDark={isDark} />
-            <DisplayRow label="เลขที่ใบสั่งงาน (Work Order)" value={formData.workOrderNo || '-'} isDark={isDark} />
-            <DisplayRow label="วันที่ (Date)" value={formatDate(formData.date || '-')} isDark={isDark} />
-            <DisplayRow label="สถานที่รับ (Pickup)" value={formData.pickupLocation || '-'} isDark={isDark} />
-            <DisplayRow label="สถานที่ส่ง (Dropoff)" value={formData.dropoffLocation || '-'} isDark={isDark} />
-            <DisplayRow label="ประเภทรถ (Type)" value={formData.vehicleType || '-'} isDark={isDark} />
-            <DisplayRow label="ป้ายทะเบียน (Plate)" value={formData.licensePlate || '-'} isDark={isDark} />
-            <DisplayRow label="พนักงานขับรถ (Driver)" value={formData.driverName || '-'} isDark={isDark} />
+          <div className="driver-clay-soft space-y-3 rounded-2xl border p-4">
+            <DisplayRow label="Job No." value={formData.jobNo || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
+            <DisplayRow label="เลขที่ใบสั่งงาน (Work Order)" value={formData.workOrderNo || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
+            <DisplayRow label="วันที่ (Date)" value={formatDate(formData.date || '-')} isDark={isDark} isDriverStyle={isDriverEntryMode} />
+            <DisplayRow label="สถานที่รับ (Pickup)" value={formData.pickupLocation || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
+            <DisplayRow label="สถานที่ส่ง (Dropoff)" value={formData.dropoffLocation || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
+            <DisplayRow label="ประเภทรถ (Type)" value={formData.vehicleType || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
+            <DisplayRow label="ป้ายทะเบียน (Plate)" value={formData.licensePlate || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
+            <DisplayRow label="พนักงานขับรถ (Driver)" value={formData.driverName || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
           </div>
         ) : (
           <>
             {/* Row 1: Date & Rounds */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormGroup label="วันที่ (Date)" isDark={isDark}>
+              <FormGroup label="วันที่ (Date)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
                 <div className="relative">
                   <input 
                     type="date" 
@@ -542,7 +562,7 @@ const EntryForm: React.FC = () => {
                   />
                 </div>
               </FormGroup>
-              <FormGroup label="จำนวนรอบ (Rounds)" isDark={isDark}>
+              <FormGroup label="จำนวนรอบ (Rounds)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
                 <input 
                   type="number" 
                   name="rounds"
@@ -612,7 +632,7 @@ const EntryForm: React.FC = () => {
 
         {isDriverEntryMode && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormGroup label="จำนวนรอบ (Rounds)" isDark={isDark}>
+            <FormGroup label="จำนวนรอบ (Rounds)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
               <input
                 type="number"
                 name="rounds"
@@ -623,7 +643,7 @@ const EntryForm: React.FC = () => {
                 className={inputClass}
               />
             </FormGroup>
-            <FormGroup label="เลขที่ใบสั่งงาน (Work Order)" isDark={isDark}>
+            <FormGroup label="เลขที่ใบสั่งงาน (Work Order)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
               <input
                 type="text"
                 name="workOrderNo"
@@ -638,7 +658,7 @@ const EntryForm: React.FC = () => {
         {/* Row 4: Job & Invoice */}
         {!isDriverEntryMode && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormGroup label="Job No." isDark={isDark}>
+            <FormGroup label="Job No." isDark={isDark} isDriverStyle={isDriverEntryMode}>
               <input 
                 type="text" 
                 name="jobNo"
@@ -648,7 +668,7 @@ const EntryForm: React.FC = () => {
                 className={inputClass}
               />
             </FormGroup>
-            <FormGroup label="Invoice No." isDark={isDark}>
+            <FormGroup label="Invoice No." isDark={isDark} isDriverStyle={isDriverEntryMode}>
               <input 
                 type="text" 
                 name="invNo"
@@ -664,7 +684,7 @@ const EntryForm: React.FC = () => {
         {/* Row 4.5: Work Order & Transport Doc */}
         {!isDriverEntryMode && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormGroup label="เลขที่ใบสั่งงาน (Work Order)" isDark={isDark}>
+            <FormGroup label="เลขที่ใบสั่งงาน (Work Order)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
               <input 
                 type="text" 
                 name="workOrderNo"
@@ -673,7 +693,7 @@ const EntryForm: React.FC = () => {
                 className={inputClass}
               />
             </FormGroup>
-            <FormGroup label="เลขที่ใบขนส่ง (Transport Doc)" isDark={isDark}>
+            <FormGroup label="เลขที่ใบขนส่ง (Transport Doc)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
               <input 
                 type="text" 
                 name="transportDocNo"
@@ -687,7 +707,7 @@ const EntryForm: React.FC = () => {
 
         {/* Row 4.6: Fuel/Toll & Admin Prices */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <FormGroup label="ค่าน้ำมัน/ทางด่วน" isDark={isDark}>
+          <FormGroup label="ค่าน้ำมัน/ทางด่วน" isDark={isDark} isDriverStyle={isDriverEntryMode}>
             <input 
               type="number" 
               name="fuelAndToll"
@@ -700,7 +720,7 @@ const EntryForm: React.FC = () => {
 
           {isAdmin && (
             <>
-              <FormGroup label="ราคาเก็บลูกค้า (Admin Only)" isDark={isDark}>
+              <FormGroup label="ราคาเก็บลูกค้า (Admin Only)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
                 <div className="relative">
                   <input 
                     type="number" 
@@ -712,7 +732,7 @@ const EntryForm: React.FC = () => {
                   />
                 </div>
               </FormGroup>
-              <FormGroup label="ราคาจ่ายรถร่วม (Admin Only)" isDark={isDark}>
+              <FormGroup label="ราคาจ่ายรถร่วม (Admin Only)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
                 <div className="relative">
                   <input 
                     type="number" 
@@ -730,7 +750,7 @@ const EntryForm: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Row 5: Image Upload - Origin (รูปภาพต้นทาง) */}
-          <FormGroup label="รูปภาพต้นทาง (Origin Photo)" isDark={isDark}>
+          <FormGroup label="รูปภาพต้นทาง (Origin Photo)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
             <div className="space-y-3">
               {/* Hidden file inputs for origin */}
               <input
@@ -746,7 +766,7 @@ const EntryForm: React.FC = () => {
               {originPreviews.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className={`text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                    <span className={`text-sm ${mutedTextClass}`}>
                       {originPreviews.length} รูป
                     </span>
                     <button
@@ -783,24 +803,20 @@ const EntryForm: React.FC = () => {
               <button
                 type="button"
                 onClick={() => originFileInputRef.current?.click()}
-                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border transition-all ${
-                  isDark
-                    ? 'bg-dark-bg border-dark-muted/30 text-dark-text hover:border-accent-primary'
-                    : 'bg-light-bg border-light-muted/30 text-light-text hover:border-accent-primary'
-                }`}
+                className={uploadButtonClass}
               >
                 <Camera size={20} className="text-accent-primary" />
                 <span>เพิ่มรูปภาพ</span>
               </button>
               
-              <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+              <p className={`text-xs ${mutedTextClass}`}>
                 รูปภาพจะถูกบีบอัดอัตโนมัติก่อนอัพโหลด
               </p>
             </div>
           </FormGroup>
 
           {/* Row 5.5: Image Upload - Destination (รูปภาพปลายทาง) */}
-          <FormGroup label="รูปภาพปลายทาง (Destination Photo)" isDark={isDark}>
+          <FormGroup label="รูปภาพปลายทาง (Destination Photo)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
             <div className="space-y-3">
               {/* Hidden file inputs for destination */}
               <input
@@ -816,7 +832,7 @@ const EntryForm: React.FC = () => {
               {destinationPreviews.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className={`text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                    <span className={`text-sm ${mutedTextClass}`}>
                       {destinationPreviews.length} รูป
                     </span>
                     <button
@@ -853,24 +869,20 @@ const EntryForm: React.FC = () => {
               <button
                 type="button"
                 onClick={() => destinationFileInputRef.current?.click()}
-                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border transition-all ${
-                  isDark
-                    ? 'bg-dark-bg border-dark-muted/30 text-dark-text hover:border-accent-primary'
-                    : 'bg-light-bg border-light-muted/30 text-light-text hover:border-accent-primary'
-                }`}
+                className={uploadButtonClass}
               >
                 <Camera size={20} className="text-accent-primary" />
                 <span>เพิ่มรูปภาพ</span>
               </button>
               
-              <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+              <p className={`text-xs ${mutedTextClass}`}>
                 รูปภาพจะถูกบีบอัดอัตโนมัติก่อนอัพโหลด
               </p>
             </div>
           </FormGroup>
 
           {/* Row 5.8: Image Upload - Document (รูปภาพเอกสาร) */}
-          <FormGroup label="รูปภาพเอกสาร (Document Photo)" isDark={isDark}>
+          <FormGroup label="รูปภาพเอกสาร (Document Photo)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
             <div className="space-y-3">
               {/* Hidden file inputs for document */}
               <input
@@ -886,7 +898,7 @@ const EntryForm: React.FC = () => {
               {documentPreviews.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className={`text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                    <span className={`text-sm ${mutedTextClass}`}>
                       {documentPreviews.length} รูป
                     </span>
                     <button
@@ -923,17 +935,13 @@ const EntryForm: React.FC = () => {
               <button
                 type="button"
                 onClick={() => documentFileInputRef.current?.click()}
-                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border transition-all ${
-                  isDark
-                    ? 'bg-dark-bg border-dark-muted/30 text-dark-text hover:border-accent-primary'
-                    : 'bg-light-bg border-light-muted/30 text-light-text hover:border-accent-primary'
-                }`}
+                className={uploadButtonClass}
               >
                 <FileText size={20} className="text-accent-primary" />
                 <span>เพิ่มรูปภาพ</span>
               </button>
               
-              <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+              <p className={`text-xs ${mutedTextClass}`}>
                 รูปภาพเอกสารประกอบงาน
               </p>
             </div>
@@ -941,7 +949,7 @@ const EntryForm: React.FC = () => {
         </div>
 
         {/* Row 6: Remarks */}
-        <FormGroup label="หมายเหตุ (Remarks)" isDark={isDark}>
+        <FormGroup label="หมายเหตุ (Remarks)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
           <textarea 
             name="remarks"
             value={formData.remarks}
@@ -956,7 +964,7 @@ const EntryForm: React.FC = () => {
           <button 
             type="submit" 
             disabled={isSubmitting}
-            className="flex items-center gap-2 bg-gradient-to-r from-accent-primary to-accent-secondary hover:brightness-110 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg shadow-accent-primary/25 disabled:opacity-50 disabled:cursor-not-allowed"
+            className={submitButtonClass}
           >
             {isSubmitting ? <Loader2 className="animate-spin" /> : <Save size={20} />}
             {isSubmitting ? 'กำลังบันทึก...' : 'บันทึกข้อมูล'}
@@ -972,7 +980,7 @@ const EntryForm: React.FC = () => {
       >
         <div className="space-y-4">
            <div>
-              <label className={`block text-sm mb-1 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+              <label className={`block text-sm mb-1 ${mutedTextClass}`}>
                 ชื่อรายการใหม่
               </label>
               <input 
@@ -981,17 +989,19 @@ const EntryForm: React.FC = () => {
                 value={newOptionValue}
                 onChange={(e) => setNewOptionValue(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSaveOption()}
-                className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-accent-secondary focus:outline-none ${
-                  isDark 
-                    ? 'bg-dark-bg border-dark-muted/30 text-dark-text' 
-                    : 'bg-light-bg border-light-muted/30 text-light-text'
-                }`}
+                className={isDriverEntryMode
+                  ? 'driver-clay-input w-full rounded-lg px-3 py-2 focus:outline-none'
+                  : `w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-accent-secondary focus:outline-none ${
+                      isDark
+                        ? 'bg-dark-bg border-dark-muted/30 text-dark-text'
+                        : 'bg-light-bg border-light-muted/30 text-light-text'
+                    }`}
               />
            </div>
            <button 
             onClick={handleSaveOption}
             disabled={isSavingOption}
-            className={`w-full bg-accent-secondary text-white font-bold py-2 rounded-lg hover:brightness-110 transition-all flex items-center justify-center gap-2 ${isSavingOption ? 'opacity-70 cursor-not-allowed' : ''}`}
+            className={`${isDriverEntryMode ? 'driver-clay-btn driver-clay-btn-primary' : 'w-full bg-accent-secondary text-white font-bold py-2 rounded-lg hover:brightness-110 transition-all'} flex items-center justify-center gap-2 ${isSavingOption ? 'opacity-70 cursor-not-allowed' : ''}`}
            >
              {isSavingOption ? (
                <>
@@ -1049,17 +1059,17 @@ const EntryForm: React.FC = () => {
 };
 
 // Helper Components
-const FormGroup: React.FC<{ label: string; children: React.ReactNode; isDark: boolean }> = ({ label, children, isDark }) => (
+const FormGroup: React.FC<{ label: string; children: React.ReactNode; isDark: boolean; isDriverStyle?: boolean }> = ({ label, children, isDark, isDriverStyle = false }) => (
   <div className="flex flex-col gap-2">
-    <label className={`text-sm font-medium ${isDark ? 'text-dark-text' : 'text-light-text'}`}>{label}</label>
+    <label className={`text-sm font-medium ${isDriverStyle ? 'driver-clay-muted' : isDark ? 'text-dark-text' : 'text-light-text'}`}>{label}</label>
     {children}
   </div>
 );
 
-const DisplayRow: React.FC<{ label: string; value: string; isDark: boolean }> = ({ label, value, isDark }) => (
+const DisplayRow: React.FC<{ label: string; value: string; isDark: boolean; isDriverStyle?: boolean }> = ({ label, value, isDark, isDriverStyle = false }) => (
   <div className="space-y-1">
-    <p className={`text-xs font-medium ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{label}</p>
-    <p className={`text-sm font-semibold ${isDark ? 'text-dark-text' : 'text-slate-900'}`}>{value}</p>
+    <p className={`text-xs font-medium ${isDriverStyle ? 'driver-clay-muted' : isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{label}</p>
+    <p className={`text-sm font-semibold ${isDriverStyle ? 'text-slate-700' : isDark ? 'text-dark-text' : 'text-slate-900'}`}>{value}</p>
   </div>
 );
 
@@ -1071,17 +1081,20 @@ const SelectWithAdd: React.FC<{
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   onAdd: () => void;
   isDark: boolean;
-}> = ({ label, name, value, options, onChange, onAdd, isDark }) => {
-  const selectClass = `w-full appearance-none border rounded-xl px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-accent-primary transition-all ${
-    isDark 
-      ? 'bg-dark-bg border-dark-muted/30 text-dark-text' 
-      : 'bg-light-bg border-light-muted/30 text-light-text'
-  }`;
+  isDriverStyle?: boolean;
+}> = ({ label, name, value, options, onChange, onAdd, isDark, isDriverStyle = false }) => {
+  const selectClass = isDriverStyle
+    ? 'driver-clay-input w-full appearance-none rounded-xl px-4 py-3 pr-10 text-light-text focus:outline-none'
+    : `w-full appearance-none border rounded-xl px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-accent-primary transition-all ${
+        isDark
+          ? 'bg-dark-bg border-dark-muted/30 text-dark-text'
+          : 'bg-light-bg border-light-muted/30 text-light-text'
+      }`;
 
   const sortedOptions = useMemo(() => [...options].sort((a, b) => a.localeCompare(b, 'th')), [options]);
 
   return (
-    <FormGroup label={label} isDark={isDark}>
+    <FormGroup label={label} isDark={isDark} isDriverStyle={isDriverStyle}>
       <div className="flex gap-2">
         <div className="relative flex-1">
           <select 
@@ -1100,11 +1113,15 @@ const SelectWithAdd: React.FC<{
         <button 
           type="button"
           onClick={onAdd}
-          className={`border p-3 rounded-xl transition-all ${
-            isDark 
-              ? 'bg-dark-card border-dark-muted/30 text-accent-primary hover:bg-accent-primary hover:text-white' 
-              : 'bg-light-card border-light-muted/30 text-accent-primary hover:bg-accent-primary hover:text-white'
-          }`}
+          className={
+            isDriverStyle
+              ? 'driver-clay-btn driver-clay-btn-primary h-[46px] w-[52px] rounded-xl p-0'
+              : `border p-3 rounded-xl transition-all ${
+                  isDark
+                    ? 'bg-dark-card border-dark-muted/30 text-accent-primary hover:bg-accent-primary hover:text-white'
+                    : 'bg-light-card border-light-muted/30 text-accent-primary hover:bg-accent-primary hover:text-white'
+                }`
+          }
           title="เพิ่มรายการใหม่"
         >
           <Plus size={20} />

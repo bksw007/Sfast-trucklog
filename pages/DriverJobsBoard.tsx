@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FirebaseError } from 'firebase/app';
 import { CalendarClock, CheckCircle2, Circle, CircleDashed, Clock3, MapPin, Package2, Search, Truck, UserRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { subscribeToTodayJobsByAssignee, triggerTodayJobNotification, updateTodayJob } from '../services/firebaseService';
 import { TodayJobEntry } from '../types';
@@ -58,10 +57,8 @@ const viewMetaMap: Record<DriverView, { title: string; subtitle: string }> = {
 };
 
 const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
-  const { theme } = useTheme();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const isDark = theme === 'dark';
 
   const [jobs, setJobs] = useState<TodayJobEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -278,10 +275,10 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
 
   const statusBadgeClass = (status: JobStatus) =>
     status === 'completed'
-      ? 'bg-emerald-500/15 text-emerald-600'
+      ? 'text-emerald-700 bg-emerald-100/80'
       : status === 'in_progress'
-        ? 'bg-amber-500/15 text-amber-600'
-        : 'bg-slate-500/15 text-slate-600';
+        ? 'text-amber-700 bg-amber-100/85'
+        : 'text-slate-600 bg-slate-100/90';
 
   const statusIcon = (status: JobStatus) => {
     if (status === 'completed') return <CheckCircle2 size={13} />;
@@ -289,34 +286,29 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
     return <Circle size={13} />;
   };
 
-  const cardClass = isDark
-    ? 'rounded-2xl border border-dark-muted/30 bg-dark-card/70 p-4 shadow-lg shadow-black/15'
-    : 'rounded-2xl border border-light-muted/25 bg-white p-4 shadow-lg shadow-slate-200/70';
-
-  const inputClass = isDark
-    ? 'w-full min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/45 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none'
-    : 'w-full min-h-11 rounded-xl border border-light-muted/30 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none';
+  const cardClass = 'driver-clay-card p-4 sm:p-5';
+  const inputClass = 'driver-clay-input px-3 py-2.5 text-[16px] md:text-sm';
 
   const { title, subtitle } = viewMetaMap[view];
 
   return (
     <section className="space-y-4">
       <div className={cardClass}>
-        <h1 className="text-lg font-bold">{title}</h1>
-        <p className={`mt-1 text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{subtitle}</p>
+        <h1 className="text-lg font-black tracking-tight text-slate-700">{title}</h1>
+        <p className="driver-clay-muted mt-1 text-sm">{subtitle}</p>
 
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-          <div className={isDark ? 'rounded-xl bg-dark-bg/50 p-3' : 'rounded-xl bg-slate-50 p-3'}>
-            <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>งานวันนี้</p>
-            <p className="mt-1 text-lg font-bold">{todayJobs.length}</p>
+          <div className="driver-clay-soft p-3">
+            <p className="driver-clay-muted text-xs">งานวันนี้</p>
+            <p className="mt-1 text-lg font-black text-slate-700">{todayJobs.length}</p>
           </div>
-          <div className={isDark ? 'rounded-xl bg-dark-bg/50 p-3' : 'rounded-xl bg-slate-50 p-3'}>
-            <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>กำลังทำ</p>
-            <p className="mt-1 text-lg font-bold">{inProgressJobs.length}</p>
+          <div className="driver-clay-soft p-3">
+            <p className="driver-clay-muted text-xs">กำลังทำ</p>
+            <p className="mt-1 text-lg font-black text-slate-700">{inProgressJobs.length}</p>
           </div>
-          <div className={isDark ? 'rounded-xl bg-dark-bg/50 p-3' : 'rounded-xl bg-slate-50 p-3'}>
-            <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>จบแล้ว</p>
-            <p className="mt-1 text-lg font-bold">{historyJobs.length}</p>
+          <div className="driver-clay-soft p-3">
+            <p className="driver-clay-muted text-xs">จบแล้ว</p>
+            <p className="mt-1 text-lg font-black text-slate-700">{historyJobs.length}</p>
           </div>
         </div>
       </div>
@@ -324,7 +316,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
       <div className={cardClass}>
         <div className="space-y-3">
           <div className="relative">
-            <Search size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`} />
+            <Search size={16} className="driver-clay-muted absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
@@ -348,19 +340,19 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
 
       {loading && (
         <div className={cardClass}>
-          <p className={`text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>กำลังโหลดงาน...</p>
+          <p className="driver-clay-muted text-sm">กำลังโหลดงาน...</p>
         </div>
       )}
 
       {!loading && errorMessage && (
-        <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-500">
+        <div className="driver-clay-card rounded-2xl border-red-300 bg-red-100/80 px-4 py-3 text-sm text-red-600">
           โหลดข้อมูลงานไม่สำเร็จ: {errorMessage}
         </div>
       )}
 
       {!loading && !errorMessage && jobsByView.length === 0 && (
         <div className={cardClass}>
-          <p className={`text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+          <p className="driver-clay-muted text-sm">
             ยังไม่มีงานในรายการนี้ หรือยังไม่มีงานที่มอบหมายให้บัญชีนี้
           </p>
         </div>
@@ -372,37 +364,37 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
           <article key={job.id} className={cardClass}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate text-base font-bold">
+                <p className="truncate text-base font-black text-slate-700">
                   {job.employerCompany || '-'} | {job.productName || '-'}
                 </p>
-                <p className={`truncate text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                <p className="driver-clay-muted truncate text-xs">
                   เลขที่ใบสั่งงาน: {job.workOrderNo || job.ticketNo || '-'}
                 </p>
               </div>
-              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs ${statusBadgeClass(job.status)}`}>
+              <span className={`driver-clay-chip ${statusBadgeClass(job.status)}`}>
                 {statusIcon(job.status)}
                 {statusLabelMap[job.status]}
               </span>
             </div>
 
-            <div className="mt-4 space-y-2 text-sm">
+            <div className="mt-4 space-y-2 text-sm text-slate-700">
               <div className="flex items-center gap-2">
-                <CalendarClock size={14} className={isDark ? 'text-dark-muted' : 'text-light-muted'} />
+                <CalendarClock size={14} className="driver-clay-muted" />
                 <span>วันที่แจ้งงาน: {asDateOnly(job.workDate) || '-'}</span>
               </div>
 
               <div className="flex items-start gap-2">
-                <MapPin size={14} className={`mt-0.5 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`} />
+                <MapPin size={14} className="driver-clay-muted mt-0.5" />
                 <div className="min-w-0 space-y-1">
                   <p className="truncate">รับ: {job.pickup.location || '-'}</p>
                   {(hasValue(job.pickup.date) || hasValue(job.pickup.time)) && (
-                    <p className={`flex items-center gap-1 text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                    <p className="driver-clay-muted flex items-center gap-1 text-xs">
                       <Clock3 size={12} />
                       {`${job.pickup.date || '-'} ${job.pickup.time || ''}`.trim()}
                     </p>
                   )}
                   {hasValue(job.pickup.contact) && (
-                    <p className={`flex items-center gap-1 text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                    <p className="driver-clay-muted flex items-center gap-1 text-xs">
                       <UserRound size={12} />
                       ผู้ติดต่อ: {job.pickup.contact}
                     </p>
@@ -411,17 +403,17 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
               </div>
 
               <div className="flex items-start gap-2">
-                <MapPin size={14} className={`mt-0.5 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`} />
+                <MapPin size={14} className="driver-clay-muted mt-0.5" />
                 <div className="min-w-0 space-y-1">
                   <p className="truncate">ส่ง: {job.delivery.location || '-'}</p>
                   {(hasValue(job.delivery.date) || hasValue(job.delivery.time)) && (
-                    <p className={`flex items-center gap-1 text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                    <p className="driver-clay-muted flex items-center gap-1 text-xs">
                       <Clock3 size={12} />
                       {`${job.delivery.date || '-'} ${job.delivery.time || ''}`.trim()}
                     </p>
                   )}
                   {hasValue(job.delivery.contact) && (
-                    <p className={`flex items-center gap-1 text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                    <p className="driver-clay-muted flex items-center gap-1 text-xs">
                       <UserRound size={12} />
                       ผู้ติดต่อ: {job.delivery.contact}
                     </p>
@@ -430,11 +422,11 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
               </div>
 
               <div className="flex items-center gap-2">
-                <Package2 size={14} className={isDark ? 'text-dark-muted' : 'text-light-muted'} />
+                <Package2 size={14} className="driver-clay-muted" />
                 <span>จำนวน: {job.quantity || '-'}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Truck size={14} className={isDark ? 'text-dark-muted' : 'text-light-muted'} />
+                <Truck size={14} className="driver-clay-muted" />
                 <span>ทะเบียนรถ: {job.plateNo || '-'}</span>
               </div>
               {job.readyToClose && (
@@ -443,18 +435,18 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
             </div>
 
             {job.importantNote && (
-              <div className={`mt-3 rounded-xl px-3 py-2 text-xs ${isDark ? 'bg-dark-bg/60 text-dark-muted' : 'bg-slate-50 text-slate-600'}`}>
+              <div className="driver-clay-soft driver-clay-muted mt-3 px-3 py-2 text-xs">
                 หมายเหตุ: {job.importantNote}
               </div>
             )}
 
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
               {job.status === 'pending' && (
                 <button
                   type="button"
                   onClick={() => handleAcceptJob(job)}
                   disabled={updatingJobId === job.id}
-                  className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0f766e] to-[#16a34a] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+                  className="driver-clay-btn driver-clay-btn-success"
                 >
                   <Truck size={15} />
                   {updatingJobId === job.id ? 'กำลังรับงาน...' : 'รับงาน'}
@@ -466,7 +458,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                   type="button"
                   onClick={() => handleCompleteJob(job)}
                   disabled={updatingJobId === job.id}
-                  className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#2563eb] to-[#0284c7] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+                  className="driver-clay-btn driver-clay-btn-info"
                 >
                   <CheckCircle2 size={15} />
                   {updatingJobId === job.id ? 'กำลังจบงาน...' : 'จบงาน'}
@@ -477,7 +469,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                 <button
                   type="button"
                   onClick={() => handleOpenEntryForm(job)}
-                  className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#d97706] to-[#f59e0b] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+                  className="driver-clay-btn driver-clay-btn-warning"
                 >
                   <CircleDashed size={15} />
                   อัพเดทข้อมูล
