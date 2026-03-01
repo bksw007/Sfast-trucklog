@@ -287,6 +287,21 @@ const TodayJobs: React.FC = () => {
     };
   }, [jobs, todayDate, todayJobs, todayCompletedJobs, upcomingWeeklyJobs]);
 
+  const driverNameByUid = useMemo(() => {
+    const map = new Map<string, string>();
+    assignableUsers.forEach((user) => {
+      map.set(user.uid, user.fullName?.trim() || user.displayName || '');
+    });
+    return map;
+  }, [assignableUsers]);
+
+  const getDriverFullName = (job: TodayJobEntry) =>
+    (job.assignedToUid ? driverNameByUid.get(job.assignedToUid) : '') ||
+    job.driverName ||
+    '-';
+
+  const getAssignedAppLabel = (job: TodayJobEntry) => (job.assignedToUid ? 'Yes' : 'No');
+
   const filteredJobs = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
 
@@ -363,7 +378,7 @@ const TodayJobs: React.FC = () => {
     doc.line(valueX, y + 1.3, 195, y + 1.3);
   };
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = (source: TodayJobForm) => {
     const doc = new jsPDF('p', 'mm', 'a4');
     doc.addFileToVFS('NotoSansThai.ttf', NotoSansThaiBase64);
     doc.addFont('NotoSansThai.ttf', 'NotoSansThai', 'normal');
@@ -374,13 +389,13 @@ const TodayJobs: React.FC = () => {
     doc.setFontSize(20);
     doc.text('ใบสั่งงาน', 105, 26, { align: 'center' });
 
-    drawLineField(doc, 'บริษัทผู้ว่าจ้าง :', formData.employerCompany, 12, 45, 40);
-    drawLineField(doc, 'เลขที่ใบสั่งงาน :', formData.workOrderNo, 130, 154, 40);
-    drawLineField(doc, 'วันที่รับงาน :', formData.workDate, 12, 45, 50);
-    drawLineField(doc, 'ชนิดรถ :', formData.vehicleType, 84, 108, 50);
-    drawLineField(doc, 'Job No. :', formData.jobNo, 130, 154, 50);
-    drawLineField(doc, 'สินค้าที่รับ :', formData.productName, 12, 45, 60);
-    drawLineField(doc, 'ปริมาณ :', formData.quantity, 130, 154, 60);
+    drawLineField(doc, 'บริษัทผู้ว่าจ้าง :', source.employerCompany, 12, 45, 40);
+    drawLineField(doc, 'เลขที่ใบสั่งงาน :', source.workOrderNo, 130, 154, 40);
+    drawLineField(doc, 'วันที่รับงาน :', source.workDate, 12, 45, 50);
+    drawLineField(doc, 'ชนิดรถ :', source.vehicleType, 84, 108, 50);
+    drawLineField(doc, 'Job No. :', source.jobNo, 130, 154, 50);
+    drawLineField(doc, 'สินค้าที่รับ :', source.productName, 12, 45, 60);
+    drawLineField(doc, 'ปริมาณ :', source.quantity, 130, 154, 60);
 
     doc.rect(12, 70, 183, 45);
     doc.line(42, 70, 42, 115);
@@ -396,22 +411,22 @@ const TodayJobs: React.FC = () => {
     doc.text('เวลา', 22, 102.5, { align: 'center' });
     doc.text('ติดต่อ', 22, 111, { align: 'center' });
 
-    doc.text(formData.pickup.location || '-', 80, 85, { align: 'center' });
-    doc.text(formData.delivery.location || '-', 157, 85, { align: 'center' });
-    doc.text(formData.pickup.date || '-', 80, 94, { align: 'center' });
-    doc.text(formData.delivery.date || '-', 157, 94, { align: 'center' });
-    doc.text(formData.pickup.time || '-', 80, 102.5, { align: 'center' });
-    doc.text(formData.delivery.time || '-', 157, 102.5, { align: 'center' });
-    doc.text(formData.pickup.contact || '-', 80, 111, { align: 'center' });
-    doc.text(formData.delivery.contact || '-', 157, 111, { align: 'center' });
+    doc.text(source.pickup.location || '-', 80, 85, { align: 'center' });
+    doc.text(source.delivery.location || '-', 157, 85, { align: 'center' });
+    doc.text(source.pickup.date || '-', 80, 94, { align: 'center' });
+    doc.text(source.delivery.date || '-', 157, 94, { align: 'center' });
+    doc.text(source.pickup.time || '-', 80, 102.5, { align: 'center' });
+    doc.text(source.delivery.time || '-', 157, 102.5, { align: 'center' });
+    doc.text(source.pickup.contact || '-', 80, 111, { align: 'center' });
+    doc.text(source.delivery.contact || '-', 157, 111, { align: 'center' });
 
-    drawLineField(doc, 'พนักงานขับรถ :', formData.driverName, 12, 45, 126);
-    drawLineField(doc, 'ทะเบียน :', formData.plateNo, 130, 154, 126);
-    drawLineField(doc, 'เบอร์ติดต่อ :', formData.driverPhone, 12, 45, 136);
+    drawLineField(doc, 'พนักงานขับรถ :', source.driverName, 12, 45, 126);
+    drawLineField(doc, 'ทะเบียน :', source.plateNo, 130, 154, 126);
+    drawLineField(doc, 'เบอร์ติดต่อ :', source.driverPhone, 12, 45, 136);
 
     doc.text('หมายเหตุสำคัญ :', 12, 150);
     doc.line(42, 151.3, 195, 151.3);
-    doc.text(formData.importantNote || '-', 12, 159);
+    doc.text(source.importantNote || '-', 12, 159);
     doc.line(12, 161.3, 195, 161.3);
 
     doc.setFontSize(11);
@@ -426,7 +441,7 @@ const TodayJobs: React.FC = () => {
     doc.text('- ผ้าริ้วธง 30 ผืน', 110, 197);
 
     doc.text('F-TR-002', 180, 285);
-    doc.save(`today-job-${formData.workDate || getLocalDate()}.pdf`);
+    doc.save(`today-job-${source.workDate || getLocalDate()}.pdf`);
   };
 
   const handleSaveToFirebase = async () => {
@@ -884,15 +899,7 @@ const TodayJobs: React.FC = () => {
             <textarea rows={3} className={isDark ? 'mt-2 w-full rounded-xl border border-dark-muted/30 bg-dark-bg/40 px-3 py-2 text-sm text-dark-text focus:border-accent-primary focus:outline-none' : 'mt-2 w-full rounded-xl border border-light-muted/30 bg-white px-3 py-2 text-sm text-light-text focus:border-accent-primary focus:outline-none'} value={formData.importantNote} onChange={(e) => updateField('importantNote', e.target.value)} />
           </label>
 
-          <div className={`rounded-xl border px-4 py-3 text-sm ${isDark ? 'border-dark-muted/25 bg-dark-bg/40 text-dark-muted' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
-            แผนในอนาคต: ส่งใบแจ้งงานเข้าไลน์กลุ่ม/เทเลแกรมอัตโนมัติหลังสร้าง (ปัจจุบันพักไว้ก่อน ยังไม่เปิดใช้งาน)
-          </div>
-
           <div className="flex flex-wrap gap-3">
-            <button type="button" onClick={handleDownloadPdf} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1d4ed8] to-[#0f766e] px-4 py-2 text-sm font-medium text-white shadow-lg shadow-sky-900/25 transition hover:brightness-110">
-              <FileDown size={16} />
-              ดาวน์โหลด PDF
-            </button>
             <button type="button" onClick={handleSaveToFirebase} disabled={isSaving} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white shadow-lg transition ${isSaving ? 'bg-slate-500/70' : 'bg-gradient-to-r from-[#047857] to-[#15803d] hover:brightness-110'}`}>
               {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
               บันทึก Firebase
@@ -981,10 +988,10 @@ const TodayJobs: React.FC = () => {
             <thead className={isDark ? 'bg-dark-bg/60 text-dark-muted' : 'bg-slate-100 text-slate-600'}>
               <tr>
                 <th className="px-3 py-2 text-left">วันที่งาน</th>
-                <th className="px-3 py-2 text-left">Job No.</th>
                 <th className="px-3 py-2 text-left">ลูกค้า</th>
-                <th className="px-3 py-2 text-left">คนขับ/ทะเบียน</th>
                 <th className="px-3 py-2 text-left">ต้นทาง-ปลายทาง</th>
+                <th className="px-3 py-2 text-left">ประเภทรถ / ป้ายทะเบียน</th>
+                <th className="px-3 py-2 text-left">คนขับ</th>
                 <th className="px-3 py-2 text-left">สถานะ</th>
               </tr>
             </thead>
@@ -997,16 +1004,20 @@ const TodayJobs: React.FC = () => {
                 filteredJobs.map((job) => (
                   <tr key={job.id} onClick={() => openJobDetail(job)} className={`cursor-pointer transition ${isDark ? 'border-t border-dark-muted/20 hover:bg-white/5' : 'border-t border-light-muted/20 hover:bg-slate-50'}`}>
                     <td className="px-3 py-3 align-top">{asDateOnly(job.workDate)}</td>
-                    <td className="px-3 py-3 align-top font-medium">{job.jobNo || '-'}</td>
                     <td className="px-3 py-3 align-top">{job.employerCompany || '-'}</td>
-                    <td className="px-3 py-3 align-top">
-                      <p>{job.driverName || '-'}</p>
-                      <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>แอพ: {job.assignedToName || '-'}</p>
-                      <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{job.plateNo || '-'}</p>
-                    </td>
                     <td className="px-3 py-3 align-top text-xs">
                       <p>{job.pickup.location || '-'} → {job.delivery.location || '-'}</p>
-                      <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>{job.pickup.time || '-'} / {job.delivery.time || '-'}</p>
+                      <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>
+                        วันที่รับ: {job.pickup.date || '-'} | วันที่ส่ง: {job.delivery.date || '-'}
+                      </p>
+                    </td>
+                    <td className="px-3 py-3 align-top text-xs">
+                      <p className="text-sm font-medium">{job.vehicleType || '-'}</p>
+                      <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>{job.plateNo || '-'}</p>
+                    </td>
+                    <td className="px-3 py-3 align-top text-xs">
+                      <p className="text-sm font-medium">{getDriverFullName(job)}</p>
+                      <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>รับงานแอพ: {getAssignedAppLabel(job)}</p>
                     </td>
                     <td className="px-3 py-3 align-top">
                       <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs ${statusBadgeClass(job.status)}`}>
@@ -1062,7 +1073,7 @@ const TodayJobs: React.FC = () => {
         </div>
       </Modal>
 
-      <Modal isOpen={showDetailModal && !!selectedJob} onClose={() => setShowDetailModal(false)} title={`รายละเอียดงาน ${selectedJob?.jobNo || ''}`}>
+      <Modal isOpen={showDetailModal && !!selectedJob} onClose={() => setShowDetailModal(false)} title="รายละเอียดงาน">
         {selectedJob && (
           <div className="space-y-3 text-sm">
             <div className="grid grid-cols-2 gap-3">
@@ -1070,8 +1081,8 @@ const TodayJobs: React.FC = () => {
               <div><span className="font-medium">วันที่งาน:</span> {asDateOnly(selectedJob.workDate)}</div>
               <div><span className="font-medium">เลขที่ใบสั่งงาน:</span> {selectedJob.workOrderNo || selectedJob.ticketNo || '-'}</div>
               <div><span className="font-medium">Job No.:</span> {selectedJob.jobNo || '-'}</div>
-              <div><span className="font-medium">คนขับ:</span> {selectedJob.driverName || '-'}</div>
-              <div><span className="font-medium">ผู้รับงานแอพ:</span> {selectedJob.assignedToName || '-'}</div>
+              <div><span className="font-medium">คนขับ:</span> {getDriverFullName(selectedJob)}</div>
+              <div><span className="font-medium">รับงานแอพ:</span> {getAssignedAppLabel(selectedJob)}</div>
               <div><span className="font-medium">ทะเบียน:</span> {selectedJob.plateNo || '-'}</div>
               <div><span className="font-medium">ชนิดรถ:</span> {selectedJob.vehicleType || '-'}</div>
               <div><span className="font-medium">สินค้า:</span> {selectedJob.productName || '-'}</div>
@@ -1088,6 +1099,14 @@ const TodayJobs: React.FC = () => {
               <button type="button" onClick={() => handleStatusChange(selectedJob.id, 'completed')} disabled={updatingJobId === selectedJob.id || selectedJob.status === 'completed'} className="rounded-lg border border-emerald-400/40 px-3 py-1.5 text-xs disabled:opacity-50">เสร็จแล้ว</button>
             </div>
             <div className="flex flex-wrap gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => handleDownloadPdf(toEditableForm(selectedJob))}
+                className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#1d4ed8] to-[#0f766e] px-3 py-2 text-xs font-medium text-white"
+              >
+                <FileDown size={14} />
+                ดาวน์โหลด PDF
+              </button>
               <button type="button" onClick={() => openEditModal(selectedJob)} className="inline-flex items-center gap-2 rounded-lg bg-accent-primary px-3 py-2 text-xs font-medium text-white"><Pencil size={14} />แก้ไข</button>
               {isAdmin && (
                 <button type="button" onClick={() => handleRequestDelete(selectedJob)} className="inline-flex items-center gap-2 rounded-lg bg-red-500 px-3 py-2 text-xs font-medium text-white"><Trash2 size={14} />ลบ</button>
