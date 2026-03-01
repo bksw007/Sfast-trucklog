@@ -323,10 +323,14 @@ const TodayJobs: React.FC = () => {
 
   const updateAssignedUser = (assignedToUid: string) => {
     const assignedUser = assignableUsers.find((row) => row.uid === assignedToUid);
+    const driverFullName =
+      assignedUser?.fullName?.trim() ||
+      assignedUser?.displayName ||
+      '';
     setFormData((prev) => ({
       ...prev,
       assignedToUid,
-      driverName: assignedUser?.displayName || prev.driverName,
+      driverName: driverFullName || prev.driverName,
     }));
   };
 
@@ -533,7 +537,11 @@ const TodayJobs: React.FC = () => {
 
   const handleEditAssignedUser = (assignedToUid: string) => {
     const assignedUser = assignableUsers.find((row) => row.uid === assignedToUid);
-    setEditForm((prev) => (prev ? { ...prev, assignedToUid, driverName: assignedUser?.displayName || prev.driverName } : prev));
+    const driverFullName =
+      assignedUser?.fullName?.trim() ||
+      assignedUser?.displayName ||
+      '';
+    setEditForm((prev) => (prev ? { ...prev, assignedToUid, driverName: driverFullName || prev.driverName } : prev));
   };
 
   const handleEditPoint = (point: 'pickup' | 'delivery', field: keyof DispatchPoint, value: string) => {
