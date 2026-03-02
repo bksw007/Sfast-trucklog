@@ -498,10 +498,14 @@ export const updateJob = async (
     jointPrice: job.jointPrice,
   };
 
-  await updateDoc(jobRef, updateData);
+  const sanitizedUpdateData = Object.fromEntries(
+    Object.entries(updateData).filter(([, value]) => value !== undefined)
+  ) as Partial<JobEntry>;
+
+  await updateDoc(jobRef, sanitizedUpdateData);
   console.log('[Firebase] Job updated:', job.id);
 
-  return { ...job, ...updateData };
+  return { ...job, ...sanitizedUpdateData };
 };
 
 /**

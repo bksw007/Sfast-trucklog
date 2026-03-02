@@ -136,7 +136,7 @@ const buildLineText = (
   const head = `ขุนบันลือ | ${eventLabel[eventType]}`;
   const lines = [
     head,
-    `🧾 เลขที่ใบสั่งงาน (Work Order): ${getWorkOrderNo(job)}`,
+    `🧾 เลขที่ใบสั่งงาน: ${getWorkOrderNo(job)}`,
     `🏢 ผู้ว่าจ้าง: ${job.employerCompany || "-"}`,
     `📦 สินค้า: ${job.productName || "-"}`,
     `👷 คนขับ: ${job.assignedToName || job.driverName || "-"}`,

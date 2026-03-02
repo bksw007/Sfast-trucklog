@@ -761,38 +761,33 @@ const TodayJobs: React.FC = () => {
         <div className="space-y-6 p-5 md:p-7">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <label className="text-sm">
-              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>บริษัทผู้ว่าจ้าง</span>
-              <input className={inputClass} value={formData.employerCompany} onChange={(e) => updateField('employerCompany', e.target.value)} />
+              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>เลขที่ใบสั่งงาน</span>
+              <input className={inputClass} value={formData.workOrderNo} onChange={(e) => updateField('workOrderNo', e.target.value)} />
             </label>
             <label className="text-sm">
-              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>เลขที่ใบสั่งงาน (Work Order)</span>
-              <input className={inputClass} value={formData.workOrderNo} onChange={(e) => updateField('workOrderNo', e.target.value)} />
+              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>บริษัทผู้ว่าจ้าง</span>
+              <input className={inputClass} value={formData.employerCompany} onChange={(e) => updateField('employerCompany', e.target.value)} />
             </label>
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
             <label className="text-sm md:col-span-1">
-              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>วันที่รับงาน</span>
+              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>วันที่รับงานจากผู้ว่าจ้าง</span>
               <input type="date" className={inputClass} value={formData.workDate} onChange={(e) => updateField('workDate', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
             </label>
             <label className="text-sm md:col-span-1">
-              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ชนิดรถ</span>
+              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ประเภทสินค้า</span>
+              <input className={inputClass} value={formData.productName} onChange={(e) => updateField('productName', e.target.value)} />
+            </label>
+            <label className="text-sm md:col-span-1">
+              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ประเภทรถ</span>
               <input list="vehicle-type-options" className={selectClass} value={formData.vehicleType} onChange={(e) => updateField('vehicleType', e.target.value)} placeholder="พิมพ์ค้นหาหรือเลือกประเภทรถ" />
             </label>
             <label className="text-sm md:col-span-1">
-              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>Job No.</span>
-              <input className={inputClass} value={formData.jobNo} onChange={(e) => updateField('jobNo', e.target.value)} />
-            </label>
-            <label className="text-sm md:col-span-1">
-              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ปริมาณ</span>
+              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>จำนวนรอบ</span>
               <input className={inputClass} value={formData.quantity} onChange={(e) => updateField('quantity', e.target.value)} />
             </label>
           </div>
-
-          <label className="block text-sm">
-            <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>สินค้าที่รับ</span>
-            <input className={inputClass} value={formData.productName} onChange={(e) => updateField('productName', e.target.value)} />
-          </label>
 
           <div className={`space-y-3 md:hidden`}>
             <div className={`rounded-xl border p-3 ${isDark ? 'border-dark-muted/30 bg-dark-bg/35' : 'border-light-muted/30 bg-slate-50'}`}>
@@ -885,7 +880,7 @@ const TodayJobs: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
             <label className="text-sm">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>มอบหมายพนักงาน (แอพ)</span>
               <select
@@ -906,15 +901,14 @@ const TodayJobs: React.FC = () => {
               <input list="driver-options" className={selectClass} value={formData.driverName} onChange={(e) => updateField('driverName', e.target.value)} placeholder="พิมพ์ค้นหาคนขับ" />
             </label>
             <label className="text-sm">
+              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>เบอร์ติดต่อ</span>
+              <input className={inputClass} value={formData.driverPhone} onChange={(e) => updateField('driverPhone', e.target.value)} />
+            </label>
+            <label className="text-sm">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ทะเบียน</span>
               <input list="plate-options" className={selectClass} value={formData.plateNo} onChange={(e) => updateField('plateNo', e.target.value)} placeholder="พิมพ์ค้นหาทะเบียนรถ" />
             </label>
           </div>
-
-          <label className="block text-sm">
-            <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>เบอร์ติดต่อ</span>
-            <input className={inputClass} value={formData.driverPhone} onChange={(e) => updateField('driverPhone', e.target.value)} />
-          </label>
 
           {formData.assignedToUid && (
             <div className={`rounded-xl border px-4 py-3 text-sm ${isDark ? 'border-dark-muted/25 bg-dark-bg/40 text-dark-muted' : 'border-sky-200 bg-sky-50 text-sky-700'}`}>
@@ -923,7 +917,7 @@ const TodayJobs: React.FC = () => {
           )}
 
           <label className="block text-sm">
-            <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>หมายเหตุสำคัญ</span>
+            <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>หมายเหตุ</span>
             <textarea rows={3} className={isDark ? 'mt-2 w-full rounded-xl border border-dark-muted/30 bg-dark-bg/40 px-3 py-2 text-sm text-dark-text focus:border-accent-primary focus:outline-none' : 'mt-2 w-full rounded-xl border border-light-muted/30 bg-white px-3 py-2 text-sm text-light-text focus:border-accent-primary focus:outline-none'} value={formData.importantNote} onChange={(e) => updateField('importantNote', e.target.value)} />
           </label>
 

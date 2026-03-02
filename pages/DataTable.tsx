@@ -198,6 +198,7 @@ const DataTable: React.FC = () => {
       ...job,
       invNo: resolveInvoiceNo(job),
       workOrderNo: job.workOrderNo || (job as JobEntry & { ticketNo?: string }).ticketNo || '',
+      transportDocNo: job.transportDocNo || '',
     });
     setEditOriginImageFiles([]); // Reset origin image files
     setEditDestinationImageFiles([]); // Reset destination image files
@@ -249,7 +250,11 @@ const DataTable: React.FC = () => {
         setEditDocumentImageFiles([]);
       } catch (error) {
         console.error('Failed to update job:', error);
-        alert('เกิดข้อผิดพลาดในการแก้ไข');
+        const errorMessage =
+          error instanceof Error && error.message
+            ? error.message
+            : 'เกิดข้อผิดพลาดในการแก้ไข';
+        alert(`เกิดข้อผิดพลาดในการแก้ไข: ${errorMessage}`);
       }
     }
   };
@@ -722,24 +727,6 @@ const DataTable: React.FC = () => {
           </div>
 
           <div className="p-6 space-y-6">
-            {/* Quick Stats Row */}
-            {!isEditing && (
-              <div className="grid grid-cols-3 gap-4">
-                <div className={`p-4 rounded-2xl text-center ${isDark ? 'bg-dark-bg' : 'bg-purple-50'}`}>
-                  <div className="text-2xl font-bold text-accent-primary">{selectedJob.rounds}</div>
-                  <div className={`text-xs ${isDark ? 'text-dark-muted' : 'text-purple-600'}`}>จำนวนรอบ</div>
-                </div>
-                <div className={`p-4 rounded-2xl text-center ${isDark ? 'bg-dark-bg' : 'bg-blue-50'}`}>
-                  <div className="text-lg font-bold text-accent-secondary truncate">{selectedJob.vehicleType}</div>
-                  <div className={`text-xs ${isDark ? 'text-dark-muted' : 'text-blue-600'}`}>ประเภทรถ</div>
-                </div>
-                <div className={`p-4 rounded-2xl text-center ${isDark ? 'bg-dark-bg' : 'bg-green-50'}`}>
-                  <div className="text-lg font-bold text-accent-success truncate">{selectedJob.licensePlate}</div>
-                  <div className={`text-xs ${isDark ? 'text-dark-muted' : 'text-green-600'}`}>ทะเบียน</div>
-                </div>
-              </div>
-            )}
-
             {/* Route Section */}
             <div className={`p-5 rounded-2xl border ${isDark ? 'bg-dark-bg/50 border-dark-muted/20' : 'bg-gradient-to-br from-purple-50 to-blue-50 border-purple-100'}`}>
               <div className="flex items-center gap-2 mb-4">
@@ -796,9 +783,8 @@ const DataTable: React.FC = () => {
               )}
             </div>
 
-            {/* Info Grid */}
+            {/* Ordered Fields */}
             <div className="grid grid-cols-2 gap-4">
-              {/* Date */}
               <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
                 <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>📅 วันที่</div>
                 {isEditing ? (
@@ -820,24 +806,23 @@ const DataTable: React.FC = () => {
                 )}
               </div>
 
-              {/* Rounds */}
               <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🔄 จำนวนรอบ</div>
+                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>📄 เลขที่ใบสั่งงาน (Work Order)</div>
                 {isEditing ? (
                   <input
-                    type="number"
-                    value={editData.rounds}
-                    onChange={(e) => handleEditChange('rounds', parseInt(e.target.value))}
+                    value={editData.workOrderNo || ''}
+                    onChange={(e) => handleEditChange('workOrderNo', e.target.value)}
                     className={`w-full border rounded-lg px-3 py-1 text-sm ${
                       isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
                     }`}
                   />
                 ) : (
-                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.rounds} รอบ</div>
+                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>
+                    {selectedJob.workOrderNo || (selectedJob as JobEntry & { ticketNo?: string }).ticketNo || '-'}
+                  </div>
                 )}
               </div>
 
-              {/* Vehicle Type */}
               <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
                 <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🚛 ประเภทรถ</div>
                 {isEditing ? (
@@ -858,7 +843,6 @@ const DataTable: React.FC = () => {
                 )}
               </div>
 
-              {/* License Plate */}
               <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
                 <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🔢 ทะเบียน</div>
                 {isEditing ? (
@@ -879,7 +863,6 @@ const DataTable: React.FC = () => {
                 )}
               </div>
 
-              {/* Driver */}
               <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
                 <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>👤 คนขับ</div>
                 {isEditing ? (
@@ -891,6 +874,10 @@ const DataTable: React.FC = () => {
                     }`}
                   >
                     <option value="">เลือกคนขับ</option>
+                    {editData.driverName &&
+                      !appData?.options.drivers.some((opt) => opt === editData.driverName) && (
+                        <option value={editData.driverName}>{editData.driverName}</option>
+                      )}
                     {appData?.options.drivers.sort((a,b)=>a.localeCompare(b, 'th')).map(opt => (
                       <option key={opt} value={opt}>{opt}</option>
                     ))}
@@ -900,7 +887,22 @@ const DataTable: React.FC = () => {
                 )}
               </div>
 
-              {/* Job No */}
+              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🔄 จำนวนรอบ</div>
+                {isEditing ? (
+                  <input
+                    type="number"
+                    value={editData.rounds}
+                    onChange={(e) => handleEditChange('rounds', parseInt(e.target.value))}
+                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
+                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
+                    }`}
+                  />
+                ) : (
+                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.rounds} รอบ</div>
+                )}
+              </div>
+
               <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
                 <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>📋 Job No.</div>
                 {isEditing ? (
@@ -916,7 +918,36 @@ const DataTable: React.FC = () => {
                 )}
               </div>
 
-              {/* Fuel / Toll */}
+              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🧾 Invoice No.</div>
+                {isEditing ? (
+                  <input
+                    value={editData.invNo}
+                    onChange={(e) => handleEditChange('invNo', e.target.value)}
+                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
+                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
+                    }`}
+                  />
+                ) : (
+                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{resolveInvoiceNo(selectedJob) || '-'}</div>
+                )}
+              </div>
+
+              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🚛 เลขที่ใบขนส่ง (Transport Doc)</div>
+                {isEditing ? (
+                  <input
+                    value={editData.transportDocNo || ''}
+                    onChange={(e) => handleEditChange('transportDocNo', e.target.value)}
+                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
+                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
+                    }`}
+                  />
+                ) : (
+                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.transportDocNo || '-'}</div>
+                )}
+              </div>
+
               <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
                 <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>⛽ ค่าน้ำมัน/ทางด่วน</div>
                 {isEditing ? (
@@ -941,99 +972,49 @@ const DataTable: React.FC = () => {
                 )}
               </div>
 
-              {/* Admin Only: Price Fields */}
               {isAdmin && (
-                <div className="col-span-2 grid grid-cols-2 gap-4">
-                  <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-                    <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>💰 ราคาเก็บลูกค้า</div>
-                    {isEditing ? (
-                      <input
-                        type="number"
-                        value={editData.customerPrice || ''}
-                        onChange={(e) => handleEditChange('customerPrice', parseFloat(e.target.value))}
-                        className={`w-full border rounded-lg px-3 py-1 text-sm ${
-                          isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
-                        }`}
-                        placeholder="0.00"
-                      />
-                    ) : (
-                      <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>
-                        {selectedJob.customerPrice?.toLocaleString() || '-'}
-                      </div>
-                    )}
-                  </div>
-                  <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-                    <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>💸 ราคาจ่ายรถร่วม</div>
-                    {isEditing ? (
-                      <input
-                        type="number"
-                        value={editData.jointPrice || ''}
-                        onChange={(e) => handleEditChange('jointPrice', parseFloat(e.target.value))}
-                        className={`w-full border rounded-lg px-3 py-1 text-sm ${
-                          isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
-                        }`}
-                        placeholder="0.00"
-                      />
-                    ) : (
-                      <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>
-                        {selectedJob.jointPrice?.toLocaleString() || '-'}
-                      </div>
-                    )}
-                  </div>
+                <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+                  <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>💰 ราคาเก็บลูกค้า</div>
+                  {isEditing ? (
+                    <input
+                      type="number"
+                      value={editData.customerPrice || ''}
+                      onChange={(e) => handleEditChange('customerPrice', parseFloat(e.target.value))}
+                      className={`w-full border rounded-lg px-3 py-1 text-sm ${
+                        isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
+                      }`}
+                      placeholder="0.00"
+                    />
+                  ) : (
+                    <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>
+                      {selectedJob.customerPrice?.toLocaleString() || '-'}
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
 
-            {/* Invoice & Remarks & Image */}
-            <div className="space-y-4">
-              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🧾 Invoice No.</div>
-                {isEditing ? (
-                  <input
-                    value={editData.invNo}
-                    onChange={(e) => handleEditChange('invNo', e.target.value)}
-                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
-                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
-                    }`}
-                  />
-                ) : (
-                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{resolveInvoiceNo(selectedJob) || '-'}</div>
-                )}
-              </div>
+              {isAdmin && (
+                <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+                  <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>💸 ราคาจ่ายรถร่วม</div>
+                  {isEditing ? (
+                    <input
+                      type="number"
+                      value={editData.jointPrice || ''}
+                      onChange={(e) => handleEditChange('jointPrice', parseFloat(e.target.value))}
+                      className={`w-full border rounded-lg px-3 py-1 text-sm ${
+                        isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
+                      }`}
+                      placeholder="0.00"
+                    />
+                  ) : (
+                    <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>
+                      {selectedJob.jointPrice?.toLocaleString() || '-'}
+                    </div>
+                  )}
+                </div>
+              )}
 
-              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>📄 เลขที่ใบสั่งงาน (Work Order)</div>
-                {isEditing ? (
-                  <input
-                    value={editData.workOrderNo || ''}
-                    onChange={(e) => handleEditChange('workOrderNo', e.target.value)}
-                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
-                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
-                    }`}
-                  />
-                ) : (
-                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>
-                    {selectedJob.workOrderNo || (selectedJob as JobEntry & { ticketNo?: string }).ticketNo || '-'}
-                  </div>
-                )}
-              </div>
-
-              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🚛 เลขที่ใบขนส่ง (Transport Doc)</div>
-                {isEditing ? (
-                  <input
-                    value={editData.transportDocNo || ''}
-                    onChange={(e) => handleEditChange('transportDocNo', e.target.value)}
-                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
-                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
-                    }`}
-                  />
-                ) : (
-                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.transportDocNo || '-'}</div>
-                )}
-              </div>
-
-              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-amber-50'}`}>
+              <div className={`col-span-2 p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-amber-50'}`}>
                 <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-amber-600'}`}>💬 หมายเหตุ</div>
                 {isEditing ? (
                   <textarea
@@ -1048,6 +1029,10 @@ const DataTable: React.FC = () => {
                   <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-amber-800'}`}>{selectedJob.remarks || '-'}</div>
                 )}
               </div>
+            </div>
+
+            {/* Images */}
+            <div className="space-y-4">
 
               {/* Origin Image Section (รูปภาพต้นทาง) */}
               <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-blue-50/50'}`}>
