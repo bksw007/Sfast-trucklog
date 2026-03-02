@@ -23,6 +23,8 @@ import autoTable from 'jspdf-autotable';
 import { NotoSansThaiBase64 } from '../fonts/NotoSansThai';
 import { formatDate } from '../utils/formatters';
 
+const PINNED_LOCATIONS_STORAGE_KEY = 'settings.pinnedLocations.v1';
+
 const MONTHS = [
   { value: 1, label: 'มกราคม' },
   { value: 2, label: 'กุมภาพันธ์' },
@@ -107,6 +109,7 @@ const DataTable: React.FC = () => {
   const [showConfirmEdit, setShowConfirmEdit] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [pinnedLocations, setPinnedLocations] = useState<string[]>([]);
   
   // New Images for Edit
   // New Images for Edit
@@ -121,6 +124,27 @@ const DataTable: React.FC = () => {
       setLoading(false);
     }
   }, [appData]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PINNED_LOCATIONS_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      setPinnedLocations(
+        Array.from(
+          new Set(
+            parsed
+              .filter((item): item is string => typeof item === 'string')
+              .map((item) => item.trim())
+              .filter(Boolean)
+          )
+        )
+      );
+    } catch (error) {
+      console.error('Failed to load pinned locations:', error);
+    }
+  }, []);
 
 
 
@@ -166,6 +190,13 @@ const DataTable: React.FC = () => {
     : 'w-full min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none';
   const sortUniqueOptions = (items: string[]) =>
     Array.from(new Set(items.map((item) => item.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'th'));
+  const locationOptions = useMemo(() => {
+    const sortedLocations = sortUniqueOptions(appData?.options.locations || []);
+    const pinnedSet = new Set(pinnedLocations);
+    const pinned = sortedLocations.filter((item) => pinnedSet.has(item));
+    const unpinned = sortedLocations.filter((item) => !pinnedSet.has(item));
+    return [...pinned, ...unpinned];
+  }, [appData?.options.locations, pinnedLocations]);
 
   const resolveWorkOrderNo = (job: Partial<JobEntry> | null | undefined): string =>
     (job?.workOrderNo || (job as JobEntry & { ticketNo?: string } | null | undefined)?.ticketNo || '').trim();
@@ -773,7 +804,7 @@ const DataTable: React.FC = () => {
                       className="driver-clay-input mt-1 w-full px-3 py-2 text-sm"
                     >
                       <option value="">เลือกสถานที่</option>
-                      {sortUniqueOptions(appData?.options.locations || []).map(opt => (
+                      {locationOptions.map(opt => (
                         <option key={opt} value={opt}>{opt}</option>
                       ))}
                     </select>
@@ -786,7 +817,7 @@ const DataTable: React.FC = () => {
                       className="driver-clay-input mt-1 w-full px-3 py-2 text-sm"
                     >
                       <option value="">เลือกสถานที่</option>
-                      {sortUniqueOptions(appData?.options.locations || []).map(opt => (
+                      {locationOptions.map(opt => (
                         <option key={opt} value={opt}>{opt}</option>
                       ))}
                     </select>

@@ -10,6 +10,8 @@ import ConfirmModal from '../components/ConfirmModal';
 import { formatDate } from '../utils/formatters';
 import { FirebaseError } from 'firebase/app';
 
+const PINNED_LOCATIONS_STORAGE_KEY = 'settings.pinnedLocations.v1';
+
 type DriverEntryRouteState = {
   fromTodayJob?: {
     id?: string;
@@ -109,6 +111,7 @@ const EntryForm: React.FC = () => {
   // Confirm Modal States
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [pinnedLocations, setPinnedLocations] = useState<string[]>([]);
 
   // Helper to get local date string YYYY-MM-DD
   const getLocalDate = () => {
@@ -242,6 +245,37 @@ const EntryForm: React.FC = () => {
       driverName: driverFullName,
     }));
   }, [driverFullName, isDriverEntryMode]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PINNED_LOCATIONS_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      setPinnedLocations(
+        Array.from(
+          new Set(
+            parsed
+              .filter((item): item is string => typeof item === 'string')
+              .map((item) => item.trim())
+              .filter(Boolean)
+          )
+        )
+      );
+    } catch (error) {
+      console.error('Failed to load pinned locations:', error);
+    }
+  }, []);
+
+  const locationOptions = useMemo(() => {
+    const sortedLocations = Array.from(
+      new Set(data.options.locations.map((item) => item.trim()).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b, 'th'));
+    const pinnedSet = new Set(pinnedLocations);
+    const pinned = sortedLocations.filter((item) => pinnedSet.has(item));
+    const unpinned = sortedLocations.filter((item) => !pinnedSet.has(item));
+    return [...pinned, ...unpinned];
+  }, [data.options.locations, pinnedLocations]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -781,7 +815,7 @@ const EntryForm: React.FC = () => {
                 label="สถานที่รับ (Pickup)" 
                 name="pickupLocation"
                 value={formData.pickupLocation}
-                options={data.options.locations}
+                options={locationOptions}
                 onChange={handleInputChange}
                 onAdd={() => openAddModal(OptionCategory.LOCATION)}
                 isDark={isDark}
@@ -790,7 +824,7 @@ const EntryForm: React.FC = () => {
                 label="สถานที่ส่ง (Dropoff)" 
                 name="dropoffLocation"
                 value={formData.dropoffLocation}
-                options={data.options.locations}
+                options={locationOptions}
                 onChange={handleInputChange}
                 onAdd={() => openAddModal(OptionCategory.LOCATION)}
                 isDark={isDark}

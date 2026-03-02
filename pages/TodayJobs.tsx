@@ -319,6 +319,8 @@ const TodayJobs: React.FC = () => {
   const [cardModalTitle, setCardModalTitle] = useState('');
   const [cardModalJobs, setCardModalJobs] = useState<TodayJobEntry[]>([]);
   const [showCardModal, setShowCardModal] = useState(false);
+  const [pinnedLocations, setPinnedLocations] = useState<string[]>([]);
+  const PINNED_LOCATIONS_STORAGE_KEY = 'settings.pinnedLocations.v1';
 
   const inputClass = isDark
     ? 'w-full min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/40 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none'
@@ -348,7 +350,13 @@ const TodayJobs: React.FC = () => {
     Array.from(new Set(items.map((item) => item.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'th'));
 
   const vehicleTypeOptions = useMemo(() => sortUniqueOptions(options?.vehicleTypes ?? []), [options?.vehicleTypes]);
-  const locationOptions = useMemo(() => sortUniqueOptions(options?.locations ?? []), [options?.locations]);
+  const locationOptions = useMemo(() => {
+    const sortedLocations = sortUniqueOptions(options?.locations ?? []);
+    const pinnedSet = new Set(pinnedLocations);
+    const pinned = sortedLocations.filter((item) => pinnedSet.has(item));
+    const unpinned = sortedLocations.filter((item) => !pinnedSet.has(item));
+    return [...pinned, ...unpinned];
+  }, [options?.locations, pinnedLocations]);
   const driverOptions = useMemo(() => sortUniqueOptions(options?.drivers ?? []), [options?.drivers]);
   const plateOptions = useMemo(() => sortUniqueOptions(options?.licensePlates ?? []), [options?.licensePlates]);
   const employerCompanyOptions = useMemo(() => sortUniqueOptions(options?.employerCompanies ?? []), [options?.employerCompanies]);
@@ -361,6 +369,27 @@ const TodayJobs: React.FC = () => {
     });
 
     return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PINNED_LOCATIONS_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      setPinnedLocations(
+        Array.from(
+          new Set(
+            parsed
+              .filter((item): item is string => typeof item === 'string')
+              .map((item) => item.trim())
+              .filter(Boolean)
+          )
+        )
+      );
+    } catch (error) {
+      console.error('Load pinned locations failed:', error);
+    }
   }, []);
 
   useEffect(() => {
