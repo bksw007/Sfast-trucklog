@@ -108,6 +108,19 @@ const generateWorkOrderNo = () => {
   return `w${dd}${mm}${yy}${HH}${min}${ss}`;
 };
 
+const toRoundCount = (value: string): number | null => {
+  const normalized = (value || '').trim();
+  if (!normalized) return null;
+  const match = normalized.match(/(\d+(\.\d+)?)/);
+  if (!match) return null;
+  const parsed = Number(match[1]);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  if (parsed < 1) return 1;
+  return Math.floor(parsed);
+};
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const initialFormData = (): TodayJobForm => ({
   employerCompany: 'MLT',
   jobNo: '',
@@ -513,35 +526,67 @@ const TodayJobs: React.FC = () => {
       return;
     }
 
+    const totalRounds = toRoundCount(formData.quantity);
+    if (!totalRounds) {
+      alert('กรุณาระบุจำนวนรอบเป็นตัวเลขที่มากกว่า 0');
+      return;
+    }
+
     setIsSaving(true);
+    let createdCount = 0;
     try {
       const assignedName = selectedAssignedUser?.displayName || formData.driverName || '-';
-      const createdJob = await addTodayJob({
-        ...formData,
-        ticketNo: formData.workOrderNo,
-        assignedToName: assignedName,
-        summaryText,
-        status: 'pending',
-        readyToClose: false,
-        readyToCloseAt: null,
-        acceptedAt: null,
-        completedAt: null,
-        completedByUid: '',
-        lastSavedAt: Date.now(),
-        updatedByUid: user.uid,
-        createdByUid: user.uid,
-        createdByName: userProfile?.displayName || user.email || 'unknown'
-      });
-      try {
-        await triggerTodayJobNotification('create', createdJob.id);
-      } catch (notifyError) {
-        console.error('Notify create event failed:', notifyError);
+      const baseWorkOrderNo = (formData.workOrderNo || generateWorkOrderNo()).trim();
+
+      for (let index = 0; index < totalRounds; index += 1) {
+        const roundNumber = index + 1;
+        const roundWorkOrderNo =
+          totalRounds > 1 ? `${baseWorkOrderNo}-R${roundNumber}` : baseWorkOrderNo;
+        const roundForm = {
+          ...formData,
+          quantity: '1',
+          workOrderNo: roundWorkOrderNo,
+        };
+        const roundSummaryText = buildSummaryText(roundForm);
+
+        const createdJob = await addTodayJob({
+          ...roundForm,
+          rounds: 1,
+          ticketNo: roundWorkOrderNo,
+          assignedToName: assignedName,
+          summaryText: roundSummaryText,
+          status: 'pending',
+          readyToClose: false,
+          readyToCloseAt: null,
+          acceptedAt: null,
+          completedAt: null,
+          completedByUid: '',
+          lastSavedAt: Date.now(),
+          updatedByUid: user.uid,
+          createdByUid: user.uid,
+          createdByName: userProfile?.displayName || user.email || 'unknown'
+        });
+        createdCount += 1;
+
+        try {
+          await triggerTodayJobNotification('create', createdJob.id);
+        } catch (notifyError) {
+          console.error('Notify create event failed:', notifyError);
+        }
+
+        if (index < totalRounds - 1) {
+          await sleep(3000);
+        }
       }
       setShowSuccessModal(true);
       setTimeout(() => setShowSuccessModal(false), 1300);
       setFormData(initialFormData());
     } catch (error) {
       console.error('Save today job failed:', error);
+      if (createdCount > 0) {
+        alert(`สร้างสำเร็จแล้ว ${createdCount} รอบ แต่เกิดข้อผิดพลาดระหว่างทำรายการ กรุณาตรวจสอบข้อมูลล่าสุด`);
+        return;
+      }
       if (error instanceof FirebaseError) {
         if (error.code === 'permission-denied') {
           alert('บันทึกไม่สำเร็จ: ไม่มีสิทธิ์เขียนคอลเลกชัน today_jobs (permission-denied)\nกรุณาเพิ่ม Firestore Rules สำหรับ today_jobs');
