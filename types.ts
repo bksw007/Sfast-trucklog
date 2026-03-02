@@ -37,6 +37,7 @@ export interface TodayJobEntry {
   employerCompany: string;
   jobNo: string;
   invNo?: string;
+  transportDocNo?: string;
   workDate: string;
   vehicleType: string;
   ticketNo?: string; // legacy field (used as Work Order in old records)

@@ -17,6 +17,7 @@ type JobStatus = "pending" | "in_progress" | "completed";
 type TodayJobEntry = {
   jobNo?: string;
   invNo?: string;
+  transportDocNo?: string;
   workOrderNo?: string;
   workDate?: string;
   vehicleType?: string;
@@ -487,7 +488,7 @@ const buildJobPayloadFromToday = (
     jobNo: job.jobNo || "",
     invNo: typeof job.invNo === "string" ? job.invNo : "",
     workOrderNo: job.workOrderNo || job.ticketNo || "",
-    transportDocNo: "",
+    transportDocNo: job.transportDocNo || "",
     remarks: job.importantNote || "",
     linkedTodayJobId: todayJobId,
     employerCompany: job.employerCompany || "",

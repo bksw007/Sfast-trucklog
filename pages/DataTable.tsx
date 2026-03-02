@@ -1018,6 +1018,21 @@ const DataTable: React.FC = () => {
                 )}
               </div>
 
+              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🚛 เลขที่ใบขนส่ง (Transport Doc)</div>
+                {isEditing ? (
+                  <input
+                    value={editData.transportDocNo || ''}
+                    onChange={(e) => handleEditChange('transportDocNo', e.target.value)}
+                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
+                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
+                    }`}
+                  />
+                ) : (
+                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.transportDocNo || '-'}</div>
+                )}
+              </div>
+
               <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-amber-50'}`}>
                 <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-amber-600'}`}>💬 หมายเหตุ</div>
                 {isEditing ? (

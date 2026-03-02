@@ -16,6 +16,7 @@ type DriverEntryRouteState = {
     id?: string;
     jobNo?: string;
     invNo?: string;
+    transportDocNo?: string;
     workOrderNo?: string;
     date?: string;
     pickupLocation?: string;
@@ -141,6 +142,7 @@ const EntryForm: React.FC = () => {
   const applyTodayJobData = (payload?: {
     jobNo?: string;
     invNo?: string;
+    transportDocNo?: string;
     workOrderNo?: string;
     date?: string;
     pickupLocation?: string;
@@ -171,6 +173,7 @@ const EntryForm: React.FC = () => {
       tryAssignText('driverName', payload.driverName);
       tryAssignText('jobNo', payload.jobNo);
       tryAssignText('invNo', payload.invNo);
+      tryAssignText('transportDocNo', payload.transportDocNo);
       tryAssignText('workOrderNo', payload.workOrderNo);
       tryAssignText('remarks', payload.remarks);
 
@@ -211,6 +214,7 @@ const EntryForm: React.FC = () => {
         applyTodayJobData({
           jobNo: row.jobNo,
           invNo: row.invNo,
+          transportDocNo: row.transportDocNo,
           workOrderNo: row.workOrderNo || row.ticketNo,
           date: row.workDate,
           pickupLocation: row.pickup?.location,
@@ -420,6 +424,9 @@ const EntryForm: React.FC = () => {
         const mergedInvNo = dirtyFields.has('invNo')
           ? (formData.invNo || '')
           : (latestTodayJob.invNo || '');
+        const mergedTransportDocNo = dirtyFields.has('transportDocNo')
+          ? (formData.transportDocNo || '')
+          : (latestTodayJob.transportDocNo || '');
         const mergedDriverName = dirtyFields.has('driverName')
           ? (formData.driverName || '')
           : (latestTodayJob.driverName || '');
@@ -462,6 +469,7 @@ const EntryForm: React.FC = () => {
           ...(dirtyFields.has('invNo') || typeof latestTodayJob.invNo === 'string'
             ? { invNo: mergedInvNo }
             : {}),
+          transportDocNo: mergedTransportDocNo,
           workOrderNo: mergedWorkOrderNo,
           ticketNo: mergedWorkOrderNo,
           workDate: dirtyFields.has('date') ? formData.date : (latestTodayJob.workDate || formData.date),
@@ -807,7 +815,7 @@ const EntryForm: React.FC = () => {
         )}
 
         {isDriverEntryMode && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormGroup label="จำนวนรอบ (Rounds)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
               <input
                 type="number"
@@ -833,6 +841,15 @@ const EntryForm: React.FC = () => {
                 type="text"
                 name="invNo"
                 value={formData.invNo}
+                onChange={handleInputChange}
+                className={inputClass}
+              />
+            </FormGroup>
+            <FormGroup label="เลขที่ใบขนส่ง (Transport Doc)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
+              <input
+                type="text"
+                name="transportDocNo"
+                value={formData.transportDocNo}
                 onChange={handleInputChange}
                 className={inputClass}
               />
