@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { User, Mail, Shield, Save, Loader2, BellRing, BellOff, Phone, Contact } from 'lucide-react';
 import Modal from './Modal';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
 import { updateUserProfile } from '../services/userService';
 import { getStoredPushToken, registerPushTokenForUser, unregisterPushTokenForUser } from '../services/pushService';
 
@@ -35,8 +34,7 @@ const emptyProfileForm = (): ProfileFormState => ({
 
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) => {
   const { user, userProfile, refreshProfile } = useAuth();
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  const isDark = false;
 
   const [displayName, setDisplayName] = useState('');
   const [profileForm, setProfileForm] = useState<ProfileFormState>(emptyProfileForm);
@@ -44,6 +42,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
   const [pushLoading, setPushLoading] = useState(false);
   const [pushMessage, setPushMessage] = useState('');
   const [isPushEnabledOnDevice, setIsPushEnabledOnDevice] = useState(false);
+  const [photoLoadFailed, setPhotoLoadFailed] = useState(false);
 
   useEffect(() => {
     if (isOpen && userProfile) {
@@ -63,6 +62,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
       const hasTokenOnProfile = !!storedToken && (userProfile.fcmTokens || []).includes(storedToken);
       setIsPushEnabledOnDevice(hasTokenOnProfile);
       setPushMessage('');
+      setPhotoLoadFailed(false);
     }
   }, [isOpen, userProfile]);
 
@@ -137,12 +137,13 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
     <Modal isOpen={isOpen} onClose={onClose} title="ข้อมูลผู้ใช้งาน">
       <div className="space-y-6">
         <div className="flex flex-col items-center justify-center">
-          {userProfile.photoURL ? (
+          {userProfile.photoURL && !photoLoadFailed ? (
             <div className="relative mb-3">
               <img
                 src={userProfile.photoURL}
                 alt={displayName}
                 className="h-24 w-24 rounded-full border-4 border-accent-primary/20 object-cover shadow-xl"
+                onError={() => setPhotoLoadFailed(true)}
               />
             </div>
           ) : (

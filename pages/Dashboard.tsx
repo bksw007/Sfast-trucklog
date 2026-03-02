@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { AppData, JobEntry } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import { Truck, MapPin, Calendar, CheckCircle2, Filter, X, ChevronDown } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
 import { useData } from '../contexts/DataContext';
 
 const MONTHS = [
@@ -29,9 +28,8 @@ interface Filters {
 }
 
 const Dashboard: React.FC = () => {
-  const { theme } = useTheme();
   const { data } = useData();
-  const isDark = theme === 'dark';
+  const isDark = false;
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Filters>({
     month: null,
@@ -155,7 +153,7 @@ const Dashboard: React.FC = () => {
         }`}>
           <div className="flex flex-wrap gap-4">
             {/* Month Filter */}
-            <div className="flex-1 min-w-[140px]">
+            <div className="w-full sm:flex-1 sm:min-w-[140px]">
               <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
                 เดือน
               </label>
@@ -176,7 +174,7 @@ const Dashboard: React.FC = () => {
             </div>
 
             {/* Year Filter */}
-            <div className="flex-1 min-w-[120px]">
+            <div className="w-full sm:flex-1 sm:min-w-[120px]">
               <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
                 ปี
               </label>
@@ -197,7 +195,7 @@ const Dashboard: React.FC = () => {
             </div>
 
             {/* Driver Filter */}
-            <div className="flex-1 min-w-[150px]">
+            <div className="w-full sm:flex-1 sm:min-w-[150px]">
               <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
                 คนขับ
               </label>
@@ -218,7 +216,7 @@ const Dashboard: React.FC = () => {
             </div>
 
             {/* Vehicle Type Filter */}
-            <div className="flex-1 min-w-[140px]">
+            <div className="w-full sm:flex-1 sm:min-w-[140px]">
               <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
                 ประเภทรถ
               </label>
@@ -239,7 +237,7 @@ const Dashboard: React.FC = () => {
             </div>
 
             {/* License Plate Filter */}
-            <div className="flex-1 min-w-[140px]">
+            <div className="w-full sm:flex-1 sm:min-w-[140px]">
               <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
                 ป้ายทะเบียน
               </label>
@@ -364,10 +362,14 @@ const Dashboard: React.FC = () => {
                   <Pie
                     data={pieData}
                     cx="50%"
-                    cy="45%"
+                    cy="50%"
                     innerRadius={60}
                     outerRadius={100}
-                    paddingAngle={2}
+                    startAngle={90}
+                    endAngle={-270}
+                    paddingAngle={0}
+                    stroke="none"
+                    strokeWidth={0}
                     dataKey="value"
                   >
                     {pieData.map((entry, index) => (

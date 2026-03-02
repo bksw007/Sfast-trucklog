@@ -18,7 +18,6 @@ import {
   Truck,
   UserCheck,
 } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import {
@@ -174,10 +173,9 @@ const buildSummaryText = (data: TodayJobForm) => {
 };
 
 const TodayJobs: React.FC = () => {
-  const { theme } = useTheme();
   const { user, userProfile } = useAuth();
   const { data: appData } = useData();
-  const isDark = theme === 'dark';
+  const isDark = false;
   const isAdmin = userProfile?.role === 'admin';
 
   const [formData, setFormData] = useState<TodayJobForm>(initialFormData());
@@ -788,14 +786,16 @@ const TodayJobs: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in overflow-x-hidden">
       <section className={`${cardClass} overflow-hidden`}>
-        <div className="bg-gradient-to-r from-[#0f766e] via-[#0e7490] to-[#075985] px-6 py-4 text-white">
+        <div className="bg-gradient-to-r from-[#0f766e] via-[#0e7490] to-[#075985] px-6 py-4 text-white md:px-7 md:py-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-white/80">Dispatch Center</p>
-              <h1 className="mt-1 text-2xl font-semibold">งานวันนี้</h1>
-              <p className="mt-1 text-sm text-white/85">แดชบอร์ด + ฟอร์มแจ้งงาน + ตารางประวัติในหน้าเดียว</p>
+              <p className="text-[11px] uppercase tracking-[0.28em] text-white/80">Dispatch Center</p>
+              <h1 className="mt-1 text-2xl font-black tracking-tight md:text-[2rem]">งานวันนี้</h1>
+              <p className="mt-1 text-sm text-white/90">แดชบอร์ด + ฟอร์มแจ้งงาน + ตารางประวัติในหน้าเดียว</p>
             </div>
-            <ClipboardCheck className="h-9 w-9 text-white/90" />
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/30 bg-white/15 shadow-[inset_1px_1px_0_rgba(255,255,255,0.35)]">
+              <ClipboardCheck className="h-7 w-7 text-white" />
+            </div>
           </div>
         </div>
 
@@ -867,9 +867,17 @@ const TodayJobs: React.FC = () => {
       </section>
 
       <section className={`${cardClass} overflow-hidden`}>
-        <div className={`border-b px-5 py-3 md:px-7 ${isDark ? 'border-dark-muted/25 bg-dark-bg/40' : 'border-light-muted/20 bg-slate-50'}`}>
-          <h2 className="text-lg font-semibold">ฟอร์มแจ้งงาน</h2>
-          <p className={`mt-1 text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>สร้างใบแจ้งงานและบันทึกเข้าระบบ</p>
+        <div className="bg-gradient-to-r from-[#0f766e] via-[#0e7490] to-[#075985] px-5 py-4 text-white md:px-7">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-white/80">Dispatch Center</p>
+              <h2 className="mt-1 text-xl font-black tracking-tight md:text-2xl">ฟอร์มแจ้งงาน</h2>
+              <p className="mt-1 text-sm text-white/90">สร้างใบแจ้งงานและบันทึกเข้าระบบ</p>
+            </div>
+            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/30 bg-white/15 shadow-[inset_1px_1px_0_rgba(255,255,255,0.35)]">
+              <Pencil className="h-6 w-6 text-white" />
+            </div>
+          </div>
         </div>
 
         <div className="space-y-6 p-5 md:p-7">
@@ -1068,10 +1076,23 @@ const TodayJobs: React.FC = () => {
       <datalist id="plate-options">{plateOptions.map((plate) => <option key={plate} value={plate} />)}</datalist>
 
       <section className={`${cardClass} overflow-hidden`}>
+        <div className="bg-gradient-to-r from-[#0f766e] via-[#0e7490] to-[#075985] px-5 py-4 text-white md:px-7">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-white/80">Dispatch Center</p>
+              <h2 className="mt-1 text-xl font-black tracking-tight md:text-2xl">ตารางข้อมูลการแจ้งงาน</h2>
+              <p className="mt-1 text-sm text-white/90">คลิกที่แถวเพื่อเปิดรายละเอียด/แก้ไข/ลบ</p>
+            </div>
+            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/30 bg-white/15 shadow-[inset_1px_1px_0_rgba(255,255,255,0.35)]">
+              <Truck className="h-6 w-6 text-white" />
+            </div>
+          </div>
+        </div>
+
         <div className={`flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 md:px-7 ${isDark ? 'border-dark-muted/25 bg-dark-bg/40' : 'border-light-muted/20 bg-slate-50'}`}>
           <div>
-            <h2 className="text-lg font-semibold">ตารางข้อมูลการแจ้งงาน</h2>
-            <p className={`mt-1 text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>คลิกที่แถวเพื่อเปิดรายละเอียด/แก้ไข/ลบ</p>
+            <h3 className="text-base font-semibold">ค้นหาและกรองข้อมูล</h3>
+            <p className={`mt-1 text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>เลือกสถานะหรือพิมพ์คำค้นเพื่อดูรายการที่ต้องการ</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="ค้นหา Job No./คนขับ/ทะเบียน" className={isDark ? 'min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/50 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none' : 'min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none'} />
@@ -1212,7 +1233,7 @@ const TodayJobs: React.FC = () => {
       <Modal isOpen={showDetailModal && !!selectedJob} onClose={() => setShowDetailModal(false)} title="รายละเอียดงาน">
         {selectedJob && (
           <div className="space-y-3 text-sm">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div><span className="font-medium">ลูกค้า:</span> {selectedJob.employerCompany || '-'}</div>
               <div><span className="font-medium">วันที่งาน:</span> {asDateOnly(selectedJob.workDate)}</div>
               <div><span className="font-medium">เลขที่ใบสั่งงาน:</span> {selectedJob.workOrderNo || selectedJob.ticketNo || '-'}</div>

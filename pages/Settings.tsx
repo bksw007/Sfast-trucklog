@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Settings as SettingsIcon, Plus, Trash2, RefreshCw, MapPin, Truck, User, Car, Loader2, Check, X, Pencil, Save } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
 import { useData } from '../contexts/DataContext';
 import { addOption, renameOptionAndSyncJobs } from '../services/firebaseService';
 import { OptionCategory } from '../types';
@@ -8,9 +7,8 @@ import { db } from '../firebase';
 import { collection, query, where, getDocs, deleteDoc } from 'firebase/firestore';
 
 const Settings: React.FC = () => {
-  const { theme } = useTheme();
   const { data, refreshData, syncing, lastUpdate } = useData();
-  const isDark = theme === 'dark';
+  const isDark = false;
 
   const formatLastUpdate = (date: Date | null) => {
     if (!date) return 'ไม่ทราบ';

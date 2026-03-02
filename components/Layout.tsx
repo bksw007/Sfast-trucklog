@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, Table2, Sun, Moon, Menu, X, ChevronLeft, ChevronRight, RefreshCw, LogOut, Settings, User, Users, ClipboardList } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
-import { useData } from '../contexts/DataContext';
+import { LayoutDashboard, PlusCircle, Table2, ChevronLeft, ChevronRight, LogOut, Settings, User, Users, ClipboardList } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import UserProfileModal from './UserProfileModal';
 import UserManagementModal from './UserManagementModal';
@@ -13,12 +11,8 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
-  const { theme, toggleTheme } = useTheme();
-  const { lastUpdate, syncing, refreshData } = useData();
   const { user, userProfile, logout } = useAuth();
-  // Default to collapsed (false)
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showUserManagementModal, setShowUserManagementModal] = useState(false);
 
@@ -30,144 +24,54 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/settings', label: 'ตั้งค่า', icon: Settings },
   ];
 
-  const isDark = theme === 'dark';
   const appLogo = '/icons/truck-logo.png';
 
-  const formatLastUpdate = (date: Date | null) => {
-    if (!date) return 'ไม่ทราบ';
-    return date.toLocaleString('th-TH', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   return (
-    <div className={`min-h-screen font-sans transition-colors duration-300 ${
-      isDark ? 'bg-dark-bg text-dark-text' : 'bg-light-bg text-light-text'
-    }`}>
-      {/* Mobile Header */}
-      <header className={`md:hidden fixed top-0 left-0 right-0 z-50 px-4 py-3 flex items-center justify-between border-b transition-colors ${
-        isDark ? 'bg-dark-card border-dark-muted/20' : 'bg-light-card border-light-muted/20 shadow-sm'
-      }`}>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg overflow-hidden shadow-lg bg-white">
-            <img src={appLogo} alt="SFast Logo" className="w-full h-full object-cover" />
+    <div className="admin-clay min-h-screen font-sans text-slate-700">
+      <header className="md:hidden sticky top-0 z-50 px-3 pb-1 pt-3">
+        <div className="driver-top-shell mx-auto flex w-full items-center justify-between gap-3 rounded-[24px] border border-white/80 px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="h-11 w-11 overflow-hidden rounded-2xl bg-[#ffd1dc] shadow-[6px_6px_12px_rgba(166,180,200,0.35),-6px_-6px_12px_rgba(255,255,255,0.9)]">
+              <img src={appLogo} alt="SFast Logo" className="h-full w-full object-cover" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-lg font-black tracking-tight text-[#34495e]">S Fast Trucklog</p>
+              <p className="truncate text-sm font-semibold text-slate-500">Admin Workspace</p>
+            </div>
           </div>
-          <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-accent-primary to-accent-secondary">
-            SFast Trucklog
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
           <button
-            onClick={toggleTheme}
-            className={`p-2 rounded-lg transition-colors ${
-              isDark ? 'hover:bg-white/10' : 'hover:bg-black/5'
-            }`}
+            type="button"
+            onClick={() => setShowProfileModal(true)}
+            className="driver-clay-icon-btn"
+            aria-label="Open profile"
           >
-            {isDark ? <Sun size={20} className="text-yellow-400" /> : <Moon size={20} className="text-slate-600" />}
+            <User size={18} className="text-slate-500" />
           </button>
+          {user?.uid && userProfile?.role === 'admin' && (
+            <button
+              type="button"
+              onClick={() => setShowUserManagementModal(true)}
+              className="driver-clay-icon-btn"
+              aria-label="Manage users"
+            >
+              <Users size={18} className="text-slate-500" />
+            </button>
+          )}
           <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className={`p-2 rounded-lg transition-colors ${
-              isDark ? 'hover:bg-white/10' : 'hover:bg-black/5'
-            }`}
+            type="button"
+            onClick={logout}
+            className="driver-clay-icon-btn text-rose-500"
+            aria-label="Logout"
           >
-            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            <LogOut size={18} />
           </button>
         </div>
       </header>
 
-      {/* Mobile Menu Overlay */}
-      {mobileMenuOpen && (
-        <div 
-          className="md:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-          onClick={() => setMobileMenuOpen(false)}
-        />
-      )}
-
-      {/* Mobile Slide Menu */}
-      <nav className={`md:hidden fixed top-14 right-0 z-50 w-64 h-[calc(100vh-56px)] transform transition-transform duration-300 ${
-        mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
-      } ${isDark ? 'bg-dark-card' : 'bg-light-card shadow-xl'}`}>
-        <div className="p-4 space-y-2">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                  isActive 
-                    ? 'bg-accent-primary/20 text-accent-primary' 
-                    : isDark 
-                      ? 'text-dark-muted hover:bg-white/5 hover:text-dark-text'
-                      : 'text-light-muted hover:bg-black/5 hover:text-light-text'
-                }`}
-              >
-                <Icon size={20} />
-                <span className="font-medium">{item.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-        
-
-        {/* Mobile Bottom Section */}
-        <div className={`absolute bottom-0 left-0 right-0 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t ${
-          isDark ? 'border-dark-muted/20' : 'border-light-muted/20'
-        }`}>
-          <button
-            onClick={() => {
-              setShowProfileModal(true);
-              setMobileMenuOpen(false);
-            }}
-            className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium mb-2 transition-all ${
-              isDark ? 'text-dark-text hover:bg-white/5' : 'text-light-text hover:bg-black/5'
-            }`}
-          >
-            <User size={14} />
-            โปรไฟล์
-          </button>
-          
-          {user?.uid && userProfile?.role === 'admin' && (
-            <button
-              onClick={() => {
-                setShowUserManagementModal(true);
-                setMobileMenuOpen(false);
-              }}
-              className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium mb-2 transition-all ${
-                isDark ? 'text-dark-text hover:bg-white/5' : 'text-light-text hover:bg-black/5'
-              }`}
-            >
-              <Users size={14} />
-              จัดการผู้ใช้
-            </button>
-          )}
-
-          <button
-            onClick={() => {
-              logout();
-              setMobileMenuOpen(false);
-            }}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-red-500 bg-red-500/10 hover:bg-red-500/20 transition-all"
-          >
-            <LogOut size={14} />
-            ออกจากระบบ
-          </button>
-        </div>
-      </nav>
-
       <div className="flex">
-        {/* Desktop Sidebar */}
         <aside className={`hidden md:flex flex-col fixed left-0 top-0 h-screen border-r transition-all duration-300 z-40 ${
           sidebarOpen ? 'w-64' : 'w-20'
-        } ${isDark ? 'bg-dark-card/50 border-dark-muted/20' : 'bg-light-card border-light-muted/20 shadow-sm'}`}>
-          {/* Logo */}
+        } border-white/85 bg-[rgba(240,244,248,0.96)] shadow-[6px_0_14px_rgba(166,180,200,0.26)]`}>
           <div className={`p-6 flex items-center ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
             <div className={`flex items-center transition-all duration-300 ${sidebarOpen ? 'gap-3' : 'gap-0 justify-center'}`}>
               <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-accent-primary/20 flex-shrink-0 bg-white">
@@ -181,7 +85,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
           </div>
 
-          {/* Navigation */}
           <nav className="flex-1 px-4 py-2 space-y-2 overflow-x-hidden">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -194,11 +97,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   className={`flex items-center px-4 py-3 rounded-xl transition-all duration-200 group whitespace-nowrap ${
                     sidebarOpen ? 'gap-3' : 'gap-0 justify-center'
                   } ${
-                    isActive 
-                      ? 'bg-accent-primary/20 text-accent-primary shadow-lg shadow-accent-primary/10' 
-                      : isDark 
-                        ? 'text-dark-muted hover:bg-white/5 hover:text-dark-text'
-                        : 'text-light-muted hover:bg-black/5 hover:text-light-text'
+                    isActive
+                      ? 'bg-accent-primary/20 text-accent-primary shadow-lg shadow-accent-primary/10'
+                      : 'text-slate-500 hover:bg-[#d9e6f2] hover:text-[#272727] active:bg-[#d9e6f2] active:text-[#272727]'
                   }`}
                 >
                   <Icon size={20} className={`flex-shrink-0 ${isActive ? 'text-accent-primary' : ''}`} />
@@ -210,36 +111,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             })}
           </nav>
 
-
-
-          {/* Bottom Controls */}
-          <div className={`p-4 border-t ${isDark ? 'border-dark-muted/20' : 'border-light-muted/20'} overflow-x-hidden`}>
-            {/* Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className={`w-full flex items-center px-4 py-3 rounded-xl transition-all whitespace-nowrap ${
-                sidebarOpen ? 'gap-3' : 'gap-0 justify-center'
-              } ${isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}
-            >
-              <div className="flex-shrink-0">
-                {isDark ? (
-                  <Sun size={20} className="text-yellow-400" />
-                ) : (
-                  <Moon size={20} className="text-slate-600" />
-                )}
-              </div>
-              <span className={`font-medium transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'} ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
-                {isDark ? 'โหมดสว่าง' : 'โหมดมืด'}
-              </span>
-            </button>
-
-            {/* Profile Button */}
+          <div className="p-4 border-t border-white/85 overflow-x-hidden">
             <button
               onClick={() => setShowProfileModal(true)}
-              title={!sidebarOpen ? "โปรไฟล์" : ''}
+              title={!sidebarOpen ? 'โปรไฟล์' : ''}
               className={`w-full flex items-center px-4 py-3 rounded-xl transition-all mt-2 whitespace-nowrap ${
                 sidebarOpen ? 'gap-3' : 'gap-0 justify-center'
-              } ${isDark ? 'text-dark-muted hover:bg-white/5 hover:text-dark-text' : 'text-light-muted hover:bg-black/5 hover:text-light-text'}`}
+              } text-slate-500 hover:bg-[#d9e6f2] hover:text-[#272727] active:bg-[#d9e6f2] active:text-[#272727]`}
             >
               <User size={20} className="flex-shrink-0" />
               <span className={`font-medium transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
@@ -247,14 +125,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </span>
             </button>
 
-            {/* Admin: User Management Button */}
             {user?.uid && userProfile?.role === 'admin' && (
               <button
                 onClick={() => setShowUserManagementModal(true)}
-                title={!sidebarOpen ? "จัดการผู้ใช้" : ''}
+                title={!sidebarOpen ? 'จัดการผู้ใช้' : ''}
                 className={`w-full flex items-center px-4 py-3 rounded-xl transition-all mt-2 whitespace-nowrap ${
                   sidebarOpen ? 'gap-3' : 'gap-0 justify-center'
-                } ${isDark ? 'text-dark-muted hover:bg-white/5 hover:text-dark-text' : 'text-light-muted hover:bg-black/5 hover:text-light-text'}`}
+                } text-slate-500 hover:bg-[#d9e6f2] hover:text-[#272727] active:bg-[#d9e6f2] active:text-[#272727]`}
               >
                 <Users size={20} className="flex-shrink-0" />
                 <span className={`font-medium transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
@@ -263,10 +140,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </button>
             )}
 
-            {/* Logout Button */}
             <button
               onClick={logout}
-              title={!sidebarOpen ? "ออกจากระบบ" : ''}
+              title={!sidebarOpen ? 'ออกจากระบบ' : ''}
               className={`w-full flex items-center px-4 py-3 rounded-xl transition-all mt-2 whitespace-nowrap ${
                 sidebarOpen ? 'gap-3' : 'gap-0 justify-center'
               } text-red-500 hover:bg-red-500/10`}
@@ -277,12 +153,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </span>
             </button>
 
-            {/* Collapse Toggle - At the very bottom */}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className={`w-full flex items-center px-4 py-3 rounded-xl transition-all mt-2 whitespace-nowrap ${
                 sidebarOpen ? 'gap-3' : 'gap-0 justify-center'
-              } ${isDark ? 'hover:bg-white/5 text-dark-muted' : 'hover:bg-black/5 text-light-muted'}`}
+              } text-slate-500 hover:bg-[#d9e6f2] hover:text-[#272727] active:bg-[#d9e6f2] active:text-[#272727]`}
             >
               <div className="flex-shrink-0">
                 {sidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
@@ -294,21 +169,43 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
         </aside>
 
-        {/* Main Content */}
-        <main className={`flex-1 min-h-screen pt-16 md:pt-0 transition-all duration-300 ${
+        <main className={`flex-1 min-h-screen transition-all duration-300 ${
           sidebarOpen ? 'md:ml-64' : 'md:ml-20'
         }`}>
-          <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
+          <div className="p-4 pb-[calc(5.2rem+env(safe-area-inset-bottom))] md:p-8 max-w-7xl mx-auto space-y-6">
             {children}
           </div>
         </main>
       </div>
 
-      <UserProfileModal 
-        isOpen={showProfileModal} 
-        onClose={() => setShowProfileModal(false)} 
+      <nav className="fixed bottom-0 left-0 right-0 z-50 px-2 pb-[calc(0.45rem+env(safe-area-inset-bottom))] pt-2 md:hidden">
+        <div className="driver-mobile-nav-surface mx-auto grid w-full max-w-6xl grid-cols-5 gap-2 rounded-[22px] border border-white/85 p-2">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-semibold transition ${
+                  isActive
+                    ? 'driver-mobile-nav-item-active'
+                    : 'text-slate-500 hover:bg-[#d9e6f2] hover:text-[#272727] active:bg-[#d9e6f2] active:text-[#272727]'
+                }`}
+              >
+                <Icon size={16} className="driver-float-icon" />
+                <span className="truncate">{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+
+      <UserProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
       />
-      
+
       <UserManagementModal
         isOpen={showUserManagementModal}
         onClose={() => setShowUserManagementModal(false)}

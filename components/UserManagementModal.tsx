@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { User, Shield, AlertTriangle, Search, Loader2 } from 'lucide-react';
 import Modal from './Modal';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
 import { getAllUsers, updateUserRole } from '../services/userService';
 import { UserProfile, UserRole } from '../types';
 
@@ -13,13 +12,13 @@ interface UserManagementModalProps {
 
 const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen, onClose }) => {
   const { userProfile, user: currentUser } = useAuth();
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  const isDark = false;
 
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [updatingUser, setUpdatingUser] = useState<string | null>(null);
+  const [brokenPhotoUids, setBrokenPhotoUids] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (isOpen && userProfile?.role === 'admin') {
@@ -32,6 +31,7 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen, onClo
     try {
       const allUsers = await getAllUsers();
       setUsers(allUsers);
+      setBrokenPhotoUids(new Set());
     } catch (error) {
       console.error('Failed to fetch users:', error);
       alert('ไม่สามารถดึงข้อมูลผู้ใช้ได้');
@@ -103,7 +103,7 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen, onClo
         </div>
 
         {/* User List */}
-        <div className="max-h-[60vh] overflow-y-auto pr-2 space-y-2">
+        <div className="space-y-2">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 size={32} className="animate-spin text-accent-primary" />
@@ -124,11 +124,19 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen, onClo
               >
                 <div className="flex items-center gap-3">
                   {/* Avatar */}
-                  {u.photoURL ? (
+                  {u.photoURL && !brokenPhotoUids.has(u.uid) ? (
                     <img 
                       src={u.photoURL} 
                       alt={u.displayName} 
                       className="w-10 h-10 rounded-full object-cover border-2 border-white/10"
+                      onError={() => {
+                        setBrokenPhotoUids((prev) => {
+                          if (prev.has(u.uid)) return prev;
+                          const next = new Set(prev);
+                          next.add(u.uid);
+                          return next;
+                        });
+                      }}
                     />
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center text-white font-bold">

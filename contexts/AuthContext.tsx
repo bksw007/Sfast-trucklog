@@ -10,7 +10,12 @@ import {
 } from 'firebase/auth';
 import { auth } from '../firebase';
 import { UserProfile } from '../types';
-import { createUserProfile, ensureUserProfileDocument, getUserProfile } from '../services/userService';
+import {
+  createUserProfile,
+  ensureUserProfileDocument,
+  getUserProfile,
+  updateUserProfile,
+} from '../services/userService';
 
 interface AuthContextType {
   user: User | null;
@@ -42,6 +47,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const resolveGooglePhotoURL = async (currentUser: User): Promise<string> => {
+    const fromGoogleProvider = (currentUser.providerData || [])
+      .find((provider) => provider.providerId === 'google.com')
+      ?.photoURL
+      ?.trim();
+    const fallbackPhoto = currentUser.photoURL?.trim();
+    if (fromGoogleProvider || fallbackPhoto) {
+      return fromGoogleProvider || fallbackPhoto || '';
+    }
+
+    try {
+      await currentUser.reload();
+      const refreshedProviderPhoto = (currentUser.providerData || [])
+        .find((provider) => provider.providerId === 'google.com')
+        ?.photoURL
+        ?.trim();
+      const refreshedFallbackPhoto = currentUser.photoURL?.trim();
+      return refreshedProviderPhoto || refreshedFallbackPhoto || '';
+    } catch (error) {
+      console.error('Failed to reload auth user for Google photo:', error);
+      return '';
+    }
+  };
+
+  const shouldSyncGooglePhoto = (profilePhotoURL: string, googlePhotoURL: string): boolean => {
+    if (!googlePhotoURL) return false;
+    if (!profilePhotoURL) return true;
+
+    const normalizedProfile = profilePhotoURL.trim().toLowerCase();
+    const normalizedGoogle = googlePhotoURL.trim().toLowerCase();
+    if (normalizedProfile === normalizedGoogle) return false;
+
+    const isGoogleHostedPhoto =
+      normalizedProfile.includes('googleusercontent.com') ||
+      normalizedProfile.includes('googleapis.com/a/');
+
+    // Keep custom uploaded avatar untouched, but refresh old Google-hosted URL.
+    return isGoogleHostedPhoto;
+  };
+
   const fetchProfile = async (currentUser: User) => {
     try {
       let profile = await getUserProfile(currentUser.uid);
@@ -59,6 +104,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         await ensureUserProfileDocument(currentUser);
         profile = await getUserProfile(currentUser.uid);
       }
+
+      const googlePhotoURL = await resolveGooglePhotoURL(currentUser);
+      const currentPhotoURL = profile?.photoURL?.trim() || '';
+      if (profile && shouldSyncGooglePhoto(currentPhotoURL, googlePhotoURL)) {
+        try {
+          await updateUserProfile(currentUser.uid, {
+            photoURL: googlePhotoURL,
+            profileUpdatedAt: Date.now(),
+          });
+          profile = {
+            ...profile,
+            photoURL: googlePhotoURL,
+            profileUpdatedAt: Date.now(),
+          };
+        } catch (photoSyncError) {
+          console.error('Failed to sync Google photo URL to profile:', photoSyncError);
+        }
+      }
+
       setUserProfile(profile || null);
     } catch (error) {
       console.error('Error in fetchProfile:', error);

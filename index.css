@@ -362,6 +362,78 @@ select.no-arrow {
     -6px -6px 12px var(--driver-shadow-light);
 }
 
+/* Admin claymorphism theme */
+.admin-clay {
+  --driver-bg-color: #f0f4f8;
+  --driver-bg-secondary: #e8ecf1;
+  --driver-text: #5d6d7e;
+  --driver-muted: #94a3b8;
+  --driver-title: #34495e;
+  --driver-clay-pink: #ffd1dc;
+  --driver-clay-blue: #d9e6f2;
+  --driver-clay-yellow: #fdfd96;
+  --driver-clay-green: #bce2d8;
+  --driver-surface: rgba(240, 244, 248, 0.9);
+  --driver-shadow-light: rgba(255, 255, 255, 0.9);
+  --driver-shadow-dark: rgba(166, 180, 200, 0.34);
+  position: relative;
+  isolation: isolate;
+  color: var(--driver-text);
+  background: linear-gradient(135deg, var(--driver-bg-secondary) 0%, var(--driver-bg-color) 100%);
+}
+
+.admin-clay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.4) 1px, transparent 1px),
+    radial-gradient(rgba(180, 193, 214, 0.14) 0.8px, transparent 0.8px);
+  background-size: 20px 20px, 16px 16px;
+  background-position: 0 0, 8px 8px;
+  opacity: 0.35;
+}
+
+.admin-clay [class*='bg-light-card'] {
+  background: var(--driver-bg-color) !important;
+  border-color: rgba(255, 255, 255, 0.82) !important;
+  box-shadow:
+    8px 8px 16px var(--driver-shadow-dark),
+    -8px -8px 16px var(--driver-shadow-light) !important;
+}
+
+.admin-clay [class*='bg-light-bg'],
+.admin-clay [class*='bg-slate-50'] {
+  background: rgba(232, 236, 241, 0.78) !important;
+}
+
+.admin-clay [class*='text-light-text'] {
+  color: var(--driver-title) !important;
+}
+
+.admin-clay [class*='text-light-muted'] {
+  color: var(--driver-muted) !important;
+}
+
+.admin-clay input,
+.admin-clay textarea,
+.admin-clay select {
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  background: var(--driver-bg-color);
+  box-shadow:
+    inset 2px 2px 4px rgba(166, 180, 200, 0.26),
+    inset -2px -2px 4px rgba(255, 255, 255, 0.86);
+}
+
+/* Ensure admin nav active/hover is always readable */
+.admin-clay .driver-mobile-nav-item-active,
+.admin-clay .driver-desktop-nav-item-active {
+  background: var(--driver-clay-blue);
+  color: #272727;
+}
+
 /* Global clay modal theme */
 .modal-clay-backdrop {
   background:

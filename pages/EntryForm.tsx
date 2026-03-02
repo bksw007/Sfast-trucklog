@@ -5,7 +5,6 @@ import { addJob, addOption, getTodayJobById, RevisionConflictError, syncTodayJob
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Plus, Save, Loader2, Camera, X, Image as ImageIcon, FileText } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
 import Modal from '../components/Modal';
 import ConfirmModal from '../components/ConfirmModal';
 import { formatDate } from '../utils/formatters';
@@ -60,13 +59,12 @@ const mergeImageUrls = (existing: string[], incoming: string[]): string[] => {
 type EntryFormData = Omit<JobEntry, 'id' | 'timestamp' | 'originImageUrl' | 'destinationImageUrl'>;
 
 const EntryForm: React.FC = () => {
-  const { theme } = useTheme();
   const { data } = useData();
   const { user, userProfile } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const isDriverEntryMode = location.pathname === '/driver/entry';
-  const isDark = isDriverEntryMode ? false : theme === 'dark';
+  const isDark = false;
   const isAdmin = userProfile?.role === 'admin';
   const driverFullName =
     userProfile?.fullName?.trim() ||

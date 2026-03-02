@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { deleteJob as firebaseDeleteJob, updateJob as firebaseUpdateJob } from '../services/firebaseService';
 import { JobEntry, AppData } from '../types';
 import { Download, Printer, Filter, X, ChevronDown, Edit2, Eye, Image as ImageIcon } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import ConfirmModal from '../components/ConfirmModal';
@@ -35,11 +34,10 @@ interface Filters {
 }
 
 const DataTable: React.FC = () => {
-  const { theme } = useTheme();
   const { data: appData, refreshData } = useData();
   const { userProfile } = useAuth();
   const isAdmin = userProfile?.role === 'admin';
-  const isDark = theme === 'dark';
+  const isDark = false;
   const [jobs, setJobs] = useState<JobEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
@@ -700,10 +698,10 @@ const DataTable: React.FC = () => {
     if (!selectedJob || !editData) return null;
 
     return (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:items-center sm:py-6">
         <div className="modal-clay-backdrop absolute inset-0" onClick={() => setIsDetailModalOpen(false)} />
         
-        <div className="modal-clay-panel relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl animate-fade-in">
+        <div className="modal-clay-panel relative w-full max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl shadow-2xl animate-fade-in sm:max-h-[90dvh]">
           <div className="modal-clay-header rounded-t-3xl p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -784,7 +782,7 @@ const DataTable: React.FC = () => {
             </div>
 
             {/* Ordered Fields */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
                 <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>📅 วันที่</div>
                 {isEditing ? (
@@ -1014,7 +1012,7 @@ const DataTable: React.FC = () => {
                 </div>
               )}
 
-              <div className={`col-span-2 p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-amber-50'}`}>
+              <div className={`p-4 rounded-2xl sm:col-span-2 ${isDark ? 'bg-dark-bg' : 'bg-amber-50'}`}>
                 <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-amber-600'}`}>💬 หมายเหตุ</div>
                 {isEditing ? (
                   <textarea
@@ -1045,7 +1043,7 @@ const DataTable: React.FC = () => {
                   <div className="space-y-3">
                     {/* Existing Images */}
                     {editOriginImageUrls.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         {editOriginImageUrls.map((url, index) => (
                            <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
                             <img src={url} alt={`Origin ${index}`} className="w-full h-full object-cover" />
@@ -1058,7 +1056,7 @@ const DataTable: React.FC = () => {
                     {editOriginImageFiles.length > 0 && (
                       <div>
                         <p className="text-xs text-slate-500 mb-1">รูปใหม่ที่จะเพิ่ม ({editOriginImageFiles.length}):</p>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           {editOriginImageFiles.map((file, index) => (
                             <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
                               <img src={URL.createObjectURL(file)} alt={`New Origin ${index}`} className="w-full h-full object-cover" />
@@ -1089,7 +1087,7 @@ const DataTable: React.FC = () => {
                   </div>
                 ) : (
                   selectedOriginImageUrls.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {selectedOriginImageUrls.map((url, index) => (
                         <div key={index} className="relative w-full h-32 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.open(url, '_blank')}>
                           <img 
@@ -1117,7 +1115,7 @@ const DataTable: React.FC = () => {
                   <div className="space-y-3">
                     {/* Existing Images */}
                     {editDestinationImageUrls.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         {editDestinationImageUrls.map((url, index) => (
                            <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
                             <img src={url} alt={`Destination ${index}`} className="w-full h-full object-cover" />
@@ -1130,7 +1128,7 @@ const DataTable: React.FC = () => {
                     {editDestinationImageFiles.length > 0 && (
                       <div>
                         <p className="text-xs text-slate-500 mb-1">รูปใหม่ที่จะเพิ่ม ({editDestinationImageFiles.length}):</p>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           {editDestinationImageFiles.map((file, index) => (
                             <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
                               <img src={URL.createObjectURL(file)} alt={`New Destination ${index}`} className="w-full h-full object-cover" />
@@ -1161,7 +1159,7 @@ const DataTable: React.FC = () => {
                   </div>
                 ) : (
                   selectedDestinationImageUrls.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {selectedDestinationImageUrls.map((url, index) => (
                         <div key={index} className="relative w-full h-32 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.open(url, '_blank')}>
                           <img 
@@ -1189,7 +1187,7 @@ const DataTable: React.FC = () => {
                   <div className="space-y-3">
                     {/* Existing Images */}
                     {editDocumentImageUrls.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         {editDocumentImageUrls.map((url, index) => (
                            <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
                             <img src={url} alt={`Document ${index}`} className="w-full h-full object-cover" />
@@ -1202,7 +1200,7 @@ const DataTable: React.FC = () => {
                     {editDocumentImageFiles.length > 0 && (
                       <div>
                         <p className="text-xs text-slate-500 mb-1">รูปใหม่ที่จะเพิ่ม ({editDocumentImageFiles.length}):</p>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           {editDocumentImageFiles.map((file, index) => (
                             <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
                               <img src={URL.createObjectURL(file)} alt={`New Document ${index}`} className="w-full h-full object-cover" />
@@ -1233,7 +1231,7 @@ const DataTable: React.FC = () => {
                   </div>
                 ) : (
                   selectedDocumentImageUrls.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {selectedDocumentImageUrls.map((url, index) => (
                         <div key={index} className="relative w-full h-32 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.open(url, '_blank')}>
                           <img 
@@ -1252,7 +1250,7 @@ const DataTable: React.FC = () => {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row">
               {isEditing ? (
                 <>
                   <button
@@ -1329,7 +1327,7 @@ const DataTable: React.FC = () => {
         </button>
         
         {/* Export Buttons */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button 
             onClick={exportCSV} 
             className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm font-medium border ${
@@ -1366,7 +1364,7 @@ const DataTable: React.FC = () => {
         }`}>
           <div className="flex flex-wrap gap-4">
             {/* Month Filter */}
-            <div className="flex-1 min-w-[140px]">
+            <div className="w-full sm:flex-1 sm:min-w-[140px]">
               <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>เดือน</label>
               <select
                 value={filters.month || ''}
@@ -1379,7 +1377,7 @@ const DataTable: React.FC = () => {
             </div>
 
             {/* Year Filter */}
-            <div className="flex-1 min-w-[120px]">
+            <div className="w-full sm:flex-1 sm:min-w-[120px]">
               <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>ปี</label>
               <select
                 value={filters.year || ''}
@@ -1392,7 +1390,7 @@ const DataTable: React.FC = () => {
             </div>
 
             {/* Driver Filter */}
-            <div className="flex-1 min-w-[150px]">
+            <div className="w-full sm:flex-1 sm:min-w-[150px]">
               <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>คนขับ</label>
               <select
                 value={filters.driver}
@@ -1405,7 +1403,7 @@ const DataTable: React.FC = () => {
             </div>
 
             {/* Vehicle Type Filter */}
-            <div className="flex-1 min-w-[140px]">
+            <div className="w-full sm:flex-1 sm:min-w-[140px]">
               <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>ประเภทรถ</label>
               <select
                 value={filters.vehicleType}
@@ -1418,7 +1416,7 @@ const DataTable: React.FC = () => {
             </div>
 
             {/* License Plate Filter */}
-            <div className="flex-1 min-w-[140px]">
+            <div className="w-full sm:flex-1 sm:min-w-[140px]">
               <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>ป้ายทะเบียน</label>
               <select
                 value={filters.licensePlate}
