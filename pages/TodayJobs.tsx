@@ -76,10 +76,23 @@ const parseDate = (dateStr: string) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
+const pad2 = (value: number) => value.toString().padStart(2, '0');
+
+const generateWorkOrderNo = () => {
+  const now = new Date();
+  const dd = pad2(now.getDate());
+  const mm = pad2(now.getMonth() + 1);
+  const yy = pad2(now.getFullYear() % 100);
+  const HH = pad2(now.getHours());
+  const min = pad2(now.getMinutes());
+  const ss = pad2(now.getSeconds());
+  return `w${dd}${mm}${yy}${HH}${min}${ss}`;
+};
+
 const initialFormData = (): TodayJobForm => ({
   employerCompany: 'MLT',
   jobNo: '',
-  workOrderNo: '',
+  workOrderNo: generateWorkOrderNo(),
   workDate: getLocalDate(),
   vehicleType: '',
   productName: '',
@@ -351,10 +364,12 @@ const TodayJobs: React.FC = () => {
       assignedUser?.fullName?.trim() ||
       assignedUser?.displayName ||
       '';
+    const profilePhone = assignedUser?.phoneNumber?.trim() || '';
     setFormData((prev) => ({
       ...prev,
       assignedToUid,
       driverName: driverFullName || prev.driverName,
+      driverPhone: profilePhone || prev.driverPhone,
     }));
   };
 
@@ -570,7 +585,17 @@ const TodayJobs: React.FC = () => {
       assignedUser?.fullName?.trim() ||
       assignedUser?.displayName ||
       '';
-    setEditForm((prev) => (prev ? { ...prev, assignedToUid, driverName: driverFullName || prev.driverName } : prev));
+    const profilePhone = assignedUser?.phoneNumber?.trim() || '';
+    setEditForm((prev) => (
+      prev
+        ? {
+            ...prev,
+            assignedToUid,
+            driverName: driverFullName || prev.driverName,
+            driverPhone: profilePhone || prev.driverPhone,
+          }
+        : prev
+    ));
   };
 
   const handleEditPoint = (point: 'pickup' | 'delivery', field: keyof DispatchPoint, value: string) => {
