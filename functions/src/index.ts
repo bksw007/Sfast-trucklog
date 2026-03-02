@@ -98,12 +98,9 @@ const getAdminTokens = async (): Promise<string[]> => {
   return Array.from(new Set(tokens));
 };
 
-const asDisplayDate = (value?: string): string => {
+const asLineDate = (value?: string): string => {
   if (!value) return "-";
-  const dateOnly = value.split("T")[0];
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateOnly);
-  if (!match) return dateOnly || "-";
-  return `${match[3]}/${match[2]}/${match[1]}`;
+  return value.split("T")[0] || "-";
 };
 
 const asDisplayTime = (value?: string): string => value?.trim() || "-";
@@ -135,29 +132,45 @@ const buildLineText = (
     statusLabelMap[job.status] || job.status :
     "-";
   const head = `ขุนบันลือ | ${eventLabel[eventType]}`;
-  const lines = [
-    head,
-    `🧾 เลขที่ใบสั่งงาน: ${getWorkOrderNo(job)}`,
-    `🏢 ผู้ว่าจ้าง: ${job.employerCompany || "-"}`,
-    `📦 สินค้า: ${job.productName || "-"}`,
-    `👷 คนขับ: ${job.assignedToName || job.driverName || "-"}`,
-    `🚚 ทะเบียนรถ: ${job.plateNo || "-"}`,
-    "",
-    `📍 จุดรับ: ${job.pickup?.location || "-"}`,
-    `🗓️ วันที่รับ: ${asDisplayDate(job.pickup?.date)}`,
-    `🕒 เวลารับ: ${asDisplayTime(job.pickup?.time)}`,
-    `👤 ผู้ติดต่อรับ: ${asDisplayContact(job.pickup?.contact)}`,
-    "",
-    `📍 จุดส่ง: ${job.delivery?.location || "-"}`,
-    `🗓️ วันที่ส่ง: ${asDisplayDate(job.delivery?.date)}`,
-    `🕒 เวลาส่ง: ${asDisplayTime(job.delivery?.time)}`,
-    `👤 ผู้ติดต่อส่ง: ${asDisplayContact(job.delivery?.contact)}`,
-    "",
-    `📝 หมายเหตุ: ${job.importantNote || "-"}`,
-    `📊 สถานะ: ${statusLabel}`,
-  ];
 
-  return lines.join("\n");
+  // Format 1: create/update
+  if (eventType === "create" || eventType === "update") {
+    return [
+      head,
+      `เลขที่ใบสั่งงาน: ${getWorkOrderNo(job)}`,
+      `ผู้ว่าจ้าง: ${job.employerCompany || "-"}`,
+      `สินค้า: ${job.productName || "-"}`,
+      `คนขับ: ${job.assignedToName || job.driverName || "-"}`,
+      `ทะเบียนรถ: ${job.plateNo || "-"}`,
+      "",
+      "จุดรับ",
+      `- สถานที่: ${job.pickup?.location || "-"}`,
+      `- วันที่รับ: ${asLineDate(job.pickup?.date)}`,
+      `- เวลา: ${asDisplayTime(job.pickup?.time)}`,
+      `- ผู้ติดต่อ: ${asDisplayContact(job.pickup?.contact)}`,
+      "",
+      "จุดส่ง",
+      `- สถานที่: ${job.delivery?.location || "-"}`,
+      `- วันที่ส่ง: ${asLineDate(job.delivery?.date)}`,
+      `- เวลา: ${asDisplayTime(job.delivery?.time)}`,
+      `- ผู้ติดต่อ: ${asDisplayContact(job.delivery?.contact)}`,
+      "",
+      `หมายเหตุ: ${job.importantNote || "-"}`,
+      `สถานะงาน: ${statusLabel}`,
+    ].join("\n");
+  }
+
+  // Format 2: accept/complete (and any other status event fallback)
+  return [
+    head,
+    `เลขที่ใบสั่งงาน: ${getWorkOrderNo(job)}`,
+    `วันที่รับ: ${asLineDate(job.pickup?.date)}`,
+    `จุดรับ: ${job.pickup?.location || "-"}`,
+    `จุดส่ง: ${job.delivery?.location || "-"}`,
+    `คนขับ: ${job.assignedToName || job.driverName || "-"}`,
+    "",
+    `สถานะงาน: ${statusLabel}`,
+  ].join("\n");
 };
 
 const sendLineNotification = async (
@@ -256,6 +269,15 @@ const notifyByEvent = async (
   jobId: string,
   job: TodayJobEntry
 ): Promise<void> => {
+  // Skip all notifications if admin updates after job is already completed.
+  if (eventType === "update" && job.status === "completed") {
+    logger.info("Notification skipped for completed job update", {
+      eventType,
+      jobId,
+    });
+    return;
+  }
+
   const driverLabel = job.assignedToName || job.driverName || "พนักงาน";
   const jobLabel = `${getJobNo(job)} | WO ${getWorkOrderNo(job)}`;
 

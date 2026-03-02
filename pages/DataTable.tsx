@@ -1,7 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { deleteJob as firebaseDeleteJob, updateJob as firebaseUpdateJob } from '../services/firebaseService';
 import { JobEntry, AppData } from '../types';
-import { Download, Printer, Filter, X, ChevronDown, Edit2, Eye, Image as ImageIcon } from 'lucide-react';
+import {
+  CalendarClock,
+  Download,
+  Eye,
+  Edit2,
+  Filter,
+  ChevronDown,
+  Image as ImageIcon,
+  MapPin,
+  Package2,
+  Printer,
+  Truck,
+  UserRound,
+  X
+} from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import ConfirmModal from '../components/ConfirmModal';
@@ -33,6 +47,25 @@ interface Filters {
   licensePlate: string;
 }
 
+const getCurrentMonthYear = () => {
+  const now = new Date();
+  return {
+    month: now.getMonth() + 1,
+    year: now.getFullYear(),
+  };
+};
+
+const createDefaultFilters = (): Filters => {
+  const { month, year } = getCurrentMonthYear();
+  return {
+    month,
+    year,
+    driver: '',
+    vehicleType: '',
+    licensePlate: ''
+  };
+};
+
 const DataTable: React.FC = () => {
   const { data: appData, refreshData } = useData();
   const { userProfile } = useAuth();
@@ -41,13 +74,7 @@ const DataTable: React.FC = () => {
   const [jobs, setJobs] = useState<JobEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState<Filters>({
-    month: null,
-    year: null,
-    driver: '',
-    vehicleType: '',
-    licensePlate: ''
-  });
+  const [filters, setFilters] = useState<Filters>(() => createDefaultFilters());
 
   const getJobYearMonth = (dateStr: string): { year: number; month: number } | null => {
     const datePart = dateStr?.split('T')[0];
@@ -100,11 +127,13 @@ const DataTable: React.FC = () => {
 
   // Extract unique years from data
   const availableYears = useMemo(() => {
+    const currentYear = new Date().getFullYear();
     const years = new Set<number>(
       jobs
         .map(job => getJobYearMonth(job.date)?.year)
         .filter((year): year is number => typeof year === 'number')
     );
+    years.add(currentYear);
     return Array.from(years).sort((a, b) => b - a);
   }, [jobs]);
 
@@ -126,16 +155,18 @@ const DataTable: React.FC = () => {
   }, [jobs, filters]);
 
   const clearFilters = () => {
-    setFilters({
-      month: null,
-      year: null,
-      driver: '',
-      vehicleType: '',
-      licensePlate: ''
-    });
+    setFilters(createDefaultFilters());
   };
 
   const hasActiveFilters = filters.month || filters.year || filters.driver || filters.vehicleType || filters.licensePlate;
+  const cardClass = isDark
+    ? 'rounded-2xl border border-dark-muted/30 bg-dark-card/70 shadow-xl shadow-black/20'
+    : 'rounded-2xl border border-light-muted/20 bg-light-card shadow-xl shadow-slate-200/60';
+  const selectClass = isDark
+    ? 'w-full min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/40 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none'
+    : 'w-full min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none';
+  const sortUniqueOptions = (items: string[]) =>
+    Array.from(new Set(items.map((item) => item.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'th'));
 
   const resolveWorkOrderNo = (job: Partial<JobEntry> | null | undefined): string =>
     (job?.workOrderNo || (job as JobEntry & { ticketNo?: string } | null | undefined)?.ticketNo || '').trim();
@@ -712,12 +743,12 @@ const DataTable: React.FC = () => {
                   <h3 className="modal-clay-title text-xl">
                     {isEditing ? 'แก้ไขข้อมูล' : 'รายละเอียดงาน'}
                   </h3>
-                  <p className="modal-clay-muted text-sm">{selectedJob.jobNo || 'No Job Number'}</p>
+                  <p className="modal-clay-muted text-sm">{selectedJob.jobNo || '-'}</p>
                 </div>
               </div>
               <button 
                 onClick={() => setIsDetailModalOpen(false)} 
-                className="modal-clay-close rounded-xl p-2 transition-colors"
+                className="driver-clay-icon-btn rounded-xl p-2 transition-colors"
               >
                 <X size={20} className="modal-clay-muted" />
               </button>
@@ -726,41 +757,37 @@ const DataTable: React.FC = () => {
 
           <div className="p-6 space-y-6">
             {/* Route Section */}
-            <div className={`p-5 rounded-2xl border ${isDark ? 'bg-dark-bg/50 border-dark-muted/20' : 'bg-gradient-to-br from-purple-50 to-blue-50 border-purple-100'}`}>
+            <div className="driver-clay-soft p-5">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-accent-primary/20 flex items-center justify-center">
-                  <span className="text-accent-primary text-sm">🚚</span>
+                <div className="driver-clay-soft inline-flex h-8 w-8 items-center justify-center rounded-lg">
+                  <Truck size={15} className="driver-clay-muted" />
                 </div>
-                <span className={`font-semibold ${isDark ? 'text-white' : 'text-slate-700'}`}>เส้นทาง</span>
+                <span className="font-semibold text-slate-700">เส้นทาง</span>
               </div>
               {isEditing ? (
                 <div className="space-y-3">
                   <div>
-                    <label className={`text-xs ${isDark ? 'text-dark-muted' : 'text-slate-500'}`}>สถานที่รับ</label>
+                    <label className="driver-clay-muted text-xs">สถานที่รับ</label>
                     <select
                       value={editData.pickupLocation}
                       onChange={(e) => handleEditChange('pickupLocation', e.target.value)}
-                      className={`w-full mt-1 border rounded-xl px-4 py-2 ${
-                        isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200 text-slate-700'
-                      }`}
+                      className="driver-clay-input mt-1 w-full px-3 py-2 text-sm"
                     >
                       <option value="">เลือกสถานที่</option>
-                      {appData?.options.locations.sort((a,b)=>a.localeCompare(b, 'th')).map(opt => (
+                      {sortUniqueOptions(appData?.options.locations || []).map(opt => (
                         <option key={opt} value={opt}>{opt}</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className={`text-xs ${isDark ? 'text-dark-muted' : 'text-slate-500'}`}>สถานที่ส่ง</label>
+                    <label className="driver-clay-muted text-xs">สถานที่ส่ง</label>
                     <select
                       value={editData.dropoffLocation}
                       onChange={(e) => handleEditChange('dropoffLocation', e.target.value)}
-                      className={`w-full mt-1 border rounded-xl px-4 py-2 ${
-                        isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200 text-slate-700'
-                      }`}
+                      className="driver-clay-input mt-1 w-full px-3 py-2 text-sm"
                     >
                       <option value="">เลือกสถานที่</option>
-                      {appData?.options.locations.sort((a,b)=>a.localeCompare(b, 'th')).map(opt => (
+                      {sortUniqueOptions(appData?.options.locations || []).map(opt => (
                         <option key={opt} value={opt}>{opt}</option>
                       ))}
                     </select>
@@ -768,14 +795,14 @@ const DataTable: React.FC = () => {
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
-                  <div className={`flex-1 p-3 rounded-xl ${isDark ? 'bg-dark-card' : 'bg-white'} shadow-sm`}>
-                    <div className={`text-xs ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>รับ</div>
-                    <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.pickupLocation}</div>
+                  <div className="driver-clay-soft flex-1 p-3">
+                    <div className="driver-clay-muted text-xs">รับ</div>
+                    <div className="font-medium text-slate-700">{selectedJob.pickupLocation}</div>
                   </div>
-                  <div className="text-accent-primary text-xl">→</div>
-                  <div className={`flex-1 p-3 rounded-xl ${isDark ? 'bg-dark-card' : 'bg-white'} shadow-sm`}>
-                    <div className={`text-xs ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>ส่ง</div>
-                    <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.dropoffLocation}</div>
+                  <div className="driver-clay-muted text-xl">→</div>
+                  <div className="driver-clay-soft flex-1 p-3">
+                    <div className="driver-clay-muted text-xs">ส่ง</div>
+                    <div className="font-medium text-slate-700">{selectedJob.dropoffLocation}</div>
                   </div>
                 </div>
               )}
@@ -783,8 +810,8 @@ const DataTable: React.FC = () => {
 
             {/* Ordered Fields */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>📅 วันที่</div>
+              <div className="driver-clay-soft p-4">
+                <div className="driver-clay-muted text-xs mb-1">วันที่</div>
                 {isEditing ? (
                   <div className="relative" onClick={(e) => {
                     const input = e.currentTarget.querySelector('input');
@@ -794,160 +821,141 @@ const DataTable: React.FC = () => {
                       type="date"
                       value={editData.date}
                       onChange={(e) => handleEditChange('date', e.target.value)}
-                      className={`w-full border rounded-lg px-3 py-1 text-sm cursor-pointer dark:[color-scheme:dark] ${
-                        isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
-                      }`}
+                      className="driver-clay-input w-full cursor-pointer px-3 py-2 text-sm dark:[color-scheme:dark]"
                     />
                   </div>
                 ) : (
-                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{formatDate(selectedJob.date)}</div>
+                  <div className="font-medium text-slate-700">{formatDate(selectedJob.date)}</div>
                 )}
               </div>
 
-              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>📄 เลขที่ใบสั่งงาน (Work Order)</div>
+              <div className="driver-clay-soft p-4">
+                <div className="driver-clay-muted text-xs mb-1">เลขที่ใบสั่งงาน (Work Order)</div>
                 {isEditing ? (
                   <input
                     value={editData.workOrderNo || ''}
                     onChange={(e) => handleEditChange('workOrderNo', e.target.value)}
-                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
-                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
-                    }`}
+                    className="driver-clay-input w-full px-3 py-2 text-sm"
                   />
                 ) : (
-                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>
+                  <div className="font-medium text-slate-700">
                     {selectedJob.workOrderNo || (selectedJob as JobEntry & { ticketNo?: string }).ticketNo || '-'}
                   </div>
                 )}
               </div>
 
-              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🚛 ประเภทรถ</div>
+              <div className="driver-clay-soft p-4">
+                <div className="driver-clay-muted text-xs mb-1">ประเภทรถ</div>
                 {isEditing ? (
                   <select
                     value={editData.vehicleType}
                     onChange={(e) => handleEditChange('vehicleType', e.target.value)}
-                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
-                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
-                    }`}
+                    className="driver-clay-input w-full px-3 py-2 text-sm"
                   >
                     <option value="">เลือกประเภทรถ</option>
-                    {appData?.options.vehicleTypes.sort((a,b)=>a.localeCompare(b, 'th')).map(opt => (
+                    {sortUniqueOptions(appData?.options.vehicleTypes || []).map((opt) => (
                       <option key={opt} value={opt}>{opt}</option>
                     ))}
                   </select>
                 ) : (
-                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.vehicleType}</div>
+                  <div className="font-medium text-slate-700">{selectedJob.vehicleType}</div>
                 )}
               </div>
 
-              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🔢 ทะเบียน</div>
+              <div className="driver-clay-soft p-4">
+                <div className="driver-clay-muted text-xs mb-1">ทะเบียน</div>
                 {isEditing ? (
                   <select
                     value={editData.licensePlate}
                     onChange={(e) => handleEditChange('licensePlate', e.target.value)}
-                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
-                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
-                    }`}
+                    className="driver-clay-input w-full px-3 py-2 text-sm"
                   >
                     <option value="">เลือกทะเบียน</option>
-                    {appData?.options.licensePlates.sort((a,b)=>a.localeCompare(b, 'th')).map(opt => (
+                    {sortUniqueOptions(appData?.options.licensePlates || []).map((opt) => (
                       <option key={opt} value={opt}>{opt}</option>
                     ))}
                   </select>
                 ) : (
-                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.licensePlate}</div>
+                  <div className="font-medium text-slate-700">{selectedJob.licensePlate}</div>
                 )}
               </div>
 
-              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>👤 คนขับ</div>
+              <div className="driver-clay-soft p-4">
+                <div className="driver-clay-muted text-xs mb-1">คนขับ</div>
                 {isEditing ? (
                   <select
                     value={editData.driverName}
                     onChange={(e) => handleEditChange('driverName', e.target.value)}
-                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
-                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
-                    }`}
+                    className="driver-clay-input w-full px-3 py-2 text-sm"
                   >
                     <option value="">เลือกคนขับ</option>
-                    {editData.driverName &&
-                      !appData?.options.drivers.some((opt) => opt === editData.driverName) && (
-                        <option value={editData.driverName}>{editData.driverName}</option>
-                      )}
-                    {appData?.options.drivers.sort((a,b)=>a.localeCompare(b, 'th')).map(opt => (
+                    {editData.driverName && !appData?.options.drivers.some((opt) => opt === editData.driverName) && (
+                      <option value={editData.driverName}>{editData.driverName}</option>
+                    )}
+                    {sortUniqueOptions(appData?.options.drivers || []).map((opt) => (
                       <option key={opt} value={opt}>{opt}</option>
                     ))}
                   </select>
                 ) : (
-                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.driverName}</div>
+                  <div className="font-medium text-slate-700">{selectedJob.driverName}</div>
                 )}
               </div>
 
-              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🔄 จำนวนรอบ</div>
+              <div className="driver-clay-soft p-4">
+                <div className="driver-clay-muted text-xs mb-1">จำนวนรอบ</div>
                 {isEditing ? (
                   <input
                     type="number"
                     value={editData.rounds}
-                    onChange={(e) => handleEditChange('rounds', parseInt(e.target.value))}
-                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
-                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
-                    }`}
+                    onChange={(e) => handleEditChange('rounds', parseInt(e.target.value, 10))}
+                    className="driver-clay-input w-full px-3 py-2 text-sm"
                   />
                 ) : (
-                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.rounds} รอบ</div>
+                  <div className="font-medium text-slate-700">{selectedJob.rounds} รอบ</div>
                 )}
               </div>
 
-              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>📋 Job No.</div>
+              <div className="driver-clay-soft p-4">
+                <div className="driver-clay-muted text-xs mb-1">Job No.</div>
                 {isEditing ? (
                   <input
                     value={editData.jobNo}
                     onChange={(e) => handleEditChange('jobNo', e.target.value)}
-                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
-                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
-                    }`}
+                    className="driver-clay-input w-full px-3 py-2 text-sm"
                   />
                 ) : (
-                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.jobNo || '-'}</div>
+                  <div className="font-medium text-slate-700">{selectedJob.jobNo || '-'}</div>
                 )}
               </div>
 
-              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🧾 Invoice No.</div>
+              <div className="driver-clay-soft p-4">
+                <div className="driver-clay-muted text-xs mb-1">Invoice No.</div>
                 {isEditing ? (
                   <input
                     value={editData.invNo}
                     onChange={(e) => handleEditChange('invNo', e.target.value)}
-                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
-                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
-                    }`}
+                    className="driver-clay-input w-full px-3 py-2 text-sm"
                   />
                 ) : (
-                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{resolveInvoiceNo(selectedJob) || '-'}</div>
+                  <div className="font-medium text-slate-700">{resolveInvoiceNo(selectedJob) || '-'}</div>
                 )}
               </div>
 
-              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>🚛 เลขที่ใบขนส่ง (Transport Doc)</div>
+              <div className="driver-clay-soft p-4">
+                <div className="driver-clay-muted text-xs mb-1">เลขที่ใบขนส่ง (Transport Doc)</div>
                 {isEditing ? (
                   <input
                     value={editData.transportDocNo || ''}
                     onChange={(e) => handleEditChange('transportDocNo', e.target.value)}
-                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
-                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
-                    }`}
+                    className="driver-clay-input w-full px-3 py-2 text-sm"
                   />
                 ) : (
-                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.transportDocNo || '-'}</div>
+                  <div className="font-medium text-slate-700">{selectedJob.transportDocNo || '-'}</div>
                 )}
               </div>
 
-              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>⛽ ค่าน้ำมัน/ทางด่วน</div>
+              <div className="driver-clay-soft p-4">
+                <div className="driver-clay-muted text-xs mb-1">ค่าน้ำมัน/ทางด่วน</div>
                 {isEditing ? (
                   <input
                     type="number"
@@ -956,13 +964,11 @@ const DataTable: React.FC = () => {
                       const value = e.target.value;
                       handleEditChange('fuelAndToll', value === '' ? '' : parseFloat(value));
                     }}
-                    className={`w-full border rounded-lg px-3 py-1 text-sm ${
-                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
-                    }`}
+                    className="driver-clay-input w-full px-3 py-2 text-sm"
                     placeholder="0.00"
                   />
                 ) : (
-                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>
+                  <div className="font-medium text-slate-700">
                     {selectedJob.fuelAndToll !== null && selectedJob.fuelAndToll !== undefined && selectedJob.fuelAndToll !== ''
                       ? Number(selectedJob.fuelAndToll).toLocaleString()
                       : '-'}
@@ -971,20 +977,18 @@ const DataTable: React.FC = () => {
               </div>
 
               {isAdmin && (
-                <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-                  <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>💰 ราคาเก็บลูกค้า</div>
+                <div className="driver-clay-soft p-4">
+                  <div className="driver-clay-muted text-xs mb-1">ราคาเก็บลูกค้า</div>
                   {isEditing ? (
                     <input
                       type="number"
                       value={editData.customerPrice || ''}
                       onChange={(e) => handleEditChange('customerPrice', parseFloat(e.target.value))}
-                      className={`w-full border rounded-lg px-3 py-1 text-sm ${
-                        isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
-                      }`}
+                      className="driver-clay-input w-full px-3 py-2 text-sm"
                       placeholder="0.00"
                     />
                   ) : (
-                    <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>
+                    <div className="font-medium text-slate-700">
                       {selectedJob.customerPrice?.toLocaleString() || '-'}
                     </div>
                   )}
@@ -992,39 +996,35 @@ const DataTable: React.FC = () => {
               )}
 
               {isAdmin && (
-                <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-                  <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-slate-400'}`}>💸 ราคาจ่ายรถร่วม</div>
+                <div className="driver-clay-soft p-4">
+                  <div className="driver-clay-muted text-xs mb-1">ราคาจ่ายรถร่วม</div>
                   {isEditing ? (
                     <input
                       type="number"
                       value={editData.jointPrice || ''}
                       onChange={(e) => handleEditChange('jointPrice', parseFloat(e.target.value))}
-                      className={`w-full border rounded-lg px-3 py-1 text-sm ${
-                        isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-slate-200'
-                      }`}
+                      className="driver-clay-input w-full px-3 py-2 text-sm"
                       placeholder="0.00"
                     />
                   ) : (
-                    <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>
+                    <div className="font-medium text-slate-700">
                       {selectedJob.jointPrice?.toLocaleString() || '-'}
                     </div>
                   )}
                 </div>
               )}
 
-              <div className={`p-4 rounded-2xl sm:col-span-2 ${isDark ? 'bg-dark-bg' : 'bg-amber-50'}`}>
-                <div className={`text-xs mb-1 ${isDark ? 'text-dark-muted' : 'text-amber-600'}`}>💬 หมายเหตุ</div>
+              <div className="driver-clay-soft p-4 sm:col-span-2">
+                <div className="driver-clay-muted text-xs mb-1">หมายเหตุ</div>
                 {isEditing ? (
                   <textarea
                     value={editData.remarks}
                     onChange={(e) => handleEditChange('remarks', e.target.value)}
                     rows={2}
-                    className={`w-full border rounded-lg px-3 py-2 text-sm ${
-                      isDark ? 'bg-dark-card border-dark-muted/30 text-dark-text' : 'bg-white border-amber-200'
-                    }`}
+                    className="driver-clay-input w-full resize-none px-3 py-2 text-sm"
                   />
                 ) : (
-                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-amber-800'}`}>{selectedJob.remarks || '-'}</div>
+                  <div className="font-medium text-slate-700">{selectedJob.remarks || '-'}</div>
                 )}
               </div>
             </div>
@@ -1033,10 +1033,10 @@ const DataTable: React.FC = () => {
             <div className="space-y-4">
 
               {/* Origin Image Section (รูปภาพต้นทาง) */}
-              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-blue-50/50'}`}>
+              <div className="driver-clay-soft p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <ImageIcon size={16} className={isDark ? 'text-dark-muted' : 'text-blue-500'} />
-                  <span className={`text-xs ${isDark ? 'text-dark-muted' : 'text-blue-600'}`}>รูปภาพต้นทาง</span>
+                  <ImageIcon size={16} className="driver-clay-muted" />
+                  <span className="driver-clay-muted text-xs">รูปภาพต้นทาง</span>
                 </div>
                 
                 {isEditing ? (
@@ -1045,7 +1045,7 @@ const DataTable: React.FC = () => {
                     {editOriginImageUrls.length > 0 ? (
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         {editOriginImageUrls.map((url, index) => (
-                           <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
+                           <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-white/70">
                             <img src={url} alt={`Origin ${index}`} className="w-full h-full object-cover" />
                           </div>
                         ))}
@@ -1055,10 +1055,10 @@ const DataTable: React.FC = () => {
                     {/* New Images Preview */}
                     {editOriginImageFiles.length > 0 && (
                       <div>
-                        <p className="text-xs text-slate-500 mb-1">รูปใหม่ที่จะเพิ่ม ({editOriginImageFiles.length}):</p>
+                        <p className="driver-clay-muted mb-1 text-xs">รูปใหม่ที่จะเพิ่ม ({editOriginImageFiles.length}):</p>
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           {editOriginImageFiles.map((file, index) => (
-                            <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
+                            <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-white/70">
                               <img src={URL.createObjectURL(file)} alt={`New Origin ${index}`} className="w-full h-full object-cover" />
                             </div>
                           ))}
@@ -1076,39 +1076,34 @@ const DataTable: React.FC = () => {
                            setEditOriginImageFiles(files);
                          }
                       }}
-                      className="block w-full text-sm text-slate-500
-                        file:mr-4 file:py-2 file:px-4
-                        file:rounded-full file:border-0
-                        file:text-sm file:font-semibold
-                        file:bg-violet-50 file:text-violet-700
-                        hover:file:bg-violet-100"
+                      className="driver-clay-input block w-full px-3 py-2 text-sm text-slate-600 file:mr-3 file:rounded-xl file:border file:border-white/80 file:bg-[#d9e6f2] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700"
                     />
-                    <p className="text-xs text-slate-400">*การอัพโหลดรูปใหม่จะเพิ่มต่อจากรูปเดิม</p>
+                    <p className="driver-clay-muted text-xs">*การอัพโหลดรูปใหม่จะเพิ่มต่อจากรูปเดิม</p>
                   </div>
                 ) : (
                   selectedOriginImageUrls.length > 0 ? (
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {selectedOriginImageUrls.map((url, index) => (
-                        <div key={index} className="relative w-full h-32 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.open(url, '_blank')}>
+                        <div key={index} className="relative w-full h-32 cursor-pointer overflow-hidden rounded-xl border border-white/70" onClick={() => window.open(url, '_blank')}>
                           <img 
                             src={url} 
                             alt={`Origin ${index}`} 
-                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" 
+                            className="h-full w-full object-cover hover:scale-105 transition-transform duration-300" 
                           />
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-sm text-slate-400 italic text-center py-4">ไม่มีรูปภาพต้นทาง</div>
+                    <div className="driver-clay-muted py-4 text-center text-sm italic">ไม่มีรูปภาพต้นทาง</div>
                   )
                 )}
               </div>
 
               {/* Destination Image Section (รูปภาพปลายทาง) */}
-              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-green-50/50'}`}>
+              <div className="driver-clay-soft p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <ImageIcon size={16} className={isDark ? 'text-dark-muted' : 'text-green-500'} />
-                  <span className={`text-xs ${isDark ? 'text-dark-muted' : 'text-green-600'}`}>รูปภาพปลายทาง</span>
+                  <ImageIcon size={16} className="driver-clay-muted" />
+                  <span className="driver-clay-muted text-xs">รูปภาพปลายทาง</span>
                 </div>
                 
                 {isEditing ? (
@@ -1117,7 +1112,7 @@ const DataTable: React.FC = () => {
                     {editDestinationImageUrls.length > 0 ? (
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         {editDestinationImageUrls.map((url, index) => (
-                           <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
+                           <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-white/70">
                             <img src={url} alt={`Destination ${index}`} className="w-full h-full object-cover" />
                           </div>
                         ))}
@@ -1127,10 +1122,10 @@ const DataTable: React.FC = () => {
                     {/* New Images Preview */}
                     {editDestinationImageFiles.length > 0 && (
                       <div>
-                        <p className="text-xs text-slate-500 mb-1">รูปใหม่ที่จะเพิ่ม ({editDestinationImageFiles.length}):</p>
+                        <p className="driver-clay-muted mb-1 text-xs">รูปใหม่ที่จะเพิ่ม ({editDestinationImageFiles.length}):</p>
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           {editDestinationImageFiles.map((file, index) => (
-                            <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
+                            <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-white/70">
                               <img src={URL.createObjectURL(file)} alt={`New Destination ${index}`} className="w-full h-full object-cover" />
                             </div>
                           ))}
@@ -1148,39 +1143,34 @@ const DataTable: React.FC = () => {
                            setEditDestinationImageFiles(files);
                          }
                       }}
-                      className="block w-full text-sm text-slate-500
-                        file:mr-4 file:py-2 file:px-4
-                        file:rounded-full file:border-0
-                        file:text-sm file:font-semibold
-                        file:bg-green-50 file:text-green-700
-                        hover:file:bg-green-100"
+                      className="driver-clay-input block w-full px-3 py-2 text-sm text-slate-600 file:mr-3 file:rounded-xl file:border file:border-white/80 file:bg-[#d9e6f2] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700"
                     />
-                    <p className="text-xs text-slate-400">*การอัพโหลดรูปใหม่จะเพิ่มต่อจากรูปเดิม</p>
+                    <p className="driver-clay-muted text-xs">*การอัพโหลดรูปใหม่จะเพิ่มต่อจากรูปเดิม</p>
                   </div>
                 ) : (
                   selectedDestinationImageUrls.length > 0 ? (
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {selectedDestinationImageUrls.map((url, index) => (
-                        <div key={index} className="relative w-full h-32 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.open(url, '_blank')}>
+                        <div key={index} className="relative w-full h-32 cursor-pointer overflow-hidden rounded-xl border border-white/70" onClick={() => window.open(url, '_blank')}>
                           <img 
                             src={url} 
                             alt={`Destination ${index}`} 
-                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" 
+                            className="h-full w-full object-cover hover:scale-105 transition-transform duration-300" 
                           />
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-sm text-slate-400 italic text-center py-4">ไม่มีรูปภาพปลายทาง</div>
+                    <div className="driver-clay-muted py-4 text-center text-sm italic">ไม่มีรูปภาพปลายทาง</div>
                   )
                 )}
               </div>
 
                {/* Document Image Section (รูปภาพเอกสาร) */}
-              <div className={`p-4 rounded-2xl ${isDark ? 'bg-dark-bg' : 'bg-gray-50/50'}`}>
+              <div className="driver-clay-soft p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <ImageIcon size={16} className={isDark ? 'text-dark-muted' : 'text-gray-500'} />
-                  <span className={`text-xs ${isDark ? 'text-dark-muted' : 'text-gray-600'}`}>รูปภาพเอกสาร</span>
+                  <ImageIcon size={16} className="driver-clay-muted" />
+                  <span className="driver-clay-muted text-xs">รูปภาพเอกสาร</span>
                 </div>
                 
                 {isEditing ? (
@@ -1189,7 +1179,7 @@ const DataTable: React.FC = () => {
                     {editDocumentImageUrls.length > 0 ? (
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         {editDocumentImageUrls.map((url, index) => (
-                           <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
+                           <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-white/70">
                             <img src={url} alt={`Document ${index}`} className="w-full h-full object-cover" />
                           </div>
                         ))}
@@ -1199,10 +1189,10 @@ const DataTable: React.FC = () => {
                     {/* New Images Preview */}
                     {editDocumentImageFiles.length > 0 && (
                       <div>
-                        <p className="text-xs text-slate-500 mb-1">รูปใหม่ที่จะเพิ่ม ({editDocumentImageFiles.length}):</p>
+                        <p className="driver-clay-muted mb-1 text-xs">รูปใหม่ที่จะเพิ่ม ({editDocumentImageFiles.length}):</p>
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           {editDocumentImageFiles.map((file, index) => (
-                            <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200">
+                            <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-white/70">
                               <img src={URL.createObjectURL(file)} alt={`New Document ${index}`} className="w-full h-full object-cover" />
                             </div>
                           ))}
@@ -1220,30 +1210,25 @@ const DataTable: React.FC = () => {
                            setEditDocumentImageFiles(files);
                          }
                       }}
-                      className="block w-full text-sm text-slate-500
-                        file:mr-4 file:py-2 file:px-4
-                        file:rounded-full file:border-0
-                        file:text-sm file:font-semibold
-                        file:bg-gray-50 file:text-gray-700
-                        hover:file:bg-gray-100"
+                      className="driver-clay-input block w-full px-3 py-2 text-sm text-slate-600 file:mr-3 file:rounded-xl file:border file:border-white/80 file:bg-[#d9e6f2] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700"
                     />
-                    <p className="text-xs text-slate-400">*การอัพโหลดรูปใหม่จะเพิ่มต่อจากรูปเดิม</p>
+                    <p className="driver-clay-muted text-xs">*การอัพโหลดรูปใหม่จะเพิ่มต่อจากรูปเดิม</p>
                   </div>
                 ) : (
                   selectedDocumentImageUrls.length > 0 ? (
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {selectedDocumentImageUrls.map((url, index) => (
-                        <div key={index} className="relative w-full h-32 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.open(url, '_blank')}>
+                        <div key={index} className="relative w-full h-32 cursor-pointer overflow-hidden rounded-xl border border-white/70" onClick={() => window.open(url, '_blank')}>
                           <img 
                             src={url} 
                             alt={`Document ${index}`} 
-                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" 
+                            className="h-full w-full object-cover hover:scale-105 transition-transform duration-300" 
                           />
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-sm text-slate-400 italic text-center py-4">ไม่มีรูปภาพเอกสาร</div>
+                    <div className="driver-clay-muted py-4 text-center text-sm italic">ไม่มีรูปภาพเอกสาร</div>
                   )
                 )}
               </div>
@@ -1255,32 +1240,30 @@ const DataTable: React.FC = () => {
                 <>
                   <button
                     onClick={() => setIsEditing(false)}
-                    className={`flex-1 py-3 rounded-xl font-medium transition-all ${
-                      isDark ? 'bg-dark-bg hover:bg-white/10 text-dark-text' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                    }`}
+                    className="driver-clay-btn driver-clay-btn-ghost flex-1"
                   >
                     ยกเลิก
                   </button>
                   <button
                     onClick={handleSaveEdit}
-                    className="flex-1 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-accent-primary to-accent-secondary hover:brightness-110 transition-all shadow-lg shadow-purple-500/25"
+                    className="driver-clay-btn driver-clay-btn-success flex-1"
                   >
-                    💾 บันทึก
+                    บันทึก
                   </button>
                 </>
               ) : (
                 <>
                   <button
                     onClick={handleDelete}
-                    className="flex-1 py-3 rounded-xl font-medium text-red-500 bg-red-50 hover:bg-red-100 transition-all"
+                    className="driver-clay-btn flex-1 bg-[#ffd9de] text-rose-600"
                   >
-                    🗑️ ลบ
+                    ลบ
                   </button>
                   <button
                     onClick={handleEditClick}
-                    className="flex-1 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-accent-primary to-accent-secondary hover:brightness-110 transition-all shadow-lg shadow-purple-500/25"
+                    className="driver-clay-btn driver-clay-btn-primary flex-1"
                   >
-                    ✏️ แก้ไข
+                    แก้ไข
                   </button>
                 </>
               )}
@@ -1292,268 +1275,225 @@ const DataTable: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className={`text-3xl font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            ข้อมูลงานวิ่ง
-          </h2>
-          <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>
-            จัดการและค้นหาประวัติงานวิ่งทั้งหมด
-          </p>
+    <div className="space-y-6 animate-fade-in">
+      <section className={`${cardClass} overflow-hidden`}>
+        <div className="bg-gradient-to-r from-[#0f766e] via-[#0e7490] to-[#075985] px-5 py-4 text-white md:px-7 md:py-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-white/80">Dispatch History</p>
+              <h2 className="mt-1 text-2xl font-black tracking-tight md:text-[2rem]">ข้อมูลงานวิ่ง</h2>
+              <p className="mt-1 text-sm text-white/90">จัดการและค้นหาประวัติงานวิ่งทั้งหมด</p>
+            </div>
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/30 bg-white/15 shadow-[inset_1px_1px_0_rgba(255,255,255,0.35)]">
+              <Truck className="h-7 w-7 text-white" />
+            </div>
+          </div>
         </div>
-      </header>
 
-      {/* Filter Toggle Button + Export Buttons Row */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
-            hasActiveFilters 
-              ? 'bg-accent-primary text-white' 
-              : isDark 
-                ? 'bg-dark-card border border-dark-muted/30 hover:bg-white/5' 
-                : 'bg-light-card border border-light-muted/20 hover:bg-black/5 shadow-sm'
-          }`}
-        >
-          <Filter size={18} />
-          <span className="font-medium">ตัวกรอง</span>
-          {hasActiveFilters && (
-            <span className="bg-white/20 text-xs px-2 py-0.5 rounded-full">
-              {[filters.month, filters.year, filters.driver, filters.vehicleType, filters.licensePlate].filter(Boolean).length}
-            </span>
-          )}
-          <ChevronDown size={16} className={`transition-transform ${showFilters ? 'rotate-180' : ''}`} />
-        </button>
-        
-        {/* Export Buttons */}
-        <div className="flex flex-wrap gap-2">
-          <button 
-            onClick={exportCSV} 
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm font-medium border ${
-              isDark 
-                ? 'bg-dark-card border-dark-muted/30 hover:bg-accent-primary hover:text-white hover:border-accent-primary' 
-                : 'bg-light-card border-light-muted/30 hover:bg-accent-primary hover:text-white hover:border-accent-primary shadow-sm'
-            }`}
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 md:p-6">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`driver-clay-btn ${hasActiveFilters ? 'driver-clay-btn-primary' : 'driver-clay-btn-ghost'} text-xs sm:text-sm`}
           >
-            <Download size={16} /> CSV
+            <Filter size={16} />
+            ตัวกรอง
+            {hasActiveFilters && (
+              <span className="rounded-full bg-white/45 px-2 py-0.5 text-[11px] font-bold">
+                {[filters.month, filters.year, filters.driver, filters.vehicleType, filters.licensePlate].filter(Boolean).length}
+              </span>
+            )}
+            <ChevronDown size={16} className={`transition-transform ${showFilters ? 'rotate-180' : ''}`} />
           </button>
-          <button 
-            onClick={() => generatePDFReport(false)} 
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm font-medium border ${
-              isDark 
-                ? 'bg-dark-card border-dark-muted/30 hover:bg-accent-danger hover:text-white hover:border-accent-danger' 
-                : 'bg-light-card border-light-muted/30 hover:bg-accent-danger hover:text-white hover:border-accent-danger shadow-sm'
-            }`}
-          >
-            <Download size={16} /> PDF
-          </button>
-          <button 
-            onClick={() => generatePDFReport(true)} 
-            className="flex items-center gap-2 bg-accent-secondary text-white px-3 py-2 rounded-lg hover:brightness-110 transition-colors text-sm font-medium shadow-lg shadow-accent-secondary/20"
-          >
-            <Printer size={16} /> Print
-          </button>
+
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
+            <button onClick={exportCSV} className="driver-clay-btn driver-clay-btn-ghost w-full justify-center text-xs sm:w-auto sm:text-sm">
+              <Download size={15} />
+              CSV
+            </button>
+            <button onClick={() => generatePDFReport(false)} className="driver-clay-btn driver-clay-btn-info w-full justify-center text-xs sm:w-auto sm:text-sm">
+              <Download size={15} />
+              PDF
+            </button>
+            <button onClick={() => generatePDFReport(true)} className="driver-clay-btn driver-clay-btn-warning hidden justify-center text-xs sm:inline-flex sm:text-sm">
+              <Printer size={15} />
+              Print
+            </button>
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* Filter Panel */}
       {showFilters && (
-        <div className={`p-6 rounded-2xl border animate-fade-in ${
-          isDark ? 'bg-dark-card border-dark-muted/20' : 'bg-light-card border-light-muted/20 shadow-lg'
-        }`}>
-          <div className="flex flex-wrap gap-4">
-            {/* Month Filter */}
-            <div className="w-full sm:flex-1 sm:min-w-[140px]">
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>เดือน</label>
+        <section className={`${cardClass} p-5 md:p-6`}>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6">
+            <label className="space-y-1.5">
+              <span className="driver-clay-muted text-xs font-semibold">เดือน</span>
               <select
                 value={filters.month || ''}
-                onChange={(e) => setFilters(prev => ({ ...prev, month: e.target.value ? parseInt(e.target.value) : null }))}
-                className={`w-full px-3 py-2 rounded-lg border ${isDark ? 'bg-dark-bg border-dark-muted/30 text-dark-text' : 'bg-light-bg border-light-muted/30 text-light-text'}`}
+                onChange={(e) => setFilters((prev) => ({ ...prev, month: e.target.value ? parseInt(e.target.value, 10) : null }))}
+                className={selectClass}
               >
                 <option value="">ทั้งหมด</option>
-                {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                {MONTHS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
               </select>
-            </div>
+            </label>
 
-            {/* Year Filter */}
-            <div className="w-full sm:flex-1 sm:min-w-[120px]">
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>ปี</label>
+            <label className="space-y-1.5">
+              <span className="driver-clay-muted text-xs font-semibold">ปี</span>
               <select
                 value={filters.year || ''}
-                onChange={(e) => setFilters(prev => ({ ...prev, year: e.target.value ? parseInt(e.target.value) : null }))}
-                className={`w-full px-3 py-2 rounded-lg border ${isDark ? 'bg-dark-bg border-dark-muted/30 text-dark-text' : 'bg-light-bg border-light-muted/30 text-light-text'}`}
+                onChange={(e) => setFilters((prev) => ({ ...prev, year: e.target.value ? parseInt(e.target.value, 10) : null }))}
+                className={selectClass}
               >
                 <option value="">ทั้งหมด</option>
-                {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                {availableYears.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
-            </div>
+            </label>
 
-            {/* Driver Filter */}
-            <div className="w-full sm:flex-1 sm:min-w-[150px]">
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>คนขับ</label>
+            <label className="space-y-1.5">
+              <span className="driver-clay-muted text-xs font-semibold">คนขับ</span>
               <select
                 value={filters.driver}
-                onChange={(e) => setFilters(prev => ({ ...prev, driver: e.target.value }))}
-                className={`w-full px-3 py-2 rounded-lg border ${isDark ? 'bg-dark-bg border-dark-muted/30 text-dark-text' : 'bg-light-bg border-light-muted/30 text-light-text'}`}
+                onChange={(e) => setFilters((prev) => ({ ...prev, driver: e.target.value }))}
+                className={selectClass}
               >
                 <option value="">ทั้งหมด</option>
-                {appData?.options.drivers.map(d => <option key={d} value={d}>{d}</option>)}
+                {sortUniqueOptions(appData?.options.drivers || []).map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
-            </div>
+            </label>
 
-            {/* Vehicle Type Filter */}
-            <div className="w-full sm:flex-1 sm:min-w-[140px]">
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>ประเภทรถ</label>
+            <label className="space-y-1.5">
+              <span className="driver-clay-muted text-xs font-semibold">ประเภทรถ</span>
               <select
                 value={filters.vehicleType}
-                onChange={(e) => setFilters(prev => ({ ...prev, vehicleType: e.target.value }))}
-                className={`w-full px-3 py-2 rounded-lg border ${isDark ? 'bg-dark-bg border-dark-muted/30 text-dark-text' : 'bg-light-bg border-light-muted/30 text-light-text'}`}
+                onChange={(e) => setFilters((prev) => ({ ...prev, vehicleType: e.target.value }))}
+                className={selectClass}
               >
                 <option value="">ทั้งหมด</option>
-                {appData?.options.vehicleTypes.map(v => <option key={v} value={v}>{v}</option>)}
+                {sortUniqueOptions(appData?.options.vehicleTypes || []).map((v) => <option key={v} value={v}>{v}</option>)}
               </select>
-            </div>
+            </label>
 
-            {/* License Plate Filter */}
-            <div className="w-full sm:flex-1 sm:min-w-[140px]">
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>ป้ายทะเบียน</label>
+            <label className="space-y-1.5">
+              <span className="driver-clay-muted text-xs font-semibold">ป้ายทะเบียน</span>
               <select
                 value={filters.licensePlate}
-                onChange={(e) => setFilters(prev => ({ ...prev, licensePlate: e.target.value }))}
-                className={`w-full px-3 py-2 rounded-lg border ${isDark ? 'bg-dark-bg border-dark-muted/30 text-dark-text' : 'bg-light-bg border-light-muted/30 text-light-text'}`}
+                onChange={(e) => setFilters((prev) => ({ ...prev, licensePlate: e.target.value }))}
+                className={selectClass}
               >
                 <option value="">ทั้งหมด</option>
-                {appData?.options.licensePlates.map(p => <option key={p} value={p}>{p}</option>)}
+                {sortUniqueOptions(appData?.options.licensePlates || []).map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
-            </div>
+            </label>
 
-            {/* Clear Button */}
             {hasActiveFilters && (
               <div className="flex items-end">
-                <button onClick={clearFilters} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-danger/10 text-accent-danger hover:bg-accent-danger/20">
-                  <X size={16} /> ล้าง
+                <button onClick={clearFilters} className="driver-clay-btn driver-clay-btn-ghost w-full text-xs sm:text-sm">
+                  <X size={15} />
+                  ล้างตัวกรอง
                 </button>
               </div>
             )}
           </div>
-        </div>
+        </section>
       )}
 
-
-      {/* Mobile Card View */}
       <div className="md:hidden space-y-3">
         {loading ? (
-          <div className={`text-center py-10 rounded-2xl border ${isDark ? 'bg-dark-card border-dark-muted/10 text-dark-muted' : 'bg-light-card border-light-muted/10 text-light-muted'}`}>
-            Loading data...
-          </div>
+          <article className="driver-clay-card p-4 sm:p-5">
+            <p className="driver-clay-muted text-sm">กำลังโหลดข้อมูล...</p>
+          </article>
         ) : filteredJobs.length === 0 ? (
-          <div className={`text-center py-10 rounded-2xl border ${isDark ? 'bg-dark-card border-dark-muted/10 text-dark-muted' : 'bg-light-card border-light-muted/10 text-light-muted'}`}>
-            ไม่พบข้อมูล
-          </div>
+          <article className="driver-clay-card p-4 sm:p-5">
+            <p className="driver-clay-muted text-sm">ไม่พบข้อมูล</p>
+          </article>
         ) : (
           filteredJobs.map((job) => (
             <button
               key={job.id}
               onClick={() => handleRowClick(job)}
-              className={`w-full text-left p-4 rounded-2xl border transition-all ${
-                isDark
-                  ? 'bg-dark-card border-dark-muted/20 hover:bg-white/5'
-                  : 'bg-light-card border-light-muted/20 hover:border-accent-primary/40 shadow-sm'
-              }`}
+              className="driver-clay-card w-full p-4 text-left sm:p-5"
             >
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div>
-                  <div className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{formatDate(job.date)}</div>
-                  <div className={`text-xs mt-1 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
-                    {job.jobNo || '-'} / {resolveInvoiceNo(job) || '-'}
-                  </div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-base font-black text-slate-700">งานวิ่ง {formatDate(job.date)}</p>
+                  <p className="driver-clay-muted truncate text-xs">
+                    Job / Inv: {job.jobNo || '-'} / {resolveInvoiceNo(job) || '-'}
+                  </p>
                 </div>
-                <span className={`inline-flex items-center justify-center min-w-8 h-8 px-2 rounded-lg text-sm font-bold ${isDark ? 'bg-slate-800 text-white' : 'bg-slate-200 text-slate-800'}`}>
-                  {job.rounds}
+                <span className="driver-clay-chip bg-slate-100/85 text-slate-700">
+                  {job.rounds} รอบ
                 </span>
               </div>
 
-              <div className="space-y-1.5 mb-3">
+              <div className="mt-4 space-y-2 text-sm text-slate-700">
                 <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent-secondary shrink-0"></span>
-                  <span className={`text-sm break-words ${isDark ? 'text-dark-text' : 'text-light-text'}`}>{job.pickupLocation}</span>
+                  <CalendarClock size={14} className="driver-clay-muted" />
+                  <span>วันที่งาน: {formatDate(job.date)}</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <MapPin size={14} className="driver-clay-muted mt-0.5" />
+                  <div className="min-w-0 space-y-1">
+                    <p className="truncate">รับ: {job.pickupLocation || '-'}</p>
+                    <p className="truncate">ส่ง: {job.dropoffLocation || '-'}</p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent-warning shrink-0"></span>
-                  <span className={`text-sm break-words ${isDark ? 'text-dark-text' : 'text-light-text'}`}>{job.dropoffLocation}</span>
+                  <Truck size={14} className="driver-clay-muted" />
+                  <span>รถ: {job.vehicleType || '-'} | ทะเบียน: {job.licensePlate || '-'}</span>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className={`rounded-xl px-3 py-2 ${isDark ? 'bg-dark-bg text-dark-text' : 'bg-slate-50 text-slate-700'}`}>
-                  <div className={`text-[11px] ${isDark ? 'text-dark-muted' : 'text-slate-500'}`}>รถ / ทะเบียน</div>
-                  <div className="text-sm font-medium truncate">{job.vehicleType}</div>
-                  <div className="text-sm truncate">{job.licensePlate}</div>
+                <div className="flex items-center gap-2">
+                  <UserRound size={14} className="driver-clay-muted" />
+                  <span>คนขับ: {job.driverName || '-'}</span>
                 </div>
-                <div className={`rounded-xl px-3 py-2 ${isDark ? 'bg-dark-bg text-dark-text' : 'bg-slate-50 text-slate-700'}`}>
-                  <div className={`text-[11px] ${isDark ? 'text-dark-muted' : 'text-slate-500'}`}>คนขับ</div>
-                  <div className="text-sm font-medium truncate">{job.driverName}</div>
-                </div>
-                <div className={`rounded-xl px-3 py-2 col-span-2 ${isDark ? 'bg-dark-bg text-dark-text' : 'bg-slate-50 text-slate-700'}`}>
-                  <div className={`text-[11px] ${isDark ? 'text-dark-muted' : 'text-slate-500'}`}>ค่าน้ำมัน/ทางด่วน</div>
-                  <div className="text-sm font-medium">
+                <div className="flex items-center gap-2">
+                  <Package2 size={14} className="driver-clay-muted" />
+                  <span>
+                    ค่าน้ำมัน/ทางด่วน:{' '}
                     {job.fuelAndToll !== null && job.fuelAndToll !== undefined && job.fuelAndToll !== ''
                       ? Number(job.fuelAndToll).toLocaleString()
                       : '-'}
-                  </div>
+                  </span>
                 </div>
-                {isAdmin && (
-                  <>
-                    <div className={`rounded-xl px-3 py-2 ${isDark ? 'bg-dark-bg text-dark-text' : 'bg-slate-50 text-slate-700'}`}>
-                      <div className={`text-[11px] ${isDark ? 'text-dark-muted' : 'text-slate-500'}`}>ราคาลูกค้า</div>
-                      <div className="text-sm font-medium">{job.customerPrice ? job.customerPrice.toLocaleString() : '-'}</div>
-                    </div>
-                    <div className={`rounded-xl px-3 py-2 ${isDark ? 'bg-dark-bg text-dark-text' : 'bg-slate-50 text-slate-700'}`}>
-                      <div className={`text-[11px] ${isDark ? 'text-dark-muted' : 'text-slate-500'}`}>ราคารถร่วม</div>
-                      <div className="text-sm font-medium">{job.jointPrice ? job.jointPrice.toLocaleString() : '-'}</div>
-                    </div>
-                  </>
-                )}
               </div>
             </button>
           ))
         )}
       </div>
 
-      {/* Desktop Table View */}
-      <div className={`hidden md:block rounded-2xl border shadow-xl overflow-hidden ${
-        isDark ? 'bg-dark-card border-dark-muted/10' : 'bg-light-card border-light-muted/10'
-      }`}>
+      <section className={`${cardClass} hidden overflow-hidden md:block`}>
+        <div className="bg-gradient-to-r from-[#0f766e] via-[#0e7490] to-[#075985] px-5 py-3 text-white md:px-6">
+          <h3 className="text-lg font-black tracking-tight">ตารางงานวิ่งทั้งหมด</h3>
+          <p className="mt-0.5 text-xs text-white/90">คลิกที่แถวเพื่อเปิดรายละเอียด/แก้ไข/ลบ</p>
+        </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className={`uppercase font-medium ${isDark ? 'bg-slate-900/50 text-accent-primary' : 'bg-slate-100 text-accent-primary'}`}>
+          <table className="min-w-full text-sm">
+            <thead className={isDark ? 'bg-dark-bg/70 text-dark-muted' : 'bg-slate-100/80 text-slate-600'}>
               <tr>
-                <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap">วันที่</th>
-                <th className="px-2 py-2 md:px-4 md:py-4 text-xs md:text-sm whitespace-nowrap w-[210px] md:w-[250px]">เส้นทาง</th>
-                <th className="px-2 py-2 md:px-3 md:py-4 text-xs md:text-sm text-center whitespace-nowrap w-[70px] md:w-[80px]">รอบ</th>
-                <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap">รถ / ทะเบียน</th>
-                <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap">คนขับ</th>
-                <th className="px-2 py-2 md:px-3 md:py-4 text-xs md:text-sm whitespace-nowrap w-[130px] md:w-[150px]">Job / Inv</th>
-                <th className="px-2 py-2 md:px-3 md:py-4 text-xs md:text-sm text-right whitespace-nowrap w-[110px] md:w-[130px]">ค่าน้ำมัน/ทางด่วน</th>
+                <th className="px-3 py-3 text-left font-semibold">วันที่</th>
+                <th className="px-3 py-3 text-left font-semibold">เส้นทาง</th>
+                <th className="px-3 py-3 text-center font-semibold">รอบ</th>
+                <th className="px-3 py-3 text-left font-semibold">รถ / ทะเบียน</th>
+                <th className="px-3 py-3 text-left font-semibold">คนขับ</th>
+                <th className="px-3 py-3 text-left font-semibold">Job / Inv</th>
+                <th className="px-3 py-3 text-right font-semibold">ค่าน้ำมัน/ทางด่วน</th>
                 {isAdmin && (
                   <>
-                    <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm text-right whitespace-nowrap">ราคาลูกค้า</th>
-                    <th className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm text-right whitespace-nowrap">ราคารถร่วม</th>
+                    <th className="px-3 py-3 text-right font-semibold">ราคาลูกค้า</th>
+                    <th className="px-3 py-3 text-right font-semibold">ราคารถร่วม</th>
                   </>
                 )}
               </tr>
             </thead>
-            <tbody className={`divide-y ${isDark ? 'divide-dark-muted/10' : 'divide-light-muted/10'}`}>
+            <tbody className={isDark ? 'divide-y divide-dark-muted/15' : 'divide-y divide-light-muted/20'}>
               {loading ? (
                 <tr>
-                  <td colSpan={isAdmin ? 9 : 7} className={`text-center py-10 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
-                    Loading data...
+                  <td colSpan={isAdmin ? 9 : 7} className="px-3 py-10 text-center text-sm text-slate-500">
+                    กำลังโหลดข้อมูล...
                   </td>
                 </tr>
               ) : filteredJobs.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 9 : 7} className={`text-center py-10 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                  <td colSpan={isAdmin ? 9 : 7} className="px-3 py-10 text-center text-sm text-slate-500">
                     ไม่พบข้อมูล
                   </td>
                 </tr>
@@ -1562,50 +1502,39 @@ const DataTable: React.FC = () => {
                   <tr
                     key={job.id}
                     onClick={() => handleRowClick(job)}
-                    className={`transition-colors cursor-pointer ${isDark ? 'hover:bg-white/5' : 'hover:bg-accent-primary/5'}`}
+                    className={isDark ? 'cursor-pointer hover:bg-white/5' : 'cursor-pointer hover:bg-[#f1f5f9]'}
                   >
-                    <td className={`px-2 py-2 md:px-6 md:py-4 font-medium whitespace-nowrap text-xs md:text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    <td className="px-3 py-3 align-top text-sm font-medium text-slate-700">
                       {formatDate(job.date)}
                     </td>
-                    <td className="px-2 py-2 md:px-4 md:py-4 w-[210px] md:w-[250px]">
-                      <div className="flex flex-col gap-1">
-                        <span className="flex items-center gap-1 text-accent-secondary text-xs md:text-sm break-words">
-                          <span className="w-1.5 h-1.5 rounded-full bg-accent-secondary shrink-0"></span>
-                          {job.pickupLocation}
-                        </span>
-                        <span className="flex items-center gap-1 text-accent-warning text-xs md:text-sm break-words">
-                          <span className="w-1.5 h-1.5 rounded-full bg-accent-warning shrink-0"></span>
-                          {job.dropoffLocation}
-                        </span>
-                      </div>
+                    <td className="px-3 py-3 align-top text-xs">
+                      <p className="text-sm text-slate-700">{job.pickupLocation || '-'} → {job.dropoffLocation || '-'}</p>
                     </td>
-                    <td className="px-2 py-2 md:px-3 md:py-4 text-center w-[70px] md:w-[80px]">
-                      <span className={`inline-block px-2 py-0.5 md:px-3 md:py-1 rounded-lg text-xs md:text-sm font-bold ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}>
-                        {job.rounds}
-                      </span>
+                    <td className="px-3 py-3 align-top text-center">
+                      <span className="driver-clay-chip bg-slate-100/85 text-slate-700">{job.rounds}</span>
                     </td>
-                    <td className="px-2 py-2 md:px-6 md:py-4">
-                      <div className={`text-xs md:text-sm whitespace-nowrap ${isDark ? 'text-white' : 'text-slate-900'}`}>{job.licensePlate}</div>
-                      <div className={`text-[10px] md:text-xs whitespace-nowrap ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{job.vehicleType}</div>
+                    <td className="px-3 py-3 align-top text-xs">
+                      <p className="text-sm font-medium text-slate-700">{job.vehicleType || '-'}</p>
+                      <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>{job.licensePlate || '-'}</p>
                     </td>
-                    <td className={`px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap ${isDark ? 'text-dark-text' : 'text-light-text'}`}>
-                      {job.driverName}
+                    <td className="px-3 py-3 align-top text-sm text-slate-700">
+                      {job.driverName || '-'}
                     </td>
-                    <td className="px-2 py-2 md:px-3 md:py-4 w-[130px] md:w-[150px]">
-                      <div className={`font-medium text-xs md:text-sm break-words ${isDark ? 'text-white' : 'text-slate-900'}`}>{job.jobNo || '-'}</div>
-                      <div className={`text-[10px] md:text-xs break-words ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{resolveInvoiceNo(job) || '-'}</div>
+                    <td className="px-3 py-3 align-top text-xs">
+                      <p className="text-sm font-medium text-slate-700">{job.jobNo || '-'}</p>
+                      <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>{resolveInvoiceNo(job) || '-'}</p>
                     </td>
-                    <td className={`px-2 py-2 md:px-3 md:py-4 text-right text-xs md:text-sm whitespace-nowrap w-[110px] md:w-[130px] ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    <td className="px-3 py-3 align-top text-right text-sm text-slate-700">
                       {job.fuelAndToll !== null && job.fuelAndToll !== undefined && job.fuelAndToll !== ''
                         ? Number(job.fuelAndToll).toLocaleString()
                         : '-'}
                     </td>
                     {isAdmin && (
                       <>
-                        <td className={`px-2 py-2 md:px-6 md:py-4 text-right text-xs md:text-sm whitespace-nowrap ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        <td className="px-3 py-3 align-top text-right text-sm text-slate-700">
                           {job.customerPrice ? job.customerPrice.toLocaleString() : '-'}
                         </td>
-                        <td className={`px-2 py-2 md:px-6 md:py-4 text-right text-xs md:text-sm whitespace-nowrap ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        <td className="px-3 py-3 align-top text-right text-sm text-slate-700">
                           {job.jointPrice ? job.jointPrice.toLocaleString() : '-'}
                         </td>
                       </>
@@ -1616,7 +1545,7 @@ const DataTable: React.FC = () => {
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
 
       {/* Detail Modal */}
       {isDetailModalOpen && renderDetailModal()}

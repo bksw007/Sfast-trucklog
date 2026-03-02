@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import { FirebaseError } from 'firebase/app';
@@ -8,10 +8,14 @@ import {
   CheckCircle2,
   Circle,
   CircleDashed,
+  Clock3,
   ClipboardCheck,
   Copy,
+  FileText,
   FileDown,
   Loader2,
+  MapPin,
+  Package2,
   Plus,
   Pencil,
   RotateCcw,
@@ -19,6 +23,7 @@ import {
   Trash2,
   Truck,
   UserCheck,
+  UserRound,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
@@ -30,6 +35,7 @@ import {
   RevisionConflictError,
   subscribeToTodayJobs,
   triggerTodayJobNotification,
+  uploadImages,
   updateTodayJob
 } from '../services/firebaseService';
 import { getAllUsers, getUserProfile } from '../services/userService';
@@ -41,6 +47,8 @@ import Modal from '../components/Modal';
 type TodayJobForm = {
   employerCompany: string;
   jobNo: string;
+  invNo: string;
+  transportDocNo: string;
   workOrderNo: string;
   workDate: string;
   vehicleType: string;
@@ -52,7 +60,11 @@ type TodayJobForm = {
   driverName: string;
   plateNo: string;
   driverPhone: string;
+  fuelAndToll: string;
   importantNote: string;
+  originImageUrls: string[];
+  destinationImageUrls: string[];
+  documentImageUrls: string[];
 };
 
 type JobStatus = TodayJobEntry['status'];
@@ -89,6 +101,42 @@ const parseDate = (dateStr: string) => {
   if (!dateOnly) return null;
   const parsed = new Date(`${dateOnly}T00:00:00`);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const hasValue = (value?: string) => !!value && value.trim().length > 0;
+const parseRounds = (value?: string) => {
+  const match = (value || '').match(/\d+/);
+  if (!match) return 1;
+  const parsed = Number(match[0]);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+};
+
+const toImageUrls = (urls?: string[], single?: string): string[] => {
+  if (Array.isArray(urls) && urls.length > 0) {
+    return Array.from(
+      new Set(urls.filter((url) => typeof url === 'string' && url.trim().length > 0).map((url) => url.trim()))
+    );
+  }
+  if (typeof single === 'string' && single.trim().length > 0) {
+    return [single.trim()];
+  }
+  return [];
+};
+
+const mergeImageUrls = (existing: string[], incoming: string[]): string[] => {
+  return Array.from(
+    new Set(
+      [...existing, ...incoming]
+        .filter((url) => typeof url === 'string' && url.trim().length > 0)
+        .map((url) => url.trim())
+    )
+  );
+};
+
+const buildDropdownOptions = (baseOptions: string[], currentValue?: string): string[] => {
+  const current = (currentValue || '').trim();
+  if (!current) return baseOptions;
+  return baseOptions.includes(current) ? baseOptions : [current, ...baseOptions];
 };
 
 const extractUserPhone = (user?: (Partial<UserProfile> & Record<string, unknown>) | null): string => {
@@ -139,6 +187,8 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const initialFormData = (): TodayJobForm => ({
   employerCompany: '',
   jobNo: '',
+  invNo: '',
+  transportDocNo: '',
   workOrderNo: generateWorkOrderNo(),
   workDate: getLocalDate(),
   vehicleType: '',
@@ -150,12 +200,18 @@ const initialFormData = (): TodayJobForm => ({
   driverName: '',
   plateNo: '',
   driverPhone: '',
-  importantNote: ''
+  fuelAndToll: '',
+  importantNote: '',
+  originImageUrls: [],
+  destinationImageUrls: [],
+  documentImageUrls: [],
 });
 
 const toEditableForm = (job: TodayJobEntry): TodayJobForm => ({
   employerCompany: job.employerCompany,
   jobNo: job.jobNo,
+  invNo: job.invNo || '',
+  transportDocNo: job.transportDocNo || '',
   workOrderNo: job.workOrderNo || job.ticketNo || '',
   workDate: job.workDate,
   vehicleType: job.vehicleType,
@@ -167,7 +223,11 @@ const toEditableForm = (job: TodayJobEntry): TodayJobForm => ({
   driverName: job.driverName,
   plateNo: job.plateNo,
   driverPhone: job.driverPhone,
+  fuelAndToll: job.fuelAndToll === null || job.fuelAndToll === undefined ? '' : String(job.fuelAndToll),
   importantNote: job.importantNote,
+  originImageUrls: toImageUrls(job.originImageUrls, job.originImageUrl),
+  destinationImageUrls: toImageUrls(job.destinationImageUrls, job.destinationImageUrl),
+  documentImageUrls: toImageUrls(job.documentImageUrls, job.documentImageUrl),
 });
 
 const buildSummaryText = (data: TodayJobForm) => {
@@ -236,11 +296,21 @@ const TodayJobs: React.FC = () => {
 
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showStatusPickerModal, setShowStatusPickerModal] = useState(false);
 
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<TodayJobForm | null>(null);
   const [editBaseRevision, setEditBaseRevision] = useState<number | null>(null);
   const [isEditingSave, setIsEditingSave] = useState(false);
+  const [editOriginImageFiles, setEditOriginImageFiles] = useState<File[]>([]);
+  const [editOriginPreviews, setEditOriginPreviews] = useState<string[]>([]);
+  const [editDestinationImageFiles, setEditDestinationImageFiles] = useState<File[]>([]);
+  const [editDestinationPreviews, setEditDestinationPreviews] = useState<string[]>([]);
+  const [editDocumentImageFiles, setEditDocumentImageFiles] = useState<File[]>([]);
+  const [editDocumentPreviews, setEditDocumentPreviews] = useState<string[]>([]);
+  const editOriginInputRef = useRef<HTMLInputElement>(null);
+  const editDestinationInputRef = useRef<HTMLInputElement>(null);
+  const editDocumentInputRef = useRef<HTMLInputElement>(null);
 
   const [jobToDelete, setJobToDelete] = useState<TodayJobEntry | null>(null);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
@@ -265,6 +335,10 @@ const TodayJobs: React.FC = () => {
   const selectClass = isDark
     ? 'w-full min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/40 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none'
     : 'w-full min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none';
+  const modalInputClass = 'driver-clay-input px-3 py-2.5 text-[16px] md:text-sm';
+  const modalTextareaClass = 'driver-clay-input min-h-[90px] resize-y px-3 py-2.5 text-[16px] md:text-sm';
+  const modalLabelClass = 'text-xs font-semibold text-slate-500';
+  const modalUploadButtonClass = 'driver-clay-btn driver-clay-btn-info w-full text-xs';
   const quickAddButtonClass = isDark
     ? 'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-dark-muted/35 bg-dark-bg/50 text-dark-text shadow-sm transition hover:bg-dark-bg disabled:opacity-55'
     : 'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/80 bg-gradient-to-br from-[#d9e6f2] to-[#bcd0e0] text-[#34495e] shadow-[4px_4px_10px_rgba(166,180,200,0.35),-4px_-4px_8px_rgba(255,255,255,0.88)] transition hover:brightness-105 active:translate-y-px disabled:opacity-55';
@@ -307,6 +381,18 @@ const TodayJobs: React.FC = () => {
       setActiveMainTab(fromSearch);
     }
   }, [location.search]);
+
+  useEffect(() => () => {
+    editOriginPreviews.forEach((url) => URL.revokeObjectURL(url));
+  }, [editOriginPreviews]);
+
+  useEffect(() => () => {
+    editDestinationPreviews.forEach((url) => URL.revokeObjectURL(url));
+  }, [editDestinationPreviews]);
+
+  useEffect(() => () => {
+    editDocumentPreviews.forEach((url) => URL.revokeObjectURL(url));
+  }, [editDocumentPreviews]);
 
   const selectedAssignedUser = useMemo(
     () => assignableUsers.find((row) => row.uid === formData.assignedToUid) || null,
@@ -638,6 +724,13 @@ const TodayJobs: React.FC = () => {
       return;
     }
 
+    const fuelAndTollRaw = (formData.fuelAndToll || '').trim();
+    if (fuelAndTollRaw && Number.isNaN(Number(fuelAndTollRaw))) {
+      alert('ค่าน้ำมัน/ทางด่วนต้องเป็นตัวเลข');
+      return;
+    }
+    const fuelAndTollValue = fuelAndTollRaw ? Number(fuelAndTollRaw) : null;
+
     setIsSaving(true);
     let createdCount = 0;
     try {
@@ -657,6 +750,7 @@ const TodayJobs: React.FC = () => {
 
         const createdJob = await addTodayJob({
           ...roundForm,
+          fuelAndToll: fuelAndTollValue,
           rounds: 1,
           ticketNo: roundWorkOrderNo,
           assignedToName: assignedName,
@@ -745,7 +839,42 @@ const TodayJobs: React.FC = () => {
     setShowDetailModal(true);
   };
 
+  const handleSelectStatusFromModal = async (status: JobStatus) => {
+    if (!selectedJob) return;
+    await handleStatusChange(selectedJob.id, status);
+    setShowStatusPickerModal(false);
+  };
+
+  const resetEditImageDrafts = () => {
+    setEditOriginImageFiles([]);
+    setEditDestinationImageFiles([]);
+    setEditDocumentImageFiles([]);
+    setEditOriginPreviews((prev) => {
+      prev.forEach((url) => URL.revokeObjectURL(url));
+      return [];
+    });
+    setEditDestinationPreviews((prev) => {
+      prev.forEach((url) => URL.revokeObjectURL(url));
+      return [];
+    });
+    setEditDocumentPreviews((prev) => {
+      prev.forEach((url) => URL.revokeObjectURL(url));
+      return [];
+    });
+    if (editOriginInputRef.current) editOriginInputRef.current.value = '';
+    if (editDestinationInputRef.current) editDestinationInputRef.current.value = '';
+    if (editDocumentInputRef.current) editDocumentInputRef.current.value = '';
+  };
+
+  const closeEditModal = () => {
+    setEditingJobId(null);
+    setEditForm(null);
+    setEditBaseRevision(null);
+    resetEditImageDrafts();
+  };
+
   const openEditModal = (job: TodayJobEntry) => {
+    resetEditImageDrafts();
     setEditingJobId(job.id);
     setEditForm(toEditableForm(job));
     setEditBaseRevision(
@@ -797,11 +926,94 @@ const TodayJobs: React.FC = () => {
     setEditForm((prev) => (prev ? { ...prev, [point]: { ...prev[point], [field]: value } } : prev));
   };
 
+  const handleEditImageSelect = (
+    kind: 'origin' | 'destination' | 'document',
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = Array.from(event.target.files || []).filter((file) => file.type.startsWith('image/'));
+    if (files.length === 0) {
+      event.target.value = '';
+      return;
+    }
+
+    const previewUrls = files.map((file) => URL.createObjectURL(file));
+    if (kind === 'origin') {
+      setEditOriginImageFiles((prev) => [...prev, ...files]);
+      setEditOriginPreviews((prev) => [...prev, ...previewUrls]);
+    } else if (kind === 'destination') {
+      setEditDestinationImageFiles((prev) => [...prev, ...files]);
+      setEditDestinationPreviews((prev) => [...prev, ...previewUrls]);
+    } else {
+      setEditDocumentImageFiles((prev) => [...prev, ...files]);
+      setEditDocumentPreviews((prev) => [...prev, ...previewUrls]);
+    }
+
+    event.target.value = '';
+  };
+
+  const removeEditExistingImage = (field: 'originImageUrls' | 'destinationImageUrls' | 'documentImageUrls', index: number) => {
+    setEditForm((prev) => {
+      if (!prev) return prev;
+      const next = [...prev[field]];
+      next.splice(index, 1);
+      return { ...prev, [field]: next };
+    });
+  };
+
+  const removeEditPreviewImage = (kind: 'origin' | 'destination' | 'document', index: number) => {
+    if (kind === 'origin') {
+      setEditOriginImageFiles((prev) => prev.filter((_, fileIndex) => fileIndex !== index));
+      setEditOriginPreviews((prev) => {
+        const next = [...prev];
+        const [removed] = next.splice(index, 1);
+        if (removed) URL.revokeObjectURL(removed);
+        return next;
+      });
+      return;
+    }
+
+    if (kind === 'destination') {
+      setEditDestinationImageFiles((prev) => prev.filter((_, fileIndex) => fileIndex !== index));
+      setEditDestinationPreviews((prev) => {
+        const next = [...prev];
+        const [removed] = next.splice(index, 1);
+        if (removed) URL.revokeObjectURL(removed);
+        return next;
+      });
+      return;
+    }
+
+    setEditDocumentImageFiles((prev) => prev.filter((_, fileIndex) => fileIndex !== index));
+    setEditDocumentPreviews((prev) => {
+      const next = [...prev];
+      const [removed] = next.splice(index, 1);
+      if (removed) URL.revokeObjectURL(removed);
+      return next;
+    });
+  };
+
   const handleSaveEdit = async () => {
     if (!editingJobId || !editForm || isEditingSave) return;
     setIsEditingSave(true);
 
     try {
+      const fuelAndTollRaw = (editForm.fuelAndToll || '').trim();
+      if (fuelAndTollRaw && Number.isNaN(Number(fuelAndTollRaw))) {
+        alert('ค่าน้ำมัน/ทางด่วนต้องเป็นตัวเลข');
+        return;
+      }
+      const fuelAndTollValue = fuelAndTollRaw ? Number(fuelAndTollRaw) : null;
+
+      const [newOriginUrls, newDestinationUrls, newDocumentUrls] = await Promise.all([
+        editOriginImageFiles.length > 0 ? uploadImages(editOriginImageFiles, editingJobId) : Promise.resolve([] as string[]),
+        editDestinationImageFiles.length > 0 ? uploadImages(editDestinationImageFiles, editingJobId) : Promise.resolve([] as string[]),
+        editDocumentImageFiles.length > 0 ? uploadImages(editDocumentImageFiles, editingJobId) : Promise.resolve([] as string[]),
+      ]);
+
+      const mergedOriginImageUrls = mergeImageUrls(editForm.originImageUrls, newOriginUrls);
+      const mergedDestinationImageUrls = mergeImageUrls(editForm.destinationImageUrls, newDestinationUrls);
+      const mergedDocumentImageUrls = mergeImageUrls(editForm.documentImageUrls, newDocumentUrls);
+
       const assignedName =
         assignableUsers.find((row) => row.uid === editForm.assignedToUid)?.displayName ||
         editForm.driverName ||
@@ -809,6 +1021,14 @@ const TodayJobs: React.FC = () => {
 
       await updateTodayJob(editingJobId, {
         ...editForm,
+        rounds: toRoundCount(editForm.quantity) || 1,
+        fuelAndToll: fuelAndTollValue,
+        originImageUrls: mergedOriginImageUrls,
+        destinationImageUrls: mergedDestinationImageUrls,
+        documentImageUrls: mergedDocumentImageUrls,
+        originImageUrl: mergedOriginImageUrls[0] || '',
+        destinationImageUrl: mergedDestinationImageUrls[0] || '',
+        documentImageUrl: mergedDocumentImageUrls[0] || '',
         ticketNo: editForm.workOrderNo,
         assignedToName: assignedName,
         summaryText: buildSummaryText(editForm),
@@ -820,15 +1040,14 @@ const TodayJobs: React.FC = () => {
       } catch (notifyError) {
         console.error('Notify update event failed:', notifyError);
       }
-      setEditingJobId(null);
-      setEditForm(null);
-      setEditBaseRevision(null);
+      closeEditModal();
     } catch (error) {
       console.error('Save edit failed:', error);
       if (error instanceof RevisionConflictError) {
         const latest = await getTodayJobById(editingJobId);
         if (latest) {
           setEditForm(toEditableForm(latest));
+          resetEditImageDrafts();
           setEditBaseRevision(
             typeof latest.revision === 'number' && Number.isFinite(latest.revision)
               ? latest.revision
@@ -890,6 +1109,12 @@ const TodayJobs: React.FC = () => {
       : status === 'in_progress'
         ? 'bg-amber-500/15 text-amber-500'
         : 'bg-slate-500/15 text-slate-500';
+
+  const statusIcon = (status: JobStatus) => {
+    if (status === 'completed') return <CheckCircle2 size={13} />;
+    if (status === 'in_progress') return <CircleDashed size={13} />;
+    return <Circle size={13} />;
+  };
 
   const mainTabs: Array<{ id: MainSectionTab; label: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = [
     { id: 'overview', label: 'งานวันนี้', icon: CalendarClock },
@@ -1610,33 +1835,95 @@ const TodayJobs: React.FC = () => {
 
         <div className="space-y-3 p-4 md:hidden">
           {filteredJobs.length === 0 ? (
-            <div className={`rounded-xl border px-4 py-6 text-center text-sm ${isDark ? 'border-dark-muted/25 text-dark-muted' : 'border-light-muted/30 text-light-muted'}`}>
-              ไม่พบข้อมูล
-            </div>
+            <article className="driver-clay-card p-4 sm:p-5">
+              <p className="driver-clay-muted text-sm">ยังไม่มีข้อมูลในตารางการแจ้งงาน</p>
+            </article>
           ) : (
             filteredJobs.map((job) => (
               <button
                 key={job.id}
                 type="button"
                 onClick={() => openJobDetail(job)}
-                className={`w-full rounded-xl border p-4 text-left transition ${isDark ? 'border-dark-muted/25 bg-dark-bg/30 hover:bg-dark-bg/55' : 'border-light-muted/30 bg-white hover:bg-slate-50'}`}
+                className="driver-clay-card w-full p-4 text-left sm:p-5"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-xs text-accent-primary">{asDateOnly(job.workDate)}</p>
-                    <p className="text-base font-semibold">{job.jobNo || '-'}</p>
-                    <p className={`text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{job.employerCompany || '-'}</p>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-black text-slate-700">
+                      {job.employerCompany || '-'} | {job.productName || '-'}
+                    </p>
+                    <p className="driver-clay-muted truncate text-xs">
+                      เลขที่ใบสั่งงาน: {job.workOrderNo || job.ticketNo || '-'}
+                    </p>
                   </div>
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs ${statusBadgeClass(job.status)}`}>
-                    {job.status === 'completed' ? <CheckCircle2 size={12} /> : job.status === 'in_progress' ? <CircleDashed size={12} /> : <Circle size={12} />}
-                    {statusLabelMap[job.status]}
-                  </span>
+                  <div className="flex flex-wrap items-center justify-end gap-1.5">
+                    <span className={`driver-clay-chip ${statusBadgeClass(job.status)}`}>
+                      {statusIcon(job.status)}
+                      {statusLabelMap[job.status]}
+                    </span>
+                    {job.status === 'in_progress' && job.readyToClose && (
+                      <span className="driver-clay-chip bg-indigo-100/90 text-indigo-700">
+                        <CheckCircle2 size={13} />
+                        รอจบงาน
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="mt-3 grid grid-cols-1 gap-1 text-sm">
-                  <p>คนขับ: {job.driverName || '-'} ({job.plateNo || '-'})</p>
-                  <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ผู้รับงานแอพ: {job.assignedToName || '-'}</p>
-                  <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>{job.pickup.location || '-'} → {job.delivery.location || '-'}</p>
-                  <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>{job.pickup.time || '-'} / {job.delivery.time || '-'}</p>
+
+                <div className="mt-4 space-y-2 text-sm text-slate-700">
+                  <div className="flex items-center gap-2">
+                    <CalendarClock size={14} className="driver-clay-muted" />
+                    <span>วันที่แจ้งงาน: {asDateOnly(job.workDate) || '-'}</span>
+                  </div>
+
+                  <div className="flex items-start gap-2">
+                    <MapPin size={14} className="driver-clay-muted mt-0.5" />
+                    <div className="min-w-0 space-y-1">
+                      <p className="truncate">รับ: {job.pickup.location || '-'}</p>
+                      {(hasValue(job.pickup.date) || hasValue(job.pickup.time)) && (
+                        <p className="driver-clay-muted flex items-center gap-1 text-xs">
+                          <Clock3 size={12} />
+                          {`${job.pickup.date || '-'} ${job.pickup.time || ''}`.trim()}
+                        </p>
+                      )}
+                      {hasValue(job.pickup.contact) && (
+                        <p className="driver-clay-muted flex items-center gap-1 text-xs">
+                          <UserRound size={12} />
+                          ผู้ติดต่อ: {job.pickup.contact}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2">
+                    <MapPin size={14} className="driver-clay-muted mt-0.5" />
+                    <div className="min-w-0 space-y-1">
+                      <p className="truncate">ส่ง: {job.delivery.location || '-'}</p>
+                      {(hasValue(job.delivery.date) || hasValue(job.delivery.time)) && (
+                        <p className="driver-clay-muted flex items-center gap-1 text-xs">
+                          <Clock3 size={12} />
+                          {`${job.delivery.date || '-'} ${job.delivery.time || ''}`.trim()}
+                        </p>
+                      )}
+                      {hasValue(job.delivery.contact) && (
+                        <p className="driver-clay-muted flex items-center gap-1 text-xs">
+                          <UserRound size={12} />
+                          ผู้ติดต่อ: {job.delivery.contact}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Package2 size={14} className="driver-clay-muted" />
+                    <span>จำนวนรอบ: {job.rounds || parseRounds(job.quantity)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Truck size={14} className="driver-clay-muted" />
+                    <span>ทะเบียนรถ: {job.plateNo || '-'}</span>
+                  </div>
+                  {job.readyToClose && (
+                    <p className="text-xs font-medium text-amber-600">พร้อมจบงานแล้ว</p>
+                  )}
                 </div>
               </button>
             ))
@@ -1713,99 +2000,488 @@ const TodayJobs: React.FC = () => {
       <Modal isOpen={showCardModal} onClose={() => setShowCardModal(false)} title={cardModalTitle}>
         <div className="space-y-2 max-h-[60vh] overflow-y-auto">
           {cardModalJobs.length === 0 ? (
-            <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ไม่พบรายการ</p>
+            <p className="driver-clay-muted text-sm">ไม่พบรายการ</p>
           ) : (
             cardModalJobs.map((job) => (
               <button
                 key={job.id}
                 type="button"
-                className={`w-full rounded-xl border p-3 text-left transition ${isDark ? 'border-dark-muted/25 hover:bg-white/5' : 'border-light-muted/30 hover:bg-slate-50'}`}
+                className="driver-clay-soft w-full p-3 text-left transition hover:brightness-[1.01]"
                 onClick={() => {
                   setShowCardModal(false);
                   openJobDetail(job);
                 }}
               >
-                <p className="font-semibold">{job.driverName || '-'}</p>
-                <p className="text-xs">ทะเบียน: {job.plateNo || '-'}</p>
-                <p className="text-xs">{job.pickup.location || '-'} → {job.delivery.location || '-'}</p>
-                <p className="text-xs">{job.pickup.time || '-'} / {job.delivery.time || '-'}</p>
+                <p className="text-sm font-semibold text-slate-700">{job.driverName || '-'}</p>
+                <p className="driver-clay-muted text-xs">ทะเบียน: {job.plateNo || '-'}</p>
+                <p className="driver-clay-muted text-xs">{job.pickup.location || '-'} → {job.delivery.location || '-'}</p>
+                <p className="driver-clay-muted text-xs">{job.pickup.time || '-'} / {job.delivery.time || '-'}</p>
               </button>
             ))
           )}
         </div>
       </Modal>
 
-      <Modal isOpen={showDetailModal && !!selectedJob} onClose={() => setShowDetailModal(false)} title="รายละเอียดงาน">
+      <Modal
+        isOpen={showDetailModal && !!selectedJob}
+        onClose={() => {
+          setShowDetailModal(false);
+          setShowStatusPickerModal(false);
+        }}
+        title="รายละเอียดงาน"
+      >
         {selectedJob && (
-          <div className="space-y-3 text-sm">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div><span className="font-medium">ลูกค้า:</span> {selectedJob.employerCompany || '-'}</div>
-              <div><span className="font-medium">วันที่งาน:</span> {asDateOnly(selectedJob.workDate)}</div>
-              <div><span className="font-medium">เลขที่ใบสั่งงาน:</span> {selectedJob.workOrderNo || selectedJob.ticketNo || '-'}</div>
-              <div><span className="font-medium">Job No.:</span> {selectedJob.jobNo || '-'}</div>
-              <div><span className="font-medium">คนขับ:</span> {getDriverFullName(selectedJob)}</div>
-              <div><span className="font-medium">รับงานแอพ:</span> {getAssignedAppLabel(selectedJob)}</div>
-              <div><span className="font-medium">ทะเบียน:</span> {selectedJob.plateNo || '-'}</div>
-              <div><span className="font-medium">ชนิดรถ:</span> {selectedJob.vehicleType || '-'}</div>
-              <div><span className="font-medium">สินค้า:</span> {selectedJob.productName || '-'}</div>
+          <div className="space-y-4 text-sm">
+            <div className="driver-clay-soft p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-black text-slate-700">
+                    {selectedJob.employerCompany || '-'} | {selectedJob.productName || '-'}
+                  </p>
+                  <p className="driver-clay-muted text-xs">
+                    เลขที่ใบสั่งงาน: {selectedJob.workOrderNo || selectedJob.ticketNo || '-'}
+                  </p>
+                </div>
+                <span className={`driver-clay-chip ${statusBadgeClass(selectedJob.status)}`}>
+                  {statusIcon(selectedJob.status)}
+                  {statusLabelMap[selectedJob.status]}
+                </span>
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-slate-700 sm:grid-cols-2">
+                <div><span className="driver-clay-muted">วันที่งาน:</span> {asDateOnly(selectedJob.workDate) || '-'}</div>
+                <div><span className="driver-clay-muted">Job No.:</span> {selectedJob.jobNo || '-'}</div>
+                <div><span className="driver-clay-muted">คนขับ:</span> {getDriverFullName(selectedJob)}</div>
+                <div><span className="driver-clay-muted">รับงานแอพ:</span> {getAssignedAppLabel(selectedJob)}</div>
+                <div><span className="driver-clay-muted">ประเภทรถ:</span> {selectedJob.vehicleType || '-'}</div>
+                <div><span className="driver-clay-muted">ทะเบียน:</span> {selectedJob.plateNo || '-'}</div>
+              </div>
             </div>
-            <div className={`rounded-xl border p-3 ${isDark ? 'border-dark-muted/25 bg-dark-bg/40' : 'border-light-muted/30 bg-slate-50'}`}>
-              <p>รับงาน: {selectedJob.pickup.location || '-'} | {selectedJob.pickup.time || '-'}</p>
-              <p>ส่งงาน: {selectedJob.delivery.location || '-'} | {selectedJob.delivery.time || '-'}</p>
-              <p>ติดต่อ: {selectedJob.driverPhone || '-'}</p>
+
+            <div className="driver-clay-soft space-y-2 p-3 text-xs text-slate-700">
+              <p className="font-semibold text-slate-700">จุดรับ</p>
+              <p>สถานที่: {selectedJob.pickup.location || '-'}</p>
+              <p>วันที่/เวลา: {selectedJob.pickup.date || '-'} {selectedJob.pickup.time || ''}</p>
+              <p>ผู้ติดต่อ: {selectedJob.pickup.contact || '-'}</p>
+            </div>
+
+            <div className="driver-clay-soft space-y-2 p-3 text-xs text-slate-700">
+              <p className="font-semibold text-slate-700">จุดส่ง</p>
+              <p>สถานที่: {selectedJob.delivery.location || '-'}</p>
+              <p>วันที่/เวลา: {selectedJob.delivery.date || '-'} {selectedJob.delivery.time || ''}</p>
+              <p>ผู้ติดต่อ: {selectedJob.delivery.contact || '-'}</p>
+            </div>
+
+            <div className="driver-clay-soft space-y-1.5 p-3 text-xs text-slate-700">
+              <p>เบอร์ติดต่อคนขับ: {selectedJob.driverPhone || '-'}</p>
               <p>หมายเหตุ: {selectedJob.importantNote || '-'}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => handleStatusChange(selectedJob.id, 'pending')} disabled={updatingJobId === selectedJob.id || selectedJob.status === 'pending'} className="rounded-lg border border-slate-400/40 px-3 py-1.5 text-xs disabled:opacity-50">รอดำเนินการ</button>
-              <button type="button" onClick={() => handleStatusChange(selectedJob.id, 'in_progress')} disabled={updatingJobId === selectedJob.id || selectedJob.status === 'in_progress'} className="rounded-lg border border-amber-400/40 px-3 py-1.5 text-xs disabled:opacity-50">กำลังทำ</button>
-              <button type="button" onClick={() => handleStatusChange(selectedJob.id, 'completed')} disabled={updatingJobId === selectedJob.id || selectedJob.status === 'completed'} className="rounded-lg border border-emerald-400/40 px-3 py-1.5 text-xs disabled:opacity-50">เสร็จแล้ว</button>
-            </div>
-            <div className="flex flex-wrap gap-2 pt-1">
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <button
+                type="button"
+                onClick={() => setShowStatusPickerModal(true)}
+                disabled={updatingJobId === selectedJob.id}
+                className="driver-clay-btn driver-clay-btn-warning text-xs disabled:opacity-50"
+              >
+                <CircleDashed size={14} />
+                แก้ไขสถานะ
+              </button>
               <button
                 type="button"
                 onClick={() => handleDownloadPdf(toEditableForm(selectedJob))}
-                className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#1d4ed8] to-[#0f766e] px-3 py-2 text-xs font-medium text-white"
+                className="driver-clay-btn driver-clay-btn-info text-xs"
               >
                 <FileDown size={14} />
                 ดาวน์โหลด PDF
               </button>
-              <button type="button" onClick={() => openEditModal(selectedJob)} className="inline-flex items-center gap-2 rounded-lg bg-accent-primary px-3 py-2 text-xs font-medium text-white"><Pencil size={14} />แก้ไข</button>
+              <button
+                type="button"
+                onClick={() => openEditModal(selectedJob)}
+                className="driver-clay-btn driver-clay-btn-primary text-xs"
+              >
+                <Pencil size={14} />
+                แก้ไข
+              </button>
               {isAdmin && (
-                <button type="button" onClick={() => handleRequestDelete(selectedJob)} className="inline-flex items-center gap-2 rounded-lg bg-red-500 px-3 py-2 text-xs font-medium text-white"><Trash2 size={14} />ลบ</button>
+                <button
+                  type="button"
+                  onClick={() => handleRequestDelete(selectedJob)}
+                  className="driver-clay-btn bg-[#ffd9de] text-rose-600 text-xs"
+                >
+                  <Trash2 size={14} />
+                  ลบ
+                </button>
               )}
             </div>
           </div>
         )}
       </Modal>
 
-      <Modal isOpen={!!editingJobId && !!editForm} onClose={() => { setEditingJobId(null); setEditForm(null); setEditBaseRevision(null); }} title="แก้ไขรายการงาน">
-        {editForm && (
-          <div className="space-y-3 text-sm max-h-[70vh] overflow-y-auto pr-1">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <input className={selectClass} value={editForm.workOrderNo} onChange={(e) => handleEditField('workOrderNo', e.target.value)} placeholder="เลขที่ใบสั่งงาน (Work Order)" />
-              <input className={selectClass} value={editForm.jobNo} onChange={(e) => handleEditField('jobNo', e.target.value)} placeholder="Job No." />
-              <input type="date" className={selectClass} value={editForm.workDate} onChange={(e) => handleEditField('workDate', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
-              <select className={selectClass} value={editForm.assignedToUid} onChange={(e) => handleEditAssignedUser(e.target.value)}>
-                <option value="">เลือกผู้รับงานแอพ</option>
-                {assignableUsers.map((staff) => (
-                  <option key={staff.uid} value={staff.uid}>
-                    {staff.displayName} ({staff.email}) {staff.role === 'admin' ? '[Admin]' : '[User]'}
-                  </option>
-                ))}
-              </select>
-              <input list="driver-options" className={selectClass} value={editForm.driverName} onChange={(e) => handleEditField('driverName', e.target.value)} placeholder="คนขับ" />
-              <input list="plate-options" className={selectClass} value={editForm.plateNo} onChange={(e) => handleEditField('plateNo', e.target.value)} placeholder="ทะเบียน" />
-              <input list="vehicle-type-options" className={selectClass} value={editForm.vehicleType} onChange={(e) => handleEditField('vehicleType', e.target.value)} placeholder="ชนิดรถ" />
-              <input className={selectClass} value={editForm.productName} onChange={(e) => handleEditField('productName', e.target.value)} placeholder="สินค้า" />
-              <input list="location-options" className={selectClass} value={editForm.pickup.location} onChange={(e) => handleEditPoint('pickup', 'location', e.target.value)} placeholder="ต้นทาง" />
-              <input list="location-options" className={selectClass} value={editForm.delivery.location} onChange={(e) => handleEditPoint('delivery', 'location', e.target.value)} placeholder="ปลายทาง" />
-              <input type="time" lang="en-GB" step={60} className={selectClass} value={editForm.pickup.time} onChange={(e) => handleEditPoint('pickup', 'time', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
-              <input type="time" lang="en-GB" step={60} className={selectClass} value={editForm.delivery.time} onChange={(e) => handleEditPoint('delivery', 'time', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
+      <Modal
+        isOpen={showStatusPickerModal && !!selectedJob}
+        onClose={() => setShowStatusPickerModal(false)}
+        title="แก้ไขสถานะงาน"
+      >
+        {selectedJob && (
+          <div className="space-y-4 text-sm">
+            <div className="driver-clay-soft p-3">
+              <p className="driver-clay-muted text-xs">สถานะปัจจุบัน</p>
+              <div className="mt-2">
+                <span className={`driver-clay-chip ${statusBadgeClass(selectedJob.status)}`}>
+                  {statusIcon(selectedJob.status)}
+                  {statusLabelMap[selectedJob.status]}
+                </span>
+              </div>
             </div>
-            <textarea rows={3} className={selectClass} value={editForm.importantNote} onChange={(e) => handleEditField('importantNote', e.target.value)} placeholder="หมายเหตุ" />
-            <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => { setEditingJobId(null); setEditForm(null); setEditBaseRevision(null); }} className={`rounded-lg px-3 py-2 text-xs ${isDark ? 'bg-dark-bg text-dark-text' : 'bg-slate-100 text-slate-700'}`}>ยกเลิก</button>
-              <button type="button" onClick={handleSaveEdit} disabled={isEditingSave} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white disabled:opacity-60">{isEditingSave ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}</button>
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <button
+                type="button"
+                onClick={() => void handleSelectStatusFromModal('pending')}
+                disabled={updatingJobId === selectedJob.id || selectedJob.status === 'pending'}
+                className="driver-clay-btn driver-clay-btn-ghost text-xs disabled:opacity-50"
+              >
+                รอดำเนินการ
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSelectStatusFromModal('in_progress')}
+                disabled={updatingJobId === selectedJob.id || selectedJob.status === 'in_progress'}
+                className="driver-clay-btn driver-clay-btn-warning text-xs disabled:opacity-50"
+              >
+                กำลังทำ
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSelectStatusFromModal('completed')}
+                disabled={updatingJobId === selectedJob.id || selectedJob.status === 'completed'}
+                className="driver-clay-btn driver-clay-btn-info text-xs disabled:opacity-50"
+              >
+                เสร็จแล้ว
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowStatusPickerModal(false)}
+              className="driver-clay-btn driver-clay-btn-ghost w-full text-xs"
+            >
+              ยกเลิก
+            </button>
+          </div>
+        )}
+      </Modal>
+
+      <Modal isOpen={!!editingJobId && !!editForm} onClose={closeEditModal} title="แก้ไขรายการงาน">
+        {editForm && (
+          <div className="space-y-4 text-sm">
+            <div className="driver-clay-soft p-3">
+              <p className="driver-clay-muted text-xs">แก้ไขข้อมูลให้ครบเหมือนฟอร์มบันทึกหน้างาน แล้วกดบันทึกการแก้ไข</p>
+            </div>
+
+            <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
+              <div className="driver-clay-soft space-y-3 p-3">
+                <p className="text-sm font-semibold text-slate-700">ข้อมูลหลัก</p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="space-y-1">
+                    <span className={modalLabelClass}>เลขที่ใบสั่งงาน</span>
+                    <input className={modalInputClass} value={editForm.workOrderNo} onChange={(e) => handleEditField('workOrderNo', e.target.value)} />
+                  </label>
+                  <label className="space-y-1">
+                    <span className={modalLabelClass}>วันที่</span>
+                    <input type="date" className={modalInputClass} value={editForm.workDate} onChange={(e) => handleEditField('workDate', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
+                  </label>
+                  <label className="space-y-1">
+                    <span className={modalLabelClass}>บริษัทผู้ว่าจ้าง</span>
+                    <select className={modalInputClass} value={editForm.employerCompany} onChange={(e) => handleEditField('employerCompany', e.target.value)}>
+                      <option value="">เลือกบริษัทผู้ว่าจ้าง</option>
+                      {buildDropdownOptions(employerCompanyOptions, editForm.employerCompany).map((option) => (
+                        <option key={`edit-employer-${option}`} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="space-y-1">
+                    <span className={modalLabelClass}>ประเภทสินค้า</span>
+                    <select className={modalInputClass} value={editForm.productName} onChange={(e) => handleEditField('productName', e.target.value)}>
+                      <option value="">เลือกประเภทสินค้า</option>
+                      {buildDropdownOptions(productTypeOptions, editForm.productName).map((option) => (
+                        <option key={`edit-product-${option}`} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="space-y-1">
+                    <span className={modalLabelClass}>จำนวนรอบ</span>
+                    <input className={modalInputClass} value={editForm.quantity} onChange={(e) => handleEditField('quantity', e.target.value)} />
+                  </label>
+                  <label className="space-y-1">
+                    <span className={modalLabelClass}>ประเภทรถ</span>
+                    <select className={modalInputClass} value={editForm.vehicleType} onChange={(e) => handleEditField('vehicleType', e.target.value)}>
+                      <option value="">เลือกประเภทรถ</option>
+                      {buildDropdownOptions(vehicleTypeOptions, editForm.vehicleType).map((option) => (
+                        <option key={`edit-vehicle-${option}`} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="space-y-1">
+                    <span className={modalLabelClass}>ทะเบียน</span>
+                    <select className={modalInputClass} value={editForm.plateNo} onChange={(e) => handleEditField('plateNo', e.target.value)}>
+                      <option value="">เลือกทะเบียน</option>
+                      {buildDropdownOptions(plateOptions, editForm.plateNo).map((option) => (
+                        <option key={`edit-plate-${option}`} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="space-y-1">
+                    <span className={modalLabelClass}>มอบหมายพนักงาน (แอพ)</span>
+                    <select className={modalInputClass} value={editForm.assignedToUid} onChange={(e) => handleEditAssignedUser(e.target.value)}>
+                      <option value="">เลือกผู้รับงานแอพ</option>
+                      {assignableUsers.map((staff) => (
+                        <option key={staff.uid} value={staff.uid}>
+                          {staff.displayName} ({staff.email}) {staff.role === 'admin' ? '[Admin]' : '[User]'}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="space-y-1">
+                    <span className={modalLabelClass}>พนักงานขับรถ</span>
+                    <select className={modalInputClass} value={editForm.driverName} onChange={(e) => handleEditField('driverName', e.target.value)}>
+                      <option value="">เลือกพนักงานขับรถ</option>
+                      {buildDropdownOptions(driverOptions, editForm.driverName).map((option) => (
+                        <option key={`edit-driver-${option}`} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="space-y-1">
+                    <span className={modalLabelClass}>เบอร์ติดต่อคนขับ</span>
+                    <input className={modalInputClass} value={editForm.driverPhone} onChange={(e) => handleEditField('driverPhone', e.target.value)} />
+                  </label>
+                  <label className="space-y-1">
+                    <span className={modalLabelClass}>Job No.</span>
+                    <input className={modalInputClass} value={editForm.jobNo} onChange={(e) => handleEditField('jobNo', e.target.value)} />
+                  </label>
+                  <label className="space-y-1">
+                    <span className={modalLabelClass}>Invoice No.</span>
+                    <input className={modalInputClass} value={editForm.invNo} onChange={(e) => handleEditField('invNo', e.target.value)} />
+                  </label>
+                  <label className="space-y-1">
+                    <span className={modalLabelClass}>เลขที่ใบขนส่ง (Transport Doc)</span>
+                    <input className={modalInputClass} value={editForm.transportDocNo} onChange={(e) => handleEditField('transportDocNo', e.target.value)} />
+                  </label>
+                  <label className="space-y-1">
+                    <span className={modalLabelClass}>ค่าน้ำมัน/ทางด่วน</span>
+                    <input type="number" className={modalInputClass} value={editForm.fuelAndToll} onChange={(e) => handleEditField('fuelAndToll', e.target.value)} />
+                  </label>
+                </div>
+              </div>
+
+              <div className="driver-clay-soft space-y-3 p-3">
+                <p className="text-sm font-semibold text-slate-700">จุดรับ</p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="space-y-1 sm:col-span-2">
+                    <span className={modalLabelClass}>สถานที่รับ</span>
+                    <select className={modalInputClass} value={editForm.pickup.location} onChange={(e) => handleEditPoint('pickup', 'location', e.target.value)}>
+                      <option value="">เลือกสถานที่รับ</option>
+                      {buildDropdownOptions(locationOptions, editForm.pickup.location).map((option) => (
+                        <option key={`edit-pickup-location-${option}`} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="space-y-1">
+                    <span className={modalLabelClass}>วันที่รับ</span>
+                    <input type="date" className={modalInputClass} value={editForm.pickup.date} onChange={(e) => handleEditPoint('pickup', 'date', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
+                  </label>
+                  <label className="space-y-1">
+                    <span className={modalLabelClass}>เวลารับ</span>
+                    <input type="time" lang="en-GB" step={60} className={modalInputClass} value={editForm.pickup.time} onChange={(e) => handleEditPoint('pickup', 'time', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
+                  </label>
+                  <label className="space-y-1 sm:col-span-2">
+                    <span className={modalLabelClass}>ผู้ติดต่อจุดรับ</span>
+                    <select className={modalInputClass} value={editForm.pickup.contact} onChange={(e) => handleEditPoint('pickup', 'contact', e.target.value)}>
+                      <option value="">เลือกผู้ติดต่อจุดรับ</option>
+                      {buildDropdownOptions(contactOptions, editForm.pickup.contact).map((option) => (
+                        <option key={`edit-pickup-contact-${option}`} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div className="driver-clay-soft space-y-3 p-3">
+                <p className="text-sm font-semibold text-slate-700">จุดส่ง</p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="space-y-1 sm:col-span-2">
+                    <span className={modalLabelClass}>สถานที่ส่ง</span>
+                    <select className={modalInputClass} value={editForm.delivery.location} onChange={(e) => handleEditPoint('delivery', 'location', e.target.value)}>
+                      <option value="">เลือกสถานที่ส่ง</option>
+                      {buildDropdownOptions(locationOptions, editForm.delivery.location).map((option) => (
+                        <option key={`edit-delivery-location-${option}`} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="space-y-1">
+                    <span className={modalLabelClass}>วันที่ส่ง</span>
+                    <input type="date" className={modalInputClass} value={editForm.delivery.date} onChange={(e) => handleEditPoint('delivery', 'date', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
+                  </label>
+                  <label className="space-y-1">
+                    <span className={modalLabelClass}>เวลาส่ง</span>
+                    <input type="time" lang="en-GB" step={60} className={modalInputClass} value={editForm.delivery.time} onChange={(e) => handleEditPoint('delivery', 'time', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
+                  </label>
+                  <label className="space-y-1 sm:col-span-2">
+                    <span className={modalLabelClass}>ผู้ติดต่อจุดส่ง</span>
+                    <select className={modalInputClass} value={editForm.delivery.contact} onChange={(e) => handleEditPoint('delivery', 'contact', e.target.value)}>
+                      <option value="">เลือกผู้ติดต่อจุดส่ง</option>
+                      {buildDropdownOptions(contactOptions, editForm.delivery.contact).map((option) => (
+                        <option key={`edit-delivery-contact-${option}`} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div className="driver-clay-soft space-y-3 p-3">
+                <label className="space-y-1">
+                  <span className={modalLabelClass}>หมายเหตุ</span>
+                  <textarea rows={3} className={modalTextareaClass} value={editForm.importantNote} onChange={(e) => handleEditField('importantNote', e.target.value)} />
+                </label>
+              </div>
+
+              <div className="driver-clay-soft space-y-3 p-3">
+                <p className="text-sm font-semibold text-slate-700">รูปภาพต้นทาง</p>
+                <input ref={editOriginInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleEditImageSelect('origin', e)} />
+                {editForm.originImageUrls.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {editForm.originImageUrls.map((url, index) => (
+                      <div key={`edit-origin-existing-${url}-${index}`} className="relative overflow-hidden rounded-xl border border-white/70">
+                        <img src={url} alt={`Origin ${index + 1}`} className="h-24 w-full cursor-pointer object-cover" onClick={() => window.open(url, '_blank')} />
+                        <button type="button" onClick={() => removeEditExistingImage('originImageUrls', index)} className="absolute right-1 top-1 inline-flex items-center gap-1 rounded-md bg-red-500 px-1.5 py-1 text-[10px] font-semibold text-white">
+                          <Trash2 size={10} />
+                          ลบ
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {editOriginPreviews.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {editOriginPreviews.map((preview, index) => (
+                      <div key={`edit-origin-new-${index}`} className="relative overflow-hidden rounded-xl border border-white/70">
+                        <img src={preview} alt={`New Origin ${index + 1}`} className="h-24 w-full object-cover" />
+                        <button type="button" onClick={() => removeEditPreviewImage('origin', index)} className="absolute right-1 top-1 inline-flex items-center gap-1 rounded-md bg-red-500 px-1.5 py-1 text-[10px] font-semibold text-white">
+                          <Trash2 size={10} />
+                          ลบ
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button type="button" onClick={() => editOriginInputRef.current?.click()} className={modalUploadButtonClass}>
+                  <Plus size={14} />
+                  เพิ่มรูปภาพต้นทาง
+                </button>
+              </div>
+
+              <div className="driver-clay-soft space-y-3 p-3">
+                <p className="text-sm font-semibold text-slate-700">รูปภาพปลายทาง</p>
+                <input ref={editDestinationInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleEditImageSelect('destination', e)} />
+                {editForm.destinationImageUrls.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {editForm.destinationImageUrls.map((url, index) => (
+                      <div key={`edit-destination-existing-${url}-${index}`} className="relative overflow-hidden rounded-xl border border-white/70">
+                        <img src={url} alt={`Destination ${index + 1}`} className="h-24 w-full cursor-pointer object-cover" onClick={() => window.open(url, '_blank')} />
+                        <button type="button" onClick={() => removeEditExistingImage('destinationImageUrls', index)} className="absolute right-1 top-1 inline-flex items-center gap-1 rounded-md bg-red-500 px-1.5 py-1 text-[10px] font-semibold text-white">
+                          <Trash2 size={10} />
+                          ลบ
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {editDestinationPreviews.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {editDestinationPreviews.map((preview, index) => (
+                      <div key={`edit-destination-new-${index}`} className="relative overflow-hidden rounded-xl border border-white/70">
+                        <img src={preview} alt={`New Destination ${index + 1}`} className="h-24 w-full object-cover" />
+                        <button type="button" onClick={() => removeEditPreviewImage('destination', index)} className="absolute right-1 top-1 inline-flex items-center gap-1 rounded-md bg-red-500 px-1.5 py-1 text-[10px] font-semibold text-white">
+                          <Trash2 size={10} />
+                          ลบ
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button type="button" onClick={() => editDestinationInputRef.current?.click()} className={modalUploadButtonClass}>
+                  <Plus size={14} />
+                  เพิ่มรูปภาพปลายทาง
+                </button>
+              </div>
+
+              <div className="driver-clay-soft space-y-3 p-3">
+                <p className="text-sm font-semibold text-slate-700">รูปภาพเอกสาร</p>
+                <input ref={editDocumentInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleEditImageSelect('document', e)} />
+                {editForm.documentImageUrls.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {editForm.documentImageUrls.map((url, index) => (
+                      <div key={`edit-document-existing-${url}-${index}`} className="relative overflow-hidden rounded-xl border border-white/70">
+                        <img src={url} alt={`Document ${index + 1}`} className="h-24 w-full cursor-pointer object-cover" onClick={() => window.open(url, '_blank')} />
+                        <button type="button" onClick={() => removeEditExistingImage('documentImageUrls', index)} className="absolute right-1 top-1 inline-flex items-center gap-1 rounded-md bg-red-500 px-1.5 py-1 text-[10px] font-semibold text-white">
+                          <Trash2 size={10} />
+                          ลบ
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {editDocumentPreviews.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {editDocumentPreviews.map((preview, index) => (
+                      <div key={`edit-document-new-${index}`} className="relative overflow-hidden rounded-xl border border-white/70">
+                        <img src={preview} alt={`New Document ${index + 1}`} className="h-24 w-full object-cover" />
+                        <button type="button" onClick={() => removeEditPreviewImage('document', index)} className="absolute right-1 top-1 inline-flex items-center gap-1 rounded-md bg-red-500 px-1.5 py-1 text-[10px] font-semibold text-white">
+                          <Trash2 size={10} />
+                          ลบ
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button type="button" onClick={() => editDocumentInputRef.current?.click()} className={modalUploadButtonClass}>
+                  <FileText size={14} />
+                  เพิ่มรูปภาพเอกสาร
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button type="button" onClick={closeEditModal} className="driver-clay-btn driver-clay-btn-ghost text-xs">
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                disabled={isEditingSave}
+                className="driver-clay-btn driver-clay-btn-success text-xs disabled:opacity-60"
+              >
+                {isEditingSave ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
+              </button>
             </div>
           </div>
         )}

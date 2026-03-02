@@ -27,22 +27,37 @@ interface Filters {
   licensePlate: string;
 }
 
+const getCurrentMonthYear = () => {
+  const now = new Date();
+  return {
+    month: now.getMonth() + 1,
+    year: now.getFullYear(),
+  };
+};
+
+const createDefaultFilters = (): Filters => {
+  const { month, year } = getCurrentMonthYear();
+  return {
+    month,
+    year,
+    driver: '',
+    vehicleType: '',
+    licensePlate: ''
+  };
+};
+
 const Dashboard: React.FC = () => {
   const { data } = useData();
   const isDark = false;
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState<Filters>({
-    month: null,
-    year: null,
-    driver: '',
-    vehicleType: '',
-    licensePlate: ''
-  });
+  const [filters, setFilters] = useState<Filters>(() => createDefaultFilters());
 
   // Extract unique years from data
   const availableYears = useMemo(() => {
-    if (!data) return [];
+    const currentYear = new Date().getFullYear();
+    if (!data) return [currentYear];
     const years = new Set(data.jobs.map(job => new Date(job.date).getFullYear()));
+    years.add(currentYear);
     return Array.from(years).sort((a, b) => b - a);
   }, [data]);
 
@@ -66,13 +81,7 @@ const Dashboard: React.FC = () => {
   }, [data, filters]);
 
   const clearFilters = () => {
-    setFilters({
-      month: null,
-      year: null,
-      driver: '',
-      vehicleType: '',
-      licensePlate: ''
-    });
+    setFilters(createDefaultFilters());
   };
 
   const hasActiveFilters = filters.month || filters.year || filters.driver || filters.vehicleType || filters.licensePlate;
