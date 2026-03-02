@@ -16,6 +16,7 @@ type JobStatus = "pending" | "in_progress" | "completed";
 
 type TodayJobEntry = {
   jobNo?: string;
+  invNo?: string;
   workOrderNo?: string;
   workDate?: string;
   vehicleType?: string;
@@ -38,6 +39,12 @@ type TodayJobEntry = {
     contact?: string;
   };
   driverName?: string;
+  originImageUrl?: string;
+  originImageUrls?: string[];
+  destinationImageUrl?: string;
+  destinationImageUrls?: string[];
+  documentImageUrl?: string;
+  documentImageUrls?: string[];
   fuelAndToll?: number | string | null;
   status?: JobStatus;
   assignedToUid?: string;
@@ -450,6 +457,20 @@ const toFuelAndToll = (
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const toImageUrls = (urls?: unknown, single?: unknown): string[] => {
+  const normalized = Array.isArray(urls) ?
+    urls
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean) :
+    [];
+
+  if (normalized.length > 0) return normalized;
+
+  const singleUrl = typeof single === "string" ? single.trim() : "";
+  return singleUrl ? [singleUrl] : [];
+};
+
 const buildJobPayloadFromToday = (
   todayJobId: string,
   job: TodayJobEntry,
@@ -464,16 +485,9 @@ const buildJobPayloadFromToday = (
     driverName: job.driverName || job.assignedToName || "",
     licensePlate: job.plateNo || "",
     jobNo: job.jobNo || "",
-    invNo: job.workOrderNo || job.ticketNo || "",
     workOrderNo: job.workOrderNo || job.ticketNo || "",
     transportDocNo: "",
     remarks: job.importantNote || "",
-    originImageUrl: "",
-    originImageUrls: [],
-    destinationImageUrl: "",
-    destinationImageUrls: [],
-    documentImageUrl: "",
-    documentImageUrls: [],
     linkedTodayJobId: todayJobId,
     employerCompany: job.employerCompany || "",
     productName: job.productName || "",
@@ -482,9 +496,38 @@ const buildJobPayloadFromToday = (
     timestamp: typeof job.timestamp === "number" ? job.timestamp : now,
   };
 
+  if (Object.prototype.hasOwnProperty.call(job, "invNo")) {
+    payload.invNo = typeof job.invNo === "string" ? job.invNo : "";
+  }
+
   const fuelAndToll = toFuelAndToll(job.fuelAndToll);
   if (fuelAndToll !== undefined) {
     payload.fuelAndToll = fuelAndToll;
+  }
+
+  const originImageUrls = toImageUrls(job.originImageUrls, job.originImageUrl);
+  if (originImageUrls.length > 0) {
+    payload.originImageUrls = originImageUrls;
+    payload.originImageUrl = originImageUrls[0];
+    payload.imageUrl = originImageUrls[0];
+  }
+
+  const destinationImageUrls = toImageUrls(
+    job.destinationImageUrls,
+    job.destinationImageUrl
+  );
+  if (destinationImageUrls.length > 0) {
+    payload.destinationImageUrls = destinationImageUrls;
+    payload.destinationImageUrl = destinationImageUrls[0];
+  }
+
+  const documentImageUrls = toImageUrls(
+    job.documentImageUrls,
+    job.documentImageUrl
+  );
+  if (documentImageUrls.length > 0) {
+    payload.documentImageUrls = documentImageUrls;
+    payload.documentImageUrl = documentImageUrls[0];
   }
 
   return payload;

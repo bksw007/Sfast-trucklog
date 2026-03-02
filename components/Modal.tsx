@@ -12,7 +12,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[85] flex items-start justify-center overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:items-center sm:py-8">
       {/* Backdrop */}
       <div 
         className="modal-clay-backdrop absolute inset-0" 
@@ -20,7 +20,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
       />
       
       {/* Modal Content */}
-      <div className="modal-clay-panel relative w-full max-w-md p-6 shadow-2xl animate-fade-in">
+      <div className="modal-clay-panel relative my-auto w-full max-w-md p-6 shadow-2xl animate-fade-in max-h-[calc(100dvh-2rem)] overflow-y-auto">
         {/* Header */}
         <div className="modal-clay-header mb-4 flex items-center justify-between pb-3">
           <h3 className="modal-clay-title text-lg">

@@ -260,6 +260,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
         fromTodayJob: {
           id: job.id,
           jobNo: job.jobNo || '',
+          invNo: job.invNo || '',
           date: job.workDate || '',
           pickupLocation: job.pickup.location || '',
           dropoffLocation: job.delivery.location || '',

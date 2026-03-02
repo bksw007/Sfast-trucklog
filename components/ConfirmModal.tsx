@@ -54,7 +54,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto px-4 pb-[max(6.5rem,calc(env(safe-area-inset-bottom)+5.5rem))] pt-[max(5.5rem,calc(env(safe-area-inset-top)+4.5rem))] sm:items-center sm:py-8">
       {/* Backdrop */}
       <div 
         className="modal-clay-backdrop absolute inset-0" 
@@ -62,7 +62,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
       />
       
       {/* Modal Content */}
-      <div className="modal-clay-panel relative w-full max-w-md p-6 shadow-2xl animate-fade-in">
+      <div className="modal-clay-panel relative my-auto w-full max-w-md max-h-[calc(100dvh-12rem)] overflow-y-auto p-6 shadow-2xl animate-fade-in sm:max-h-[calc(100dvh-4rem)]">
         {/* Close Button */}
         <button 
           onClick={onClose}
@@ -72,38 +72,38 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
         </button>
 
         {/* Icon */}
-        <div className="flex justify-center mb-4">
+        <div className="mb-4 flex justify-center">
           <div className={`modal-clay-icon ${iconClass[type]} ${
             type === 'success' ? 'animate-bounce' : ''
           }`}>
             <span>{icons[type]}</span>
           </div>
         </div>
-        
+
         {/* Title */}
-        <h3 className="modal-clay-title text-xl text-center mb-2">
+        <h3 className="modal-clay-title mb-2 text-center text-xl">
           {title}
         </h3>
 
         {/* Message */}
         {message && (
-          <p className="modal-clay-muted text-center text-sm mb-4">
+          <p className="modal-clay-muted mb-4 text-center text-sm">
             {message}
           </p>
         )}
 
         {/* Image Preview */}
         {imagePreview && (
-          <div className="modal-clay-soft mb-4 h-40 overflow-hidden border flex items-center justify-center">
+          <div className="modal-clay-soft mb-4 flex h-40 items-center justify-center overflow-hidden border">
             <img src={imagePreview} alt="Preview" className="h-full object-contain" />
           </div>
         )}
 
         {/* Data Review */}
         {data && data.length > 0 && (
-          <div className="modal-clay-soft mb-4 max-h-60 overflow-y-auto rounded-xl p-4 space-y-2">
+          <div className="modal-clay-soft mb-4 space-y-2 rounded-xl p-4">
             {data.map((item, index) => (
-              <div key={index} className="flex justify-between items-center py-1">
+              <div key={index} className="flex items-center justify-between py-1">
                 <span className="modal-clay-muted text-sm">
                   {item.label}:
                 </span>
@@ -114,12 +114,12 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
             ))}
           </div>
         )}
-        
+
         {/* Buttons */}
         {(showConfirm || showCancel) && (
           <div className={`flex gap-3 ${showCancel && showConfirm ? '' : 'justify-center'}`}>
             {showCancel && (
-              <button 
+              <button
                 onClick={onClose}
                 className="modal-clay-btn modal-clay-btn-secondary flex-1 px-4 py-3"
               >
@@ -127,7 +127,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
               </button>
             )}
             {showConfirm && (
-              <button 
+              <button
                 onClick={onConfirm}
                 className={`modal-clay-btn ${buttonClass[type]} ${showCancel ? 'flex-1' : 'px-8'} py-3`}
               >

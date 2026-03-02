@@ -438,41 +438,37 @@ export const updateJob = async (
   newDocumentImageFiles?: File[]
 ): Promise<JobEntry> => {
   const jobRef = doc(db, JOBS_COLLECTION, job.id);
-  
-  let originImageUrls = job.originImageUrls || (job.originImageUrl ? [job.originImageUrl] : []);
+
+  const legacyImageUrl = typeof job.imageUrl === 'string' ? job.imageUrl.trim() : '';
+  const fallbackOriginUrls = legacyImageUrl ? [legacyImageUrl] : [];
+  let originImageUrls =
+    (Array.isArray(job.originImageUrls) && job.originImageUrls.length > 0 ? job.originImageUrls : null) ||
+    (job.originImageUrl ? [job.originImageUrl] : null) ||
+    fallbackOriginUrls;
   let destinationImageUrls = job.destinationImageUrls || (job.destinationImageUrl ? [job.destinationImageUrl] : []);
   let documentImageUrls = job.documentImageUrls || (job.documentImageUrl ? [job.documentImageUrl] : []);
   
   // Handle origin image update
   if (newOriginImageFiles && newOriginImageFiles.length > 0) {
-    // Delete old origin images if exists
-    if (originImageUrls.length > 0) {
-      await Promise.all(originImageUrls.map(url => deleteImage(url)));
-    }
-    // Upload new origin images
-    originImageUrls = await uploadImages(newOriginImageFiles, job.id);
+    // Append new images instead of replacing old images.
+    const uploadedOriginUrls = await uploadImages(newOriginImageFiles, job.id);
+    originImageUrls = Array.from(new Set([...originImageUrls, ...uploadedOriginUrls]));
     console.log('[Firebase] Origin images updated');
   }
   
   // Handle destination image update
   if (newDestinationImageFiles && newDestinationImageFiles.length > 0) {
-    // Delete old destination images if exists
-    if (destinationImageUrls.length > 0) {
-       await Promise.all(destinationImageUrls.map(url => deleteImage(url)));
-    }
-    // Upload new destination images
-    destinationImageUrls = await uploadImages(newDestinationImageFiles, job.id);
+    // Append new images instead of replacing old images.
+    const uploadedDestinationUrls = await uploadImages(newDestinationImageFiles, job.id);
+    destinationImageUrls = Array.from(new Set([...destinationImageUrls, ...uploadedDestinationUrls]));
     console.log('[Firebase] Destination images updated');
   }
 
   // Handle document image update
   if (newDocumentImageFiles && newDocumentImageFiles.length > 0) {
-    // Delete old document images if exists
-    if (documentImageUrls.length > 0) {
-       await Promise.all(documentImageUrls.map(url => deleteImage(url)));
-    }
-    // Upload new document images
-    documentImageUrls = await uploadImages(newDocumentImageFiles, job.id);
+    // Append new images instead of replacing old images.
+    const uploadedDocumentUrls = await uploadImages(newDocumentImageFiles, job.id);
+    documentImageUrls = Array.from(new Set([...documentImageUrls, ...uploadedDocumentUrls]));
     console.log('[Firebase] Document images updated');
   }
 
@@ -497,6 +493,7 @@ export const updateJob = async (
     originImageUrl: originImageUrls[0] || '',
     destinationImageUrl: destinationImageUrls[0] || '',
     documentImageUrl: documentImageUrls[0] || '',
+    imageUrl: originImageUrls[0] || '',
     customerPrice: job.customerPrice,
     jointPrice: job.jointPrice,
   };
@@ -512,7 +509,11 @@ export const updateJob = async (
  */
 export const deleteJob = async (job: JobEntry): Promise<void> => {
   // Delete origin images
-  const originUrls = job.originImageUrls || (job.originImageUrl ? [job.originImageUrl] : []);
+  const legacyImageUrl = typeof job.imageUrl === 'string' ? job.imageUrl.trim() : '';
+  const originUrls =
+    (job.originImageUrls && job.originImageUrls.length > 0 ? job.originImageUrls : null) ||
+    (job.originImageUrl ? [job.originImageUrl] : null) ||
+    (legacyImageUrl ? [legacyImageUrl] : []);
   if (originUrls.length > 0) {
      await Promise.all(originUrls.map(url => deleteImage(url)));
   }

@@ -19,6 +19,7 @@ export interface JobEntry {
   destinationImageUrls?: string[]; // New: Multiple images
   documentImageUrl?: string; // รูปภาพเอกสาร
   documentImageUrls?: string[]; // New: Multiple images
+  imageUrl?: string; // Legacy single-image field (old schema)
   customerPrice?: number; // Admin only: ราคาเก็บลูกค้า
   jointPrice?: number; // Admin only: ราคาจ่ายรถร่วม
   timestamp: number;
@@ -35,6 +36,7 @@ export interface TodayJobEntry {
   id: string;
   employerCompany: string;
   jobNo: string;
+  invNo?: string;
   workDate: string;
   vehicleType: string;
   ticketNo?: string; // legacy field (used as Work Order in old records)
@@ -47,6 +49,12 @@ export interface TodayJobEntry {
   driverName: string;
   plateNo: string;
   driverPhone: string;
+  originImageUrl?: string;
+  originImageUrls?: string[];
+  destinationImageUrl?: string;
+  destinationImageUrls?: string[];
+  documentImageUrl?: string;
+  documentImageUrls?: string[];
   fuelAndToll?: number | null;
   importantNote: string;
   summaryText: string;

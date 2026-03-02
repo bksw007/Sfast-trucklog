@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { JobEntry, OptionCategory } from '../types';
-import { addJob, addOption, getTodayJobById, RevisionConflictError, syncTodayJobToJobs, updateTodayJob } from '../services/firebaseService';
+import { addJob, addOption, getTodayJobById, RevisionConflictError, syncTodayJobToJobs, updateTodayJob, uploadImages } from '../services/firebaseService';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Plus, Save, Loader2, Camera, X, Image as ImageIcon, FileText } from 'lucide-react';
@@ -15,6 +15,7 @@ type DriverEntryRouteState = {
   fromTodayJob?: {
     id?: string;
     jobNo?: string;
+    invNo?: string;
     workOrderNo?: string;
     date?: string;
     pickupLocation?: string;
@@ -36,6 +37,23 @@ const parseRoundsFromQuantity = (value?: string): number => {
   const match = (value || '').match(/(\d+(\.\d+)?)/);
   if (!match) return 1;
   return toPositiveRounds(match[1]);
+};
+
+const toImageUrls = (urls?: string[], single?: string): string[] => {
+  if (Array.isArray(urls) && urls.length > 0) {
+    return urls.filter((url) => typeof url === 'string' && url.trim().length > 0);
+  }
+  if (typeof single === 'string' && single.trim().length > 0) {
+    return [single.trim()];
+  }
+  return [];
+};
+
+const mergeImageUrls = (existing: string[], incoming: string[]): string[] => {
+  const normalized = [...existing, ...incoming]
+    .filter((url) => typeof url === 'string' && url.trim().length > 0)
+    .map((url) => url.trim());
+  return Array.from(new Set(normalized));
 };
 
 type EntryFormData = Omit<JobEntry, 'id' | 'timestamp' | 'originImageUrl' | 'destinationImageUrl'>;
@@ -64,16 +82,22 @@ const EntryForm: React.FC = () => {
   // Origin Image State (รูปภาพต้นทาง)
   const [originImages, setOriginImages] = useState<File[]>([]);
   const [originPreviews, setOriginPreviews] = useState<string[]>([]);
+  const [existingOriginImageUrls, setExistingOriginImageUrls] = useState<string[]>([]);
+  const [originImagesTouched, setOriginImagesTouched] = useState(false);
   const originFileInputRef = useRef<HTMLInputElement>(null);
   
   // Destination Image State (รูปภาพปลายทาง)
   const [destinationImages, setDestinationImages] = useState<File[]>([]);
   const [destinationPreviews, setDestinationPreviews] = useState<string[]>([]);
+  const [existingDestinationImageUrls, setExistingDestinationImageUrls] = useState<string[]>([]);
+  const [destinationImagesTouched, setDestinationImagesTouched] = useState(false);
   const destinationFileInputRef = useRef<HTMLInputElement>(null);
 
   // Document Image State (รูปภาพเอกสาร)
   const [documentImages, setDocumentImages] = useState<File[]>([]);
   const [documentPreviews, setDocumentPreviews] = useState<string[]>([]);
+  const [existingDocumentImageUrls, setExistingDocumentImageUrls] = useState<string[]>([]);
+  const [documentImagesTouched, setDocumentImagesTouched] = useState(false);
   const documentFileInputRef = useRef<HTMLInputElement>(null);
   
   // Modal States
@@ -104,6 +128,8 @@ const EntryForm: React.FC = () => {
     vehicleType: '',
     driverName: '',
     licensePlate: '',
+    jobNo: '',
+    invNo: '',
     workOrderNo: '',
     transportDocNo: '',
     fuelAndToll: '' as any,
@@ -114,6 +140,7 @@ const EntryForm: React.FC = () => {
 
   const applyTodayJobData = (payload?: {
     jobNo?: string;
+    invNo?: string;
     workOrderNo?: string;
     date?: string;
     pickupLocation?: string;
@@ -143,6 +170,7 @@ const EntryForm: React.FC = () => {
       tryAssignText('licensePlate', payload.licensePlate);
       tryAssignText('driverName', payload.driverName);
       tryAssignText('jobNo', payload.jobNo);
+      tryAssignText('invNo', payload.invNo);
       tryAssignText('workOrderNo', payload.workOrderNo);
       tryAssignText('remarks', payload.remarks);
 
@@ -165,13 +193,24 @@ const EntryForm: React.FC = () => {
 
     if (!sourceJobId) return;
 
+    setExistingOriginImageUrls([]);
+    setExistingDestinationImageUrls([]);
+    setExistingDocumentImageUrls([]);
+    setOriginImagesTouched(false);
+    setDestinationImagesTouched(false);
+    setDocumentImagesTouched(false);
+
     let cancelled = false;
     const loadTodayJob = async () => {
       try {
         const row = await getTodayJobById(sourceJobId);
         if (!row || cancelled) return;
+        setExistingOriginImageUrls(toImageUrls(row.originImageUrls, row.originImageUrl));
+        setExistingDestinationImageUrls(toImageUrls(row.destinationImageUrls, row.destinationImageUrl));
+        setExistingDocumentImageUrls(toImageUrls(row.documentImageUrls, row.documentImageUrl));
         applyTodayJobData({
           jobNo: row.jobNo,
+          invNo: row.invNo,
           workOrderNo: row.workOrderNo || row.ticketNo,
           date: row.workDate,
           pickupLocation: row.pickup?.location,
@@ -305,6 +344,21 @@ const EntryForm: React.FC = () => {
     setDocumentPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleRemoveExistingOriginImage = (index: number) => {
+    setExistingOriginImageUrls((prev) => prev.filter((_, i) => i !== index));
+    setOriginImagesTouched(true);
+  };
+
+  const handleRemoveExistingDestinationImage = (index: number) => {
+    setExistingDestinationImageUrls((prev) => prev.filter((_, i) => i !== index));
+    setDestinationImagesTouched(true);
+  };
+
+  const handleRemoveExistingDocumentImage = (index: number) => {
+    setExistingDocumentImageUrls((prev) => prev.filter((_, i) => i !== index));
+    setDocumentImagesTouched(true);
+  };
+
   const handleRemoveAllDocumentImages = () => {
     setDocumentImages([]);
     setDocumentPreviews([]);
@@ -363,6 +417,9 @@ const EntryForm: React.FC = () => {
         const mergedWorkOrderNo = dirtyFields.has('workOrderNo')
           ? (formData.workOrderNo || '')
           : (latestTodayJob.workOrderNo || latestTodayJob.ticketNo || '');
+        const mergedInvNo = dirtyFields.has('invNo')
+          ? (formData.invNo || '')
+          : (latestTodayJob.invNo || '');
         const mergedDriverName = dirtyFields.has('driverName')
           ? (formData.driverName || '')
           : (latestTodayJob.driverName || '');
@@ -370,8 +427,41 @@ const EntryForm: React.FC = () => {
           ? toPositiveRounds(formData.rounds)
           : (latestTodayJob.rounds || parseRoundsFromQuantity(latestTodayJob.quantity));
 
+        const storageJobId = `today_${sourceJobId}`;
+        const [newOriginImageUrls, newDestinationImageUrls, newDocumentImageUrls] = await Promise.all([
+          originImages.length > 0 ? uploadImages(originImages, storageJobId) : Promise.resolve([] as string[]),
+          destinationImages.length > 0 ? uploadImages(destinationImages, storageJobId) : Promise.resolve([] as string[]),
+          documentImages.length > 0 ? uploadImages(documentImages, storageJobId) : Promise.resolve([] as string[]),
+        ]);
+
+        const baseOriginImageUrls = originImagesTouched
+          ? existingOriginImageUrls
+          : toImageUrls(latestTodayJob.originImageUrls, latestTodayJob.originImageUrl);
+        const baseDestinationImageUrls = destinationImagesTouched
+          ? existingDestinationImageUrls
+          : toImageUrls(latestTodayJob.destinationImageUrls, latestTodayJob.destinationImageUrl);
+        const baseDocumentImageUrls = documentImagesTouched
+          ? existingDocumentImageUrls
+          : toImageUrls(latestTodayJob.documentImageUrls, latestTodayJob.documentImageUrl);
+
+        const mergedOriginImageUrls = mergeImageUrls(
+          baseOriginImageUrls,
+          newOriginImageUrls
+        );
+        const mergedDestinationImageUrls = mergeImageUrls(
+          baseDestinationImageUrls,
+          newDestinationImageUrls
+        );
+        const mergedDocumentImageUrls = mergeImageUrls(
+          baseDocumentImageUrls,
+          newDocumentImageUrls
+        );
+
         await updateTodayJob(sourceJobId, {
           jobNo: dirtyFields.has('jobNo') ? (formData.jobNo || '') : (latestTodayJob.jobNo || ''),
+          ...(dirtyFields.has('invNo') || typeof latestTodayJob.invNo === 'string'
+            ? { invNo: mergedInvNo }
+            : {}),
           workOrderNo: mergedWorkOrderNo,
           ticketNo: mergedWorkOrderNo,
           workDate: dirtyFields.has('date') ? formData.date : (latestTodayJob.workDate || formData.date),
@@ -395,10 +485,26 @@ const EntryForm: React.FC = () => {
           importantNote: dirtyFields.has('remarks')
             ? formData.remarks
             : (latestTodayJob.importantNote || ''),
+          originImageUrls: mergedOriginImageUrls,
+          originImageUrl: mergedOriginImageUrls[0] || '',
+          destinationImageUrls: mergedDestinationImageUrls,
+          destinationImageUrl: mergedDestinationImageUrls[0] || '',
+          documentImageUrls: mergedDocumentImageUrls,
+          documentImageUrl: mergedDocumentImageUrls[0] || '',
           lastSavedAt: Date.now(),
           updatedByUid: user?.uid || latestTodayJob.updatedByUid || '',
         }, latestTodayJob.revision);
         await syncTodayJobToJobs(sourceJobId);
+
+        setExistingOriginImageUrls(mergedOriginImageUrls);
+        setExistingDestinationImageUrls(mergedDestinationImageUrls);
+        setExistingDocumentImageUrls(mergedDocumentImageUrls);
+        setOriginImagesTouched(false);
+        setDestinationImagesTouched(false);
+        setDocumentImagesTouched(false);
+        handleRemoveAllOriginImages();
+        handleRemoveAllDestinationImages();
+        handleRemoveAllDocumentImages();
 
         setIsSubmitting(false);
         setShowSuccessModal(true);
@@ -701,7 +807,7 @@ const EntryForm: React.FC = () => {
         )}
 
         {isDriverEntryMode && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <FormGroup label="จำนวนรอบ (Rounds)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
               <input
                 type="number"
@@ -718,6 +824,15 @@ const EntryForm: React.FC = () => {
                 type="text"
                 name="jobNo"
                 value={formData.jobNo}
+                onChange={handleInputChange}
+                className={inputClass}
+              />
+            </FormGroup>
+            <FormGroup label="Invoice No." isDark={isDark} isDriverStyle={isDriverEntryMode}>
+              <input
+                type="text"
+                name="invNo"
+                value={formData.invNo}
                 onChange={handleInputChange}
                 className={inputClass}
               />
@@ -832,6 +947,32 @@ const EntryForm: React.FC = () => {
                 className="hidden"
               />
               
+              {/* Existing origin images */}
+              {existingOriginImageUrls.length > 0 && (
+                <div className="space-y-2">
+                  <span className={`text-sm ${mutedTextClass}`}>รูปที่บันทึกแล้ว {existingOriginImageUrls.length} รูป</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    {existingOriginImageUrls.map((url, index) => (
+                      <div key={`existing-origin-${index}`} className="relative overflow-hidden rounded-xl border border-dark-muted/20">
+                        <img
+                          src={url}
+                          alt={`Existing Origin ${index + 1}`}
+                          className="h-32 w-full object-cover"
+                          onClick={() => window.open(url, '_blank')}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExistingOriginImage(index)}
+                          className="absolute right-2 top-2 rounded-full bg-red-500 px-2 py-1 text-[10px] font-semibold text-white shadow-lg hover:bg-red-600"
+                        >
+                          ลบ
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Origin image preview */}
               {originPreviews.length > 0 && (
                 <div className="space-y-2">
@@ -898,6 +1039,32 @@ const EntryForm: React.FC = () => {
                 className="hidden"
               />
               
+              {/* Existing destination images */}
+              {existingDestinationImageUrls.length > 0 && (
+                <div className="space-y-2">
+                  <span className={`text-sm ${mutedTextClass}`}>รูปที่บันทึกแล้ว {existingDestinationImageUrls.length} รูป</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    {existingDestinationImageUrls.map((url, index) => (
+                      <div key={`existing-destination-${index}`} className="relative overflow-hidden rounded-xl border border-dark-muted/20">
+                        <img
+                          src={url}
+                          alt={`Existing Destination ${index + 1}`}
+                          className="h-32 w-full object-cover"
+                          onClick={() => window.open(url, '_blank')}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExistingDestinationImage(index)}
+                          className="absolute right-2 top-2 rounded-full bg-red-500 px-2 py-1 text-[10px] font-semibold text-white shadow-lg hover:bg-red-600"
+                        >
+                          ลบ
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Destination image preview */}
               {destinationPreviews.length > 0 && (
                 <div className="space-y-2">
@@ -964,6 +1131,32 @@ const EntryForm: React.FC = () => {
                 className="hidden"
               />
               
+              {/* Existing document images */}
+              {existingDocumentImageUrls.length > 0 && (
+                <div className="space-y-2">
+                  <span className={`text-sm ${mutedTextClass}`}>รูปที่บันทึกแล้ว {existingDocumentImageUrls.length} รูป</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    {existingDocumentImageUrls.map((url, index) => (
+                      <div key={`existing-document-${index}`} className="relative overflow-hidden rounded-xl border border-dark-muted/20">
+                        <img
+                          src={url}
+                          alt={`Existing Document ${index + 1}`}
+                          className="h-32 w-full object-cover"
+                          onClick={() => window.open(url, '_blank')}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExistingDocumentImage(index)}
+                          className="absolute right-2 top-2 rounded-full bg-red-500 px-2 py-1 text-[10px] font-semibold text-white shadow-lg hover:bg-red-600"
+                        >
+                          ลบ
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Document image preview */}
               {documentPreviews.length > 0 && (
                 <div className="space-y-2">
@@ -1030,9 +1223,19 @@ const EntryForm: React.FC = () => {
         </FormGroup>
 
         {/* Actions */}
-        <div className="pt-4 flex justify-end">
-          <button 
-            type="submit" 
+        <div className={`pt-4 flex gap-3 ${isDriverEntryMode ? 'justify-between' : 'justify-end'}`}>
+          {isDriverEntryMode && (
+            <button
+              type="button"
+              onClick={() => navigate('/driver/today')}
+              disabled={isSubmitting}
+              className="driver-clay-btn driver-clay-btn-ghost rounded-xl px-8 py-3 font-bold disabled:opacity-60"
+            >
+              กลับ
+            </button>
+          )}
+          <button
+            type="submit"
             disabled={isSubmitting}
             className={submitButtonClass}
           >
