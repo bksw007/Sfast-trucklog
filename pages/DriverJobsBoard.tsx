@@ -113,6 +113,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
   const [errorMessage, setErrorMessage] = useState('');
   const [searchText, setSearchText] = useState('');
   const [historyMonth, setHistoryMonth] = useState('');
+  const [compactHistoryCards, setCompactHistoryCards] = useState(false);
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -210,9 +211,10 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
 
   const filteredTodayJobs = useMemo(() => {
     const search = normalizeText(searchText);
-    if (!search) return todayJobs;
+    const visibleTodayJobs = todayJobs.filter((job) => job.status !== 'completed');
+    if (!search) return visibleTodayJobs;
 
-    return todayJobs.filter((job) => {
+    return visibleTodayJobs.filter((job) => {
       const haystack = normalizeText(
         [job.jobNo, job.employerCompany, job.productName, job.pickup.location, job.delivery.location].join(' ')
       );
@@ -377,14 +379,27 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
           </div>
 
           {view === 'history' && (
-            <select value={historyMonth} onChange={(e) => setHistoryMonth(e.target.value)} className={inputClass}>
-              <option value="">ทุกเดือน</option>
-              {monthOptions.map((month) => (
-                <option key={month} value={month}>
-                  {month}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-2">
+              <select
+                value={historyMonth}
+                onChange={(e) => setHistoryMonth(e.target.value)}
+                className={`flex-1 ${inputClass}`}
+              >
+                <option value="">ทุกเดือน</option>
+                {monthOptions.map((month) => (
+                  <option key={month} value={month}>
+                    {month}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setCompactHistoryCards((prev) => !prev)}
+                className="driver-clay-input px-3 py-2.5 text-xs font-semibold text-slate-700 whitespace-nowrap"
+              >
+                {compactHistoryCards ? 'ขยายการ์ด' : 'ย่อการ์ด'}
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -413,6 +428,10 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
         !errorMessage &&
         jobsByView.map((job) => (
           <article key={job.id} className={cardClass}>
+            {(() => {
+              const isCompactHistoryCard = view === 'history' && compactHistoryCards;
+              return (
+                <>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-base font-black text-slate-700">
@@ -436,6 +455,18 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
               </div>
             </div>
 
+            {isCompactHistoryCard ? (
+              <div className="mt-3 space-y-1 text-sm text-slate-700">
+                <div className="flex items-center gap-2">
+                  <CalendarClock size={14} className="driver-clay-muted" />
+                  <span>{asDateOnly(job.workDate) || '-'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <MapPin size={14} className="driver-clay-muted" />
+                  <span className="truncate">{job.pickup.location || '-'} → {job.delivery.location || '-'}</span>
+                </div>
+              </div>
+            ) : (
             <div className="mt-4 space-y-2 text-sm text-slate-700">
               <div className="flex items-center gap-2">
                 <CalendarClock size={14} className="driver-clay-muted" />
@@ -492,13 +523,15 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                 <p className="text-xs font-medium text-amber-600">พร้อมจบงานแล้ว</p>
               )}
             </div>
+            )}
 
-            {job.importantNote && (
+            {job.importantNote && !isCompactHistoryCard && (
               <div className="driver-clay-soft driver-clay-muted mt-3 px-3 py-2 text-xs">
                 หมายเหตุ: {job.importantNote}
               </div>
             )}
 
+            {!isCompactHistoryCard && (
             <div className="mt-4 flex flex-col gap-2 sm:flex-row">
               {job.status === 'pending' && (
                 <button
@@ -536,6 +569,10 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
               )}
 
             </div>
+            )}
+                </>
+              );
+            })()}
           </article>
         ))}
     </section>

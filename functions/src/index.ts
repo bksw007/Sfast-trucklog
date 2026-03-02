@@ -259,7 +259,9 @@ const notifyByEvent = async (
   const driverLabel = job.assignedToName || job.driverName || "พนักงาน";
   const jobLabel = `${getJobNo(job)} | WO ${getWorkOrderNo(job)}`;
 
-  await sendLineNotification(eventType, jobId, job);
+  if (eventType !== "ready") {
+    await sendLineNotification(eventType, jobId, job);
+  }
 
   if (eventType === "create") {
     const driverTokens = await getUserTokens(job.assignedToUid);
