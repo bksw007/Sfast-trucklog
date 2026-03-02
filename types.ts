@@ -66,6 +66,7 @@ export interface TodayJobEntry {
   readyToCloseAt?: number | null;
   acceptedAt?: number | null;
   acceptedByUid?: string;
+  driverUpdateCount?: number;
   completedByUid?: string;
   lastSavedAt?: number | null;
   revision?: number;

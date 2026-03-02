@@ -31,6 +31,54 @@ const parseRounds = (value?: string) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 };
 
+const parsePickupTimestamp = (job: TodayJobEntry): number => {
+  const pickupDate = (job.pickup?.date || '').trim();
+  const fallbackDate = asDateOnly(job.workDate || '').trim();
+  const datePart = pickupDate || fallbackDate;
+  if (!datePart) return Number.POSITIVE_INFINITY;
+
+  const pickupTime = (job.pickup?.time || '').trim();
+  const timePart = pickupTime ? `${pickupTime}:00` : '00:00:00';
+  const parsed = new Date(`${datePart}T${timePart}`).getTime();
+  if (Number.isNaN(parsed)) return Number.POSITIVE_INFINITY;
+  return parsed;
+};
+
+const parseRoundSuffix = (job: TodayJobEntry): number => {
+  const workOrder = (job.workOrderNo || job.ticketNo || '').trim();
+  const matched = /-R(\d+)\b/i.exec(workOrder);
+  if (!matched) return Number.POSITIVE_INFINITY;
+  const parsed = Number(matched[1]);
+  return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+};
+
+const compareByPickupSchedule = (a: TodayJobEntry, b: TodayJobEntry): number => {
+  const now = Date.now();
+  const timeA = parsePickupTimestamp(a);
+  const timeB = parsePickupTimestamp(b);
+
+  const isFutureA = Number.isFinite(timeA) && timeA >= now;
+  const isFutureB = Number.isFinite(timeB) && timeB >= now;
+
+  if (isFutureA !== isFutureB) {
+    return isFutureA ? -1 : 1;
+  }
+
+  if (isFutureA && isFutureB) {
+    const diffToNowA = timeA - now;
+    const diffToNowB = timeB - now;
+    if (diffToNowA !== diffToNowB) return diffToNowA - diffToNowB;
+  } else {
+    if (timeA !== timeB) return timeB - timeA;
+  }
+
+  const roundA = parseRoundSuffix(a);
+  const roundB = parseRoundSuffix(b);
+  if (roundA !== roundB) return roundA - roundB;
+
+  return (a.workOrderNo || a.ticketNo || '').localeCompare(b.workOrderNo || b.ticketNo || '');
+};
+
 const statusLabelMap: Record<JobStatus, string> = {
   pending: 'รอรับงาน',
   in_progress: 'กำลังทำงาน',
@@ -185,10 +233,10 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
   }, [readyToCloseJobs, searchText]);
 
   const jobsByView = useMemo(() => {
-    if (view === 'today') return filteredTodayJobs;
-    if (view === 'active') return filteredActiveJobs;
-    if (view === 'ready-to-close') return filteredReadyToCloseJobs;
-    return filteredHistoryJobs;
+    if (view === 'today') return [...filteredTodayJobs].sort(compareByPickupSchedule);
+    if (view === 'active') return [...filteredActiveJobs].sort(compareByPickupSchedule);
+    if (view === 'ready-to-close') return [...filteredReadyToCloseJobs].sort(compareByPickupSchedule);
+    return [...filteredHistoryJobs];
   }, [filteredActiveJobs, filteredHistoryJobs, filteredReadyToCloseJobs, filteredTodayJobs, view]);
 
   const handleAcceptJob = async (job: TodayJobEntry) => {
@@ -201,6 +249,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
         readyToClose: false,
         readyToCloseAt: null,
         completedAt: null,
+        driverUpdateCount: 0,
         acceptedAt: Date.now(),
         acceptedByUid: user.uid,
         lastSavedAt: Date.now(),
@@ -373,10 +422,18 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                   เลขที่ใบสั่งงาน: {job.workOrderNo || job.ticketNo || '-'}
                 </p>
               </div>
-              <span className={`driver-clay-chip ${statusBadgeClass(job.status)}`}>
-                {statusIcon(job.status)}
-                {statusLabelMap[job.status]}
-              </span>
+              <div className="flex flex-wrap items-center justify-end gap-1.5">
+                <span className={`driver-clay-chip ${statusBadgeClass(job.status)}`}>
+                  {statusIcon(job.status)}
+                  {statusLabelMap[job.status]}
+                </span>
+                {job.status === 'in_progress' && job.readyToClose && (
+                  <span className="driver-clay-chip bg-indigo-100/90 text-indigo-700">
+                    <CheckCircle2 size={13} />
+                    รอจบงาน
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="mt-4 space-y-2 text-sm text-slate-700">
@@ -425,7 +482,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
 
               <div className="flex items-center gap-2">
                 <Package2 size={14} className="driver-clay-muted" />
-                <span>จำนวน: {job.quantity || '-'}</span>
+                <span>จำนวนรอบ: {job.rounds || parseRounds(job.quantity)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Truck size={14} className="driver-clay-muted" />
@@ -455,6 +512,17 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                 </button>
               )}
 
+              {job.status === 'in_progress' && (view === 'active' || view === 'today' || view === 'ready-to-close') && (
+                <button
+                  type="button"
+                  onClick={() => handleOpenEntryForm(job)}
+                  className="driver-clay-btn driver-clay-btn-warning"
+                >
+                  <CircleDashed size={15} />
+                  อัพเดทข้อมูล
+                </button>
+              )}
+
               {job.status === 'in_progress' && job.readyToClose && (view === 'ready-to-close' || view === 'today') && (
                 <button
                   type="button"
@@ -467,16 +535,6 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                 </button>
               )}
 
-              {job.status === 'in_progress' && !job.readyToClose && (view === 'active' || view === 'today') && (
-                <button
-                  type="button"
-                  onClick={() => handleOpenEntryForm(job)}
-                  className="driver-clay-btn driver-clay-btn-warning"
-                >
-                  <CircleDashed size={15} />
-                  อัพเดทข้อมูล
-                </button>
-              )}
             </div>
           </article>
         ))}

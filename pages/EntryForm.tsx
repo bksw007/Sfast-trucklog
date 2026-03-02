@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { JobEntry, OptionCategory } from '../types';
-import { addJob, addOption, getTodayJobById, RevisionConflictError, syncTodayJobToJobs, updateTodayJob, uploadImages } from '../services/firebaseService';
+import { addJob, addOption, getTodayJobById, RevisionConflictError, syncTodayJobToJobs, triggerTodayJobNotification, updateTodayJob, uploadImages } from '../services/firebaseService';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Plus, Save, Loader2, Camera, X, Image as ImageIcon, FileText } from 'lucide-react';
@@ -433,6 +433,13 @@ const EntryForm: React.FC = () => {
         const mergedRounds = dirtyFields.has('rounds')
           ? toPositiveRounds(formData.rounds)
           : (latestTodayJob.rounds || parseRoundsFromQuantity(latestTodayJob.quantity));
+        const currentDriverUpdateCount = Number.isFinite(Number(latestTodayJob.driverUpdateCount))
+          ? Number(latestTodayJob.driverUpdateCount)
+          : 0;
+        const nextDriverUpdateCount = currentDriverUpdateCount + 1;
+        const canMoveToReadyToClose = !!latestTodayJob.acceptedAt && nextDriverUpdateCount > 1;
+        const nextReadyToClose = latestTodayJob.status === 'in_progress' ? canMoveToReadyToClose : false;
+        const shouldNotifyReady = !latestTodayJob.readyToClose && nextReadyToClose;
 
         const storageJobId = `today_${sourceJobId}`;
         const [newOriginImageUrls, newDestinationImageUrls, newDocumentImageUrls] = await Promise.all([
@@ -477,7 +484,10 @@ const EntryForm: React.FC = () => {
           plateNo: dirtyFields.has('licensePlate') ? formData.licensePlate : (latestTodayJob.plateNo || ''),
           driverName: driverFullName || mergedDriverName || latestTodayJob.assignedToName || '',
           rounds: mergedRounds,
+          driverUpdateCount: nextDriverUpdateCount,
           fuelAndToll: dirtyFields.has('fuelAndToll') ? nextFuelAndToll : (latestTodayJob.fuelAndToll ?? null),
+          readyToClose: nextReadyToClose,
+          readyToCloseAt: nextReadyToClose ? Date.now() : null,
           pickup: {
             ...pickupBase,
             location: dirtyFields.has('pickupLocation')
@@ -503,6 +513,14 @@ const EntryForm: React.FC = () => {
           updatedByUid: user?.uid || latestTodayJob.updatedByUid || '',
         }, latestTodayJob.revision);
         await syncTodayJobToJobs(sourceJobId);
+        if (shouldNotifyReady) {
+          try {
+            // Notify admin only when job becomes "ready to close" for the first time.
+            await triggerTodayJobNotification('ready', sourceJobId);
+          } catch (notifyError) {
+            console.error('Notify ready event failed:', notifyError);
+          }
+        }
 
         setExistingOriginImageUrls(mergedOriginImageUrls);
         setExistingDestinationImageUrls(mergedDestinationImageUrls);

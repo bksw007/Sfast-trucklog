@@ -559,6 +559,7 @@ const TodayJobs: React.FC = () => {
           readyToClose: false,
           readyToCloseAt: null,
           acceptedAt: null,
+          driverUpdateCount: 0,
           completedAt: null,
           completedByUid: '',
           lastSavedAt: Date.now(),
@@ -606,20 +607,14 @@ const TodayJobs: React.FC = () => {
 
     setUpdatingJobId(jobId);
     try {
+      const target = jobs.find((job) => job.id === jobId);
+      const keepReady = status === 'in_progress' ? !!target?.readyToClose : false;
       await updateTodayJob(jobId, {
         status,
-        readyToClose: status === 'in_progress' ? true : false,
-        readyToCloseAt: status === 'in_progress' ? Date.now() : null,
+        readyToClose: keepReady,
+        readyToCloseAt: keepReady ? (target?.readyToCloseAt || Date.now()) : null,
         completedAt: status === 'completed' ? Date.now() : null,
       });
-
-      if (status === 'in_progress') {
-        try {
-          await triggerTodayJobNotification('ready', jobId);
-        } catch (notifyError) {
-          console.error('Notify ready event failed:', notifyError);
-        }
-      }
       if (status === 'completed') {
         try {
           await triggerTodayJobNotification('complete', jobId);

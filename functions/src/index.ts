@@ -51,6 +51,7 @@ type TodayJobEntry = {
   assignedToUid?: string;
   assignedToName?: string;
   acceptedAt?: number | null;
+  driverUpdateCount?: number;
   readyToClose?: boolean;
   completedAt?: number | null;
   revision?: number;
