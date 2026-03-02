@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { Loader2, Mail, Lock, Truck } from 'lucide-react';
+import { Loader2, Mail, Lock } from 'lucide-react';
 
 const Login: React.FC = () => {
   const { theme } = useTheme();
@@ -81,8 +81,8 @@ const Login: React.FC = () => {
       }`}>
         {/* Logo & Title */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-accent-primary to-accent-secondary mb-3 shadow-lg shadow-purple-500/30">
-            <Truck className="text-white" size={24} />
+          <div className="inline-flex items-center justify-center w-28 h-28 rounded-2xl bg-white p-2 mb-3 shadow-lg shadow-purple-500/25 ring-1 ring-black/5">
+            <img src="/icons/truck-logo.png" alt="SFast Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
             SFast Trucklog
