@@ -81,7 +81,7 @@ const Login: React.FC = () => {
       }`}>
         {/* Logo & Title */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-28 h-28 rounded-2xl bg-white p-2 mb-3 shadow-lg shadow-purple-500/25 ring-1 ring-black/5">
+          <div className="inline-flex items-center justify-center w-28 h-28 rounded-2xl bg-[#272727] p-2 mb-3 shadow-lg shadow-purple-500/25 ring-1 ring-black/5">
             <img src="/icons/truck-logo.png" alt="SFast Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>

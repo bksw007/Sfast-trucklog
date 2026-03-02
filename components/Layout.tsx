@@ -49,7 +49,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <header className="md:hidden sticky top-0 z-50 px-3 pb-1 pt-3">
         <div className="driver-top-shell mx-auto flex w-full items-center justify-between gap-3 rounded-[24px] border border-white/80 px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="h-11 w-11 overflow-hidden rounded-2xl bg-[#ffd1dc] shadow-[6px_6px_12px_rgba(166,180,200,0.35),-6px_-6px_12px_rgba(255,255,255,0.9)]">
+            <div className="h-11 w-11 overflow-hidden rounded-2xl bg-[#272727] shadow-[6px_6px_12px_rgba(166,180,200,0.35),-6px_-6px_12px_rgba(255,255,255,0.9)]">
               <img src={appLogo} alt="SFast Logo" className="h-full w-full object-cover" />
             </div>
             <div className="min-w-0">
@@ -123,7 +123,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         } border-white/85 bg-[rgba(240,244,248,0.96)] shadow-[6px_0_14px_rgba(166,180,200,0.26)]`}>
           <div className={`p-6 flex items-center ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
             <div className={`flex items-center transition-all duration-300 ${sidebarOpen ? 'gap-3' : 'gap-0 justify-center'}`}>
-              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-accent-primary/20 flex-shrink-0 bg-white">
+              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-accent-primary/20 flex-shrink-0 bg-[#272727]">
                 <img src={appLogo} alt="SFast Logo" className="w-full h-full object-cover" />
               </div>
               <div className={`overflow-hidden transition-all duration-300 ${sidebarOpen ? 'w-40 opacity-100' : 'w-0 opacity-0'}`}>

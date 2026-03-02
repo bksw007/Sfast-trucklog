@@ -28,7 +28,7 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({ children }) => {
       <aside className="driver-desktop-sidebar fixed inset-y-0 left-0 z-40 hidden p-5 md:flex md:flex-col">
         <div className="flex h-full flex-col gap-4 rounded-[26px] border border-white/80 p-4 shadow-[6px_6px_12px_rgba(166,180,200,0.35),-6px_-6px_12px_rgba(255,255,255,0.9)]">
           <div className="flex items-center gap-3 px-1 py-2">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#ffd1dc] shadow-[6px_6px_12px_rgba(166,180,200,0.35),-6px_-6px_12px_rgba(255,255,255,0.9)]">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#272727] shadow-[6px_6px_12px_rgba(166,180,200,0.35),-6px_-6px_12px_rgba(255,255,255,0.9)]">
               <img src="/icons/truck-logo.png" alt="SFast Logo" className="h-10 w-10 object-cover" />
             </div>
             <div>
@@ -91,7 +91,7 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({ children }) => {
         <header className="sticky top-0 z-40 px-3 pb-1 pt-3 sm:px-4 md:px-6 md:pt-5">
           <div className="driver-top-shell mx-auto flex w-full max-w-6xl items-center justify-between gap-3 rounded-[24px] border border-white/80 px-4 py-3">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="h-12 w-12 overflow-hidden rounded-2xl bg-[#ffd1dc] shadow-[6px_6px_12px_rgba(166,180,200,0.35),-6px_-6px_12px_rgba(255,255,255,0.9)]">
+              <div className="h-12 w-12 overflow-hidden rounded-2xl bg-[#272727] shadow-[6px_6px_12px_rgba(166,180,200,0.35),-6px_-6px_12px_rgba(255,255,255,0.9)]">
                 <img src="/icons/truck-logo.png" alt="SFast Logo" className="h-full w-full object-cover" />
               </div>
               <div className="min-w-0">
