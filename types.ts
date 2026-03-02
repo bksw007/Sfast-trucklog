@@ -47,6 +47,7 @@ export interface TodayJobEntry {
   driverName: string;
   plateNo: string;
   driverPhone: string;
+  fuelAndToll?: number | null;
   importantNote: string;
   summaryText: string;
   status: 'pending' | 'in_progress' | 'completed';
@@ -58,6 +59,8 @@ export interface TodayJobEntry {
   acceptedByUid?: string;
   completedByUid?: string;
   lastSavedAt?: number | null;
+  revision?: number;
+  updatedAt?: number;
   updatedByUid?: string;
   completedAt?: number | null;
   autoNotifyLine?: boolean;

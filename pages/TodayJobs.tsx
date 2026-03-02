@@ -21,7 +21,15 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
-import { addTodayJob, deleteTodayJob, subscribeToTodayJobs, triggerTodayJobNotification, updateTodayJob } from '../services/firebaseService';
+import {
+  addTodayJob,
+  deleteTodayJob,
+  getTodayJobById,
+  RevisionConflictError,
+  subscribeToTodayJobs,
+  triggerTodayJobNotification,
+  updateTodayJob
+} from '../services/firebaseService';
 import { getAllUsers } from '../services/userService';
 import { DispatchPoint, TodayJobEntry, UserProfile } from '../types';
 import { NotoSansThaiBase64 } from '../fonts/NotoSansThai';
@@ -144,6 +152,7 @@ const TodayJobs: React.FC = () => {
 
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<TodayJobForm | null>(null);
+  const [editBaseRevision, setEditBaseRevision] = useState<number | null>(null);
   const [isEditingSave, setIsEditingSave] = useState(false);
 
   const [jobToDelete, setJobToDelete] = useState<TodayJobEntry | null>(null);
@@ -544,6 +553,11 @@ const TodayJobs: React.FC = () => {
   const openEditModal = (job: TodayJobEntry) => {
     setEditingJobId(job.id);
     setEditForm(toEditableForm(job));
+    setEditBaseRevision(
+      typeof job.revision === 'number' && Number.isFinite(job.revision)
+        ? job.revision
+        : null
+    );
   };
 
   const handleEditField = (field: keyof TodayJobForm, value: string) => {
@@ -580,7 +594,7 @@ const TodayJobs: React.FC = () => {
         summaryText: buildSummaryText(editForm),
         lastSavedAt: Date.now(),
         updatedByUid: user?.uid || '',
-      });
+      }, editBaseRevision ?? undefined);
       try {
         await triggerTodayJobNotification('update', editingJobId);
       } catch (notifyError) {
@@ -588,8 +602,22 @@ const TodayJobs: React.FC = () => {
       }
       setEditingJobId(null);
       setEditForm(null);
+      setEditBaseRevision(null);
     } catch (error) {
       console.error('Save edit failed:', error);
+      if (error instanceof RevisionConflictError) {
+        const latest = await getTodayJobById(editingJobId);
+        if (latest) {
+          setEditForm(toEditableForm(latest));
+          setEditBaseRevision(
+            typeof latest.revision === 'number' && Number.isFinite(latest.revision)
+              ? latest.revision
+              : null
+          );
+        }
+        alert('ใบแจ้งงานนี้ถูกแก้ไขจากอุปกรณ์อื่น ระบบโหลดข้อมูลล่าสุดแล้ว กรุณาตรวจสอบอีกครั้งก่อนกดบันทึก');
+        return;
+      }
       if (error instanceof FirebaseError) {
         alert(`บันทึกการแก้ไขไม่สำเร็จ: ${error.code}`);
       } else {
@@ -1116,7 +1144,7 @@ const TodayJobs: React.FC = () => {
         )}
       </Modal>
 
-      <Modal isOpen={!!editingJobId && !!editForm} onClose={() => { setEditingJobId(null); setEditForm(null); }} title="แก้ไขรายการงาน">
+      <Modal isOpen={!!editingJobId && !!editForm} onClose={() => { setEditingJobId(null); setEditForm(null); setEditBaseRevision(null); }} title="แก้ไขรายการงาน">
         {editForm && (
           <div className="space-y-3 text-sm max-h-[70vh] overflow-y-auto pr-1">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -1142,7 +1170,7 @@ const TodayJobs: React.FC = () => {
             </div>
             <textarea rows={3} className={selectClass} value={editForm.importantNote} onChange={(e) => handleEditField('importantNote', e.target.value)} placeholder="หมายเหตุ" />
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => { setEditingJobId(null); setEditForm(null); }} className={`rounded-lg px-3 py-2 text-xs ${isDark ? 'bg-dark-bg text-dark-text' : 'bg-slate-100 text-slate-700'}`}>ยกเลิก</button>
+              <button type="button" onClick={() => { setEditingJobId(null); setEditForm(null); setEditBaseRevision(null); }} className={`rounded-lg px-3 py-2 text-xs ${isDark ? 'bg-dark-bg text-dark-text' : 'bg-slate-100 text-slate-700'}`}>ยกเลิก</button>
               <button type="button" onClick={handleSaveEdit} disabled={isEditingSave} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white disabled:opacity-60">{isEditingSave ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}</button>
             </div>
           </div>

@@ -707,15 +707,16 @@ const DriverProfile: React.FC = () => {
       </section>
 
       {cropMeta && cropLayout && (
-        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/60 p-3 backdrop-blur-sm sm:items-center">
-          <div className="driver-clay-card w-full max-w-md rounded-2xl p-4">
+        <div className="fixed inset-0 z-[70] flex items-end justify-center p-3 sm:items-center">
+          <div className="modal-clay-backdrop absolute inset-0" onClick={handleCancelCrop} />
+          <div className="modal-clay-panel relative w-full max-w-md rounded-2xl p-4">
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-700">ครอปรูปโปรไฟล์</p>
+              <p className="modal-clay-title text-sm font-semibold">ครอปรูปโปรไฟล์</p>
               <button
                 type="button"
                 onClick={handleCancelCrop}
                 disabled={uploadingPhoto}
-                className="driver-clay-icon-btn h-8 w-8 rounded-lg"
+                className="modal-clay-close h-8 w-8 rounded-lg p-1.5"
               >
                 <X size={16} />
               </button>

@@ -633,30 +633,27 @@ const DataTable: React.FC = () => {
 
     return (
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsDetailModalOpen(false)} />
+        <div className="modal-clay-backdrop absolute inset-0" onClick={() => setIsDetailModalOpen(false)} />
         
-        <div className={`relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl animate-fade-in ${
-          isDark ? 'bg-dark-card' : 'bg-white'
-        }`}>
-          {/* Header with gradient */}
-          <div className="bg-gradient-to-r from-accent-primary to-accent-secondary p-6 rounded-t-3xl">
+        <div className="modal-clay-panel relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl animate-fade-in">
+          <div className="modal-clay-header rounded-t-3xl p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-                  {isEditing ? <Edit2 size={24} className="text-white" /> : <Eye size={24} className="text-white" />}
+                <div className="modal-clay-soft rounded-xl p-3">
+                  {isEditing ? <Edit2 size={24} className="text-[#5d8aa8]" /> : <Eye size={24} className="text-[#5d8aa8]" />}
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white">
+                  <h3 className="modal-clay-title text-xl">
                     {isEditing ? 'แก้ไขข้อมูล' : 'รายละเอียดงาน'}
                   </h3>
-                  <p className="text-white/70 text-sm">{selectedJob.jobNo || 'No Job Number'}</p>
+                  <p className="modal-clay-muted text-sm">{selectedJob.jobNo || 'No Job Number'}</p>
                 </div>
               </div>
               <button 
                 onClick={() => setIsDetailModalOpen(false)} 
-                className="p-2 rounded-xl bg-white/20 hover:bg-white/30 transition-colors"
+                className="modal-clay-close rounded-xl p-2 transition-colors"
               >
-                <X size={20} className="text-white" />
+                <X size={20} className="modal-clay-muted" />
               </button>
             </div>
           </div>

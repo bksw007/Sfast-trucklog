@@ -362,6 +362,132 @@ select.no-arrow {
     -6px -6px 12px var(--driver-shadow-light);
 }
 
+/* Global clay modal theme */
+.modal-clay-backdrop {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 209, 220, 0.24), transparent 35%),
+    radial-gradient(circle at 80% 0%, rgba(174, 198, 207, 0.25), transparent 36%),
+    rgba(24, 34, 50, 0.46);
+  backdrop-filter: blur(6px);
+}
+
+.modal-clay-panel {
+  border-radius: 1.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  background: #f0f4f8;
+  color: #5d6d7e;
+  box-shadow:
+    14px 14px 28px rgba(166, 180, 200, 0.35),
+    -10px -10px 22px rgba(255, 255, 255, 0.92);
+}
+
+.modal-clay-header {
+  border-bottom: 1px solid rgba(166, 180, 200, 0.18);
+}
+
+.modal-clay-title {
+  color: #34495e;
+  font-weight: 800;
+}
+
+.modal-clay-muted {
+  color: #7f8c9a;
+}
+
+.modal-clay-close {
+  border-radius: 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  background: #f0f4f8;
+  box-shadow:
+    4px 4px 8px rgba(166, 180, 200, 0.3),
+    -4px -4px 8px rgba(255, 255, 255, 0.88);
+}
+
+.modal-clay-soft {
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  background: rgba(232, 236, 241, 0.72);
+  box-shadow:
+    inset 2px 2px 5px rgba(166, 180, 200, 0.28),
+    inset -2px -2px 5px rgba(255, 255, 255, 0.86);
+}
+
+.modal-clay-icon {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    6px 6px 12px rgba(166, 180, 200, 0.34),
+    -6px -6px 12px rgba(255, 255, 255, 0.9);
+}
+
+.modal-clay-icon-confirm {
+  background: #d7bde2;
+  color: #8e6ba8;
+}
+
+.modal-clay-icon-success {
+  background: #bce2d8;
+  color: #4a9d8e;
+}
+
+.modal-clay-icon-warning {
+  background: #fdfd96;
+  color: #b8a84a;
+}
+
+.modal-clay-icon-info {
+  background: #aec6cf;
+  color: #5d8aa8;
+}
+
+.modal-clay-btn {
+  border-radius: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  font-weight: 700;
+  transition: filter 0.2s ease, transform 0.15s ease;
+  box-shadow:
+    5px 5px 10px rgba(166, 180, 200, 0.3),
+    -4px -4px 8px rgba(255, 255, 255, 0.88);
+}
+
+.modal-clay-btn:hover {
+  filter: brightness(1.03);
+}
+
+.modal-clay-btn:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.modal-clay-btn-secondary {
+  background: #e8ecf1;
+  color: #5d6d7e;
+}
+
+.modal-clay-btn-confirm {
+  background: #d7bde2;
+  color: #8e6ba8;
+}
+
+.modal-clay-btn-success {
+  background: #bce2d8;
+  color: #4a9d8e;
+}
+
+.modal-clay-btn-warning {
+  background: #fdfd96;
+  color: #b8a84a;
+}
+
+.modal-clay-btn-info {
+  background: #aec6cf;
+  color: #5d8aa8;
+}
+
 @media (max-width: 640px) {
   .driver-clay-card {
     border-radius: 1.45rem;

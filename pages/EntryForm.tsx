@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { JobEntry, OptionCategory, TodayJobEntry } from '../types';
-import { addJob, addOption, getTodayJobById, syncTodayJobToJobs, updateTodayJob } from '../services/firebaseService';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { JobEntry, OptionCategory } from '../types';
+import { addJob, addOption, getTodayJobById, RevisionConflictError, syncTodayJobToJobs, updateTodayJob } from '../services/firebaseService';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Plus, Save, Loader2, Camera, X, Image as ImageIcon, FileText } from 'lucide-react';
@@ -38,21 +38,28 @@ const parseRoundsFromQuantity = (value?: string): number => {
   return toPositiveRounds(match[1]);
 };
 
+type EntryFormData = Omit<JobEntry, 'id' | 'timestamp' | 'originImageUrl' | 'destinationImageUrl'>;
+
 const EntryForm: React.FC = () => {
   const { theme } = useTheme();
   const { data } = useData();
   const { user, userProfile } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const isDriverEntryMode = location.pathname === '/driver/entry';
   const isDark = isDriverEntryMode ? false : theme === 'dark';
   const isAdmin = userProfile?.role === 'admin';
+  const driverFullName =
+    userProfile?.fullName?.trim() ||
+    userProfile?.displayName?.trim() ||
+    '';
   const queryParams = new URLSearchParams(location.search);
   const queryJobId = queryParams.get('jobId') || '';
   const routeState = (location.state || null) as DriverEntryRouteState | null;
   const fromTodayJob = routeState?.fromTodayJob;
   const sourceJobId = fromTodayJob?.id || queryJobId;
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [sourceTodayJob, setSourceTodayJob] = useState<TodayJobEntry | null>(null);
+  const dirtyFieldsRef = useRef<Set<keyof EntryFormData>>(new Set());
   
   // Origin Image State (รูปภาพต้นทาง)
   const [originImages, setOriginImages] = useState<File[]>([]);
@@ -89,7 +96,7 @@ const EntryForm: React.FC = () => {
   };
 
   // Form State
-  const [formData, setFormData] = useState<Omit<JobEntry, 'id' | 'timestamp' | 'originImageUrl' | 'destinationImageUrl'>>({
+  const [formData, setFormData] = useState<EntryFormData>({
     date: getLocalDate(),
     pickupLocation: '',
     dropoffLocation: '',
@@ -115,24 +122,45 @@ const EntryForm: React.FC = () => {
     licensePlate?: string;
     driverName?: string;
     rounds?: number;
+    remarks?: string;
+    fuelAndToll?: number | null;
   }) => {
     if (!payload) return;
-    setFormData((prev) => ({
-      ...prev,
-      date: payload.date || prev.date,
-      pickupLocation: payload.pickupLocation || prev.pickupLocation,
-      dropoffLocation: payload.dropoffLocation || prev.dropoffLocation,
-      vehicleType: payload.vehicleType || prev.vehicleType,
-      licensePlate: payload.licensePlate || prev.licensePlate,
-      driverName: payload.driverName || prev.driverName,
-      jobNo: payload.jobNo || prev.jobNo,
-      workOrderNo: payload.workOrderNo || prev.workOrderNo,
-      rounds: payload.rounds ? toPositiveRounds(payload.rounds) : prev.rounds,
-    }));
+    const dirtyFields = dirtyFieldsRef.current;
+    setFormData((prev) => {
+      const next = { ...prev };
+
+      const tryAssignText = (field: keyof EntryFormData, value?: string) => {
+        const normalized = (value || '').trim();
+        if (!normalized || dirtyFields.has(field)) return;
+        (next as Record<string, unknown>)[field] = normalized;
+      };
+
+      tryAssignText('date', payload.date);
+      tryAssignText('pickupLocation', payload.pickupLocation);
+      tryAssignText('dropoffLocation', payload.dropoffLocation);
+      tryAssignText('vehicleType', payload.vehicleType);
+      tryAssignText('licensePlate', payload.licensePlate);
+      tryAssignText('driverName', payload.driverName);
+      tryAssignText('jobNo', payload.jobNo);
+      tryAssignText('workOrderNo', payload.workOrderNo);
+      tryAssignText('remarks', payload.remarks);
+
+      if (!dirtyFields.has('rounds') && payload.rounds) {
+        next.rounds = toPositiveRounds(payload.rounds);
+      }
+
+      if (!dirtyFields.has('fuelAndToll') && payload.fuelAndToll !== undefined) {
+        next.fuelAndToll = payload.fuelAndToll === null ? '' as any : payload.fuelAndToll;
+      }
+
+      return next;
+    });
   };
 
   useEffect(() => {
     if (!isDriverEntryMode) return;
+    dirtyFieldsRef.current.clear();
     applyTodayJobData(fromTodayJob);
 
     if (!sourceJobId) return;
@@ -142,7 +170,6 @@ const EntryForm: React.FC = () => {
       try {
         const row = await getTodayJobById(sourceJobId);
         if (!row || cancelled) return;
-        setSourceTodayJob(row);
         applyTodayJobData({
           jobNo: row.jobNo,
           workOrderNo: row.workOrderNo || row.ticketNo,
@@ -153,6 +180,8 @@ const EntryForm: React.FC = () => {
           licensePlate: row.plateNo,
           driverName: row.driverName,
           rounds: row.rounds || parseRoundsFromQuantity(row.quantity),
+          remarks: row.importantNote,
+          fuelAndToll: row.fuelAndToll,
         });
       } catch (error) {
         console.error('Failed to load today job for driver entry:', error);
@@ -165,8 +194,17 @@ const EntryForm: React.FC = () => {
     };
   }, [fromTodayJob, isDriverEntryMode, queryJobId, sourceJobId]);
 
+  useEffect(() => {
+    if (!isDriverEntryMode || !driverFullName) return;
+    setFormData((prev) => ({
+      ...prev,
+      driverName: driverFullName,
+    }));
+  }, [driverFullName, isDriverEntryMode]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    dirtyFieldsRef.current.add(name as keyof EntryFormData);
     setFormData(prev => ({
       ...prev,
       [name]: name === 'rounds' ? parseInt(value) || 0 : value
@@ -293,13 +331,12 @@ const EntryForm: React.FC = () => {
           return;
         }
 
-        const latestTodayJob = sourceTodayJob || await getTodayJobById(sourceJobId);
+        const latestTodayJob = await getTodayJobById(sourceJobId);
         if (!latestTodayJob) {
           setIsSubmitting(false);
           alert('ไม่พบข้อมูลใบแจ้งงานล่าสุด กรุณากลับไปหน้า งานวันนี้ แล้วเข้าใหม่');
           return;
         }
-        setSourceTodayJob(latestTodayJob);
 
         const pickupBase = latestTodayJob.pickup || {
           location: '',
@@ -313,33 +350,62 @@ const EntryForm: React.FC = () => {
           time: '',
           contact: '',
         };
+        const dirtyFields = dirtyFieldsRef.current;
+
+        const fuelAndTollRaw = typeof formData.fuelAndToll === 'string'
+          ? formData.fuelAndToll.trim()
+          : formData.fuelAndToll;
+        const fuelAndTollValue = fuelAndTollRaw === '' || fuelAndTollRaw === null || fuelAndTollRaw === undefined
+          ? null
+          : Number(fuelAndTollRaw);
+        const nextFuelAndToll = Number.isFinite(fuelAndTollValue) ? fuelAndTollValue : null;
+
+        const mergedWorkOrderNo = dirtyFields.has('workOrderNo')
+          ? (formData.workOrderNo || '')
+          : (latestTodayJob.workOrderNo || latestTodayJob.ticketNo || '');
+        const mergedDriverName = dirtyFields.has('driverName')
+          ? (formData.driverName || '')
+          : (latestTodayJob.driverName || '');
+        const mergedRounds = dirtyFields.has('rounds')
+          ? toPositiveRounds(formData.rounds)
+          : (latestTodayJob.rounds || parseRoundsFromQuantity(latestTodayJob.quantity));
 
         await updateTodayJob(sourceJobId, {
-          jobNo: formData.jobNo || latestTodayJob.jobNo || '',
-          workOrderNo: formData.workOrderNo || latestTodayJob.workOrderNo || latestTodayJob.ticketNo || '',
-          ticketNo: formData.workOrderNo || latestTodayJob.workOrderNo || latestTodayJob.ticketNo || '',
-          workDate: formData.date,
-          vehicleType: formData.vehicleType,
-          plateNo: formData.licensePlate,
-          driverName: formData.driverName,
-          rounds: toPositiveRounds(formData.rounds),
+          jobNo: dirtyFields.has('jobNo') ? (formData.jobNo || '') : (latestTodayJob.jobNo || ''),
+          workOrderNo: mergedWorkOrderNo,
+          ticketNo: mergedWorkOrderNo,
+          workDate: dirtyFields.has('date') ? formData.date : (latestTodayJob.workDate || formData.date),
+          vehicleType: dirtyFields.has('vehicleType') ? formData.vehicleType : (latestTodayJob.vehicleType || ''),
+          plateNo: dirtyFields.has('licensePlate') ? formData.licensePlate : (latestTodayJob.plateNo || ''),
+          driverName: driverFullName || mergedDriverName || latestTodayJob.assignedToName || '',
+          rounds: mergedRounds,
+          fuelAndToll: dirtyFields.has('fuelAndToll') ? nextFuelAndToll : (latestTodayJob.fuelAndToll ?? null),
           pickup: {
             ...pickupBase,
-            location: formData.pickupLocation || pickupBase.location || '',
+            location: dirtyFields.has('pickupLocation')
+              ? (formData.pickupLocation || '')
+              : (pickupBase.location || ''),
           },
           delivery: {
             ...deliveryBase,
-            location: formData.dropoffLocation || deliveryBase.location || '',
+            location: dirtyFields.has('dropoffLocation')
+              ? (formData.dropoffLocation || '')
+              : (deliveryBase.location || ''),
           },
-          importantNote: formData.remarks || latestTodayJob.importantNote || '',
+          importantNote: dirtyFields.has('remarks')
+            ? formData.remarks
+            : (latestTodayJob.importantNote || ''),
           lastSavedAt: Date.now(),
           updatedByUid: user?.uid || latestTodayJob.updatedByUid || '',
-        });
+        }, latestTodayJob.revision);
         await syncTodayJobToJobs(sourceJobId);
 
         setIsSubmitting(false);
         setShowSuccessModal(true);
-        setTimeout(() => setShowSuccessModal(false), 1500);
+        window.setTimeout(() => {
+          setShowSuccessModal(false);
+          navigate('/driver/today', { replace: true });
+        }, 900);
         return;
       }
 
@@ -375,12 +441,17 @@ const EntryForm: React.FC = () => {
         customerPrice: '' as any,
         jointPrice: '' as any
       });
+      dirtyFieldsRef.current.clear();
       handleRemoveAllOriginImages();
       handleRemoveAllDestinationImages();
       handleRemoveAllDocumentImages();
     } catch (error) {
       setIsSubmitting(false);
       console.error('Failed to save:', error);
+      if (error instanceof RevisionConflictError) {
+        alert(error.message);
+        return;
+      }
       if (error instanceof FirebaseError) {
         alert(`เกิดข้อผิดพลาดในการบันทึก: ${error.code}`);
       } else {
@@ -536,7 +607,6 @@ const EntryForm: React.FC = () => {
       <form onSubmit={handleSubmitClick} className={formClass}>
         {isDriverEntryMode ? (
           <div className="driver-clay-soft space-y-3 rounded-2xl border p-4">
-            <DisplayRow label="Job No." value={formData.jobNo || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
             <DisplayRow label="เลขที่ใบสั่งงาน (Work Order)" value={formData.workOrderNo || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
             <DisplayRow label="วันที่ (Date)" value={formatDate(formData.date || '-')} isDark={isDark} isDriverStyle={isDriverEntryMode} />
             <DisplayRow label="สถานที่รับ (Pickup)" value={formData.pickupLocation || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
@@ -643,11 +713,11 @@ const EntryForm: React.FC = () => {
                 className={inputClass}
               />
             </FormGroup>
-            <FormGroup label="เลขที่ใบสั่งงาน (Work Order)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
+            <FormGroup label="Job No." isDark={isDark} isDriverStyle={isDriverEntryMode}>
               <input
                 type="text"
-                name="workOrderNo"
-                value={formData.workOrderNo}
+                name="jobNo"
+                value={formData.jobNo}
                 onChange={handleInputChange}
                 className={inputClass}
               />

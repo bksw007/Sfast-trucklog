@@ -38,12 +38,15 @@ type TodayJobEntry = {
     contact?: string;
   };
   driverName?: string;
+  fuelAndToll?: number | string | null;
   status?: JobStatus;
   assignedToUid?: string;
   assignedToName?: string;
   acceptedAt?: number | null;
   readyToClose?: boolean;
   completedAt?: number | null;
+  revision?: number;
+  updatedAt?: number;
   importantNote?: string;
   timestamp?: number;
 };
@@ -436,37 +439,56 @@ const toRoundsFromToday = (job: TodayJobEntry): number => {
   return toRounds(job.quantity);
 };
 
+const toFuelAndToll = (
+  value?: number | string | null
+): number | null | undefined => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const normalized = value.toString().trim();
+  if (!normalized) return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 const buildJobPayloadFromToday = (
   todayJobId: string,
   job: TodayJobEntry,
   now: number
-): Record<string, unknown> => ({
-  date: toJobDate(job.workDate),
-  pickupLocation: job.pickup?.location || "",
-  dropoffLocation: job.delivery?.location || "",
-  rounds: toRoundsFromToday(job),
-  vehicleType: job.vehicleType || "",
-  driverName: job.driverName || job.assignedToName || "",
-  licensePlate: job.plateNo || "",
-  jobNo: job.jobNo || "",
-  invNo: job.workOrderNo || job.ticketNo || "",
-  workOrderNo: job.workOrderNo || job.ticketNo || "",
-  transportDocNo: "",
-  fuelAndToll: 0,
-  remarks: job.importantNote || "",
-  originImageUrl: "",
-  originImageUrls: [],
-  destinationImageUrl: "",
-  destinationImageUrls: [],
-  documentImageUrl: "",
-  documentImageUrls: [],
-  linkedTodayJobId: todayJobId,
-  employerCompany: job.employerCompany || "",
-  productName: job.productName || "",
-  todayQuantity: job.quantity || "",
-  updatedAt: now,
-  timestamp: typeof job.timestamp === "number" ? job.timestamp : now,
-});
+): Record<string, unknown> => {
+  const payload: Record<string, unknown> = {
+    date: toJobDate(job.workDate),
+    pickupLocation: job.pickup?.location || "",
+    dropoffLocation: job.delivery?.location || "",
+    rounds: toRoundsFromToday(job),
+    vehicleType: job.vehicleType || "",
+    driverName: job.driverName || job.assignedToName || "",
+    licensePlate: job.plateNo || "",
+    jobNo: job.jobNo || "",
+    invNo: job.workOrderNo || job.ticketNo || "",
+    workOrderNo: job.workOrderNo || job.ticketNo || "",
+    transportDocNo: "",
+    remarks: job.importantNote || "",
+    originImageUrl: "",
+    originImageUrls: [],
+    destinationImageUrl: "",
+    destinationImageUrls: [],
+    documentImageUrl: "",
+    documentImageUrls: [],
+    linkedTodayJobId: todayJobId,
+    employerCompany: job.employerCompany || "",
+    productName: job.productName || "",
+    todayQuantity: job.quantity || "",
+    updatedAt: now,
+    timestamp: typeof job.timestamp === "number" ? job.timestamp : now,
+  };
+
+  const fuelAndToll = toFuelAndToll(job.fuelAndToll);
+  if (fuelAndToll !== undefined) {
+    payload.fuelAndToll = fuelAndToll;
+  }
+
+  return payload;
+};
 
 export const dispatchTodayJobNotification = onCall(async (request) => {
   if (!request.auth?.uid) {

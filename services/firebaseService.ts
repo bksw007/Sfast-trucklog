@@ -13,6 +13,7 @@ import {
   getDoc,
   where,
   writeBatch,
+  runTransaction,
 } from 'firebase/firestore';
 import {
   ref,
@@ -31,6 +32,17 @@ const OPTIONS_COLLECTION = 'options';
 const TODAY_JOBS_COLLECTION = 'today_jobs';
 const NOTIFY_CALLABLE_NAME = 'dispatchTodayJobNotification';
 const SYNC_TODAY_JOB_CALLABLE_NAME = 'syncTodayJobToJobs';
+
+export class RevisionConflictError extends Error {
+  code = 'revision-conflict' as const;
+  currentRevision: number;
+
+  constructor(currentRevision: number) {
+    super('ข้อมูลถูกแก้ไขจากอุปกรณ์อื่น กรุณาโหลดใหม่แล้วลองอีกครั้ง');
+    this.name = 'RevisionConflictError';
+    this.currentRevision = currentRevision;
+  }
+}
 
 // Image compression options
 const COMPRESSION_OPTIONS = {
@@ -268,6 +280,8 @@ export const addTodayJob = async (
   const timestamp = Date.now();
   const docRef = await addDoc(collection(db, TODAY_JOBS_COLLECTION), {
     ...job,
+    revision: 1,
+    updatedAt: timestamp,
     timestamp,
   });
 
@@ -350,10 +364,34 @@ export const subscribeToTodayJobsByAssignee = (
  */
 export const updateTodayJob = async (
   id: string,
-  updates: Partial<Omit<TodayJobEntry, 'id' | 'timestamp'>>
-): Promise<void> => {
+  updates: Partial<Omit<TodayJobEntry, 'id' | 'timestamp'>>,
+  expectedRevision?: number
+): Promise<{ revision: number }> => {
   const jobRef = doc(db, TODAY_JOBS_COLLECTION, id);
-  await updateDoc(jobRef, updates);
+  return runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(jobRef);
+    if (!snapshot.exists()) {
+      throw new Error('today job not found');
+    }
+
+    const currentData = snapshot.data() as Partial<TodayJobEntry>;
+    const currentRevision = Number.isFinite(Number(currentData.revision))
+      ? Number(currentData.revision)
+      : 0;
+
+    if (Number.isFinite(expectedRevision) && currentRevision !== expectedRevision) {
+      throw new RevisionConflictError(currentRevision);
+    }
+
+    const nextRevision = currentRevision + 1;
+    transaction.update(jobRef, {
+      ...updates,
+      updatedAt: Date.now(),
+      revision: nextRevision,
+    });
+
+    return { revision: nextRevision };
+  });
 };
 
 /**
