@@ -30,7 +30,7 @@ import {
   triggerTodayJobNotification,
   updateTodayJob
 } from '../services/firebaseService';
-import { getAllUsers } from '../services/userService';
+import { getAllUsers, getUserProfile } from '../services/userService';
 import { DispatchPoint, TodayJobEntry, UserProfile } from '../types';
 import { NotoSansThaiBase64 } from '../fonts/NotoSansThai';
 import ConfirmModal from '../components/ConfirmModal';
@@ -74,6 +74,25 @@ const parseDate = (dateStr: string) => {
   if (!dateOnly) return null;
   const parsed = new Date(`${dateOnly}T00:00:00`);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const extractUserPhone = (user?: (Partial<UserProfile> & Record<string, unknown>) | null): string => {
+  if (!user) return '';
+  const candidates = [
+    user.phoneNumber,
+    user.driverPhone as string | undefined,
+    user.phone as string | undefined,
+    user.phoneNo as string | undefined,
+    user.mobile as string | undefined,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  return '';
 };
 
 const pad2 = (value: number) => value.toString().padStart(2, '0');
@@ -364,13 +383,28 @@ const TodayJobs: React.FC = () => {
       assignedUser?.fullName?.trim() ||
       assignedUser?.displayName ||
       '';
-    const profilePhone = assignedUser?.phoneNumber?.trim() || '';
+    const profilePhone = extractUserPhone(assignedUser as (Partial<UserProfile> & Record<string, unknown>) | undefined);
     setFormData((prev) => ({
       ...prev,
       assignedToUid,
       driverName: driverFullName || prev.driverName,
-      driverPhone: profilePhone || prev.driverPhone,
+      driverPhone: profilePhone || '',
     }));
+
+    if (!assignedToUid || profilePhone) return;
+    void getUserProfile(assignedToUid)
+      .then((profile) => {
+        const fetchedPhone = extractUserPhone(profile as (Partial<UserProfile> & Record<string, unknown>) | null);
+        if (!fetchedPhone) return;
+        setFormData((prev) =>
+          prev.assignedToUid === assignedToUid
+            ? { ...prev, driverPhone: fetchedPhone }
+            : prev
+        );
+      })
+      .catch((error) => {
+        console.error('Load assigned user phone failed:', error);
+      });
   };
 
   const updatePoint = (point: 'pickup' | 'delivery', field: keyof DispatchPoint, value: string) => {
@@ -585,17 +619,32 @@ const TodayJobs: React.FC = () => {
       assignedUser?.fullName?.trim() ||
       assignedUser?.displayName ||
       '';
-    const profilePhone = assignedUser?.phoneNumber?.trim() || '';
+    const profilePhone = extractUserPhone(assignedUser as (Partial<UserProfile> & Record<string, unknown>) | undefined);
     setEditForm((prev) => (
       prev
         ? {
             ...prev,
             assignedToUid,
             driverName: driverFullName || prev.driverName,
-            driverPhone: profilePhone || prev.driverPhone,
+            driverPhone: profilePhone || '',
           }
         : prev
     ));
+
+    if (!assignedToUid || profilePhone) return;
+    void getUserProfile(assignedToUid)
+      .then((profile) => {
+        const fetchedPhone = extractUserPhone(profile as (Partial<UserProfile> & Record<string, unknown>) | null);
+        if (!fetchedPhone) return;
+        setEditForm((prev) =>
+          prev && prev.assignedToUid === assignedToUid
+            ? { ...prev, driverPhone: fetchedPhone }
+            : prev
+        );
+      })
+      .catch((error) => {
+        console.error('Load assigned user phone for edit failed:', error);
+      });
   };
 
   const handleEditPoint = (point: 'pickup' | 'delivery', field: keyof DispatchPoint, value: string) => {
