@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import { FirebaseError } from 'firebase/app';
 import {
@@ -11,6 +12,7 @@ import {
   Copy,
   FileDown,
   Loader2,
+  Plus,
   Pencil,
   RotateCcw,
   Save,
@@ -22,6 +24,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import {
   addTodayJob,
+  addOption,
   deleteTodayJob,
   getTodayJobById,
   RevisionConflictError,
@@ -30,7 +33,7 @@ import {
   updateTodayJob
 } from '../services/firebaseService';
 import { getAllUsers, getUserProfile } from '../services/userService';
-import { DispatchPoint, TodayJobEntry, UserProfile } from '../types';
+import { DispatchPoint, OptionCategory, TodayJobEntry, UserProfile } from '../types';
 import { NotoSansThaiBase64 } from '../fonts/NotoSansThai';
 import ConfirmModal from '../components/ConfirmModal';
 import Modal from '../components/Modal';
@@ -53,6 +56,19 @@ type TodayJobForm = {
 };
 
 type JobStatus = TodayJobEntry['status'];
+type MainSectionTab = 'overview' | 'form' | 'table';
+type QuickAddTarget =
+  | { kind: 'field'; field: keyof TodayJobForm }
+  | { kind: 'point'; point: 'pickup' | 'delivery'; field: keyof DispatchPoint };
+
+const resolveMainTabFromSearch = (search: string): MainSectionTab | null => {
+  const params = new URLSearchParams(search);
+  const tab = (params.get('tab') || '').trim().toLowerCase();
+  if (tab === 'overview') return 'overview';
+  if (tab === 'form') return 'form';
+  if (tab === 'table') return 'table';
+  return null;
+};
 
 const statusLabelMap: Record<JobStatus, string> = {
   pending: 'รอดำเนินการ',
@@ -121,15 +137,15 @@ const toRoundCount = (value: string): number | null => {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const initialFormData = (): TodayJobForm => ({
-  employerCompany: 'MLT',
+  employerCompany: '',
   jobNo: '',
   workOrderNo: generateWorkOrderNo(),
   workDate: getLocalDate(),
   vehicleType: '',
   productName: '',
-  quantity: '',
-  pickup: { location: '', date: '', time: '', contact: '' },
-  delivery: { location: '', date: '', time: '', contact: '' },
+  quantity: '1',
+  pickup: { location: '', date: getLocalDate(), time: '', contact: '' },
+  delivery: { location: '', date: getLocalDate(), time: '', contact: '' },
   assignedToUid: '',
   driverName: '',
   plateNo: '',
@@ -156,23 +172,35 @@ const toEditableForm = (job: TodayJobEntry): TodayJobForm => ({
 
 const buildSummaryText = (data: TodayJobForm) => {
   const lines = [
-    `งานวันนี้: ${data.jobNo || '-'}`,
+    'ใบแจ้งงาน',
     `เลขที่ใบสั่งงาน: ${data.workOrderNo || '-'}`,
-    `วันที่รับงาน: ${data.workDate || '-'}`,
-    `ลูกค้า: ${data.employerCompany || '-'}`,
-    `ชนิดรถ: ${data.vehicleType || '-'} | ทะเบียน: ${data.plateNo || '-'}`,
-    `สินค้า: ${data.productName || '-'} | ปริมาณ: ${data.quantity || '-'}`,
-    `รับงาน: ${data.pickup.location || '-'} วันที่ ${data.pickup.date || '-'} เวลา ${data.pickup.time || '-'}`,
-    `ส่งงาน: ${data.delivery.location || '-'} วันที่ ${data.delivery.date || '-'} เวลา ${data.delivery.time || '-'}`,
-    `ผู้ติดต่อรับ: ${data.pickup.contact || '-'} | ผู้ติดต่อส่ง: ${data.delivery.contact || '-'}`,
-    `พนักงานขับรถ: ${data.driverName || '-'} | โทร: ${data.driverPhone || '-'}`,
-    `หมายเหตุ: ${data.importantNote || '-'}`
+    `ประเภทสินค้า: ${data.productName || '-'}`,
+    `จำนวนรอบ: ${data.quantity || '-'}`,
+    `ประเภทรถ: ${data.vehicleType || '-'}`,
+    `ทะเบียนรถ: ${data.plateNo || '-'}`,
+    '',
+    'จุดรับ',
+    `- สถานที่: ${data.pickup.location || '-'}`,
+    `- วันที่: ${data.pickup.date || '-'}`,
+    `- เวลา: ${data.pickup.time || '-'}`,
+    `- ผู้ติดต่อ: ${data.pickup.contact || '-'}`,
+    '',
+    'จุดส่ง',
+    `- สถานที่: ${data.delivery.location || '-'}`,
+    `- วันที่: ${data.delivery.date || '-'}`,
+    `- เวลา: ${data.delivery.time || '-'}`,
+    `- ผู้ติดต่อ: ${data.delivery.contact || '-'}`,
+    '',
+    `พนักงานขับรถ: ${data.driverName || '-'}`,
+    `เบอร์ติดต่อคนขับ: ${data.driverPhone || '-'}`,
+    `หมายเหตุ: ${data.importantNote || '-'}`,
   ];
 
   return lines.join('\n');
 };
 
 const TodayJobs: React.FC = () => {
+  const location = useLocation();
   const { user, userProfile } = useAuth();
   const { data: appData } = useData();
   const isDark = false;
@@ -189,6 +217,22 @@ const TodayJobs: React.FC = () => {
 
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | JobStatus>('all');
+  const [activeMainTab, setActiveMainTab] = useState<MainSectionTab>(
+    () => resolveMainTabFromSearch(location.search) ?? 'overview'
+  );
+  const [quickAddValue, setQuickAddValue] = useState('');
+  const [quickAddSubmitting, setQuickAddSubmitting] = useState(false);
+  const [quickAddModal, setQuickAddModal] = useState<{
+    open: boolean;
+    category: OptionCategory;
+    label: string;
+    target: QuickAddTarget | null;
+  }>({
+    open: false,
+    category: OptionCategory.LOCATION,
+    label: '',
+    target: null,
+  });
 
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -221,6 +265,9 @@ const TodayJobs: React.FC = () => {
   const selectClass = isDark
     ? 'w-full min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/40 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none'
     : 'w-full min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none';
+  const quickAddButtonClass = isDark
+    ? 'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-dark-muted/35 bg-dark-bg/50 text-dark-text shadow-sm transition hover:bg-dark-bg disabled:opacity-55'
+    : 'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/80 bg-gradient-to-br from-[#d9e6f2] to-[#bcd0e0] text-[#34495e] shadow-[4px_4px_10px_rgba(166,180,200,0.35),-4px_-4px_8px_rgba(255,255,255,0.88)] transition hover:brightness-105 active:translate-y-px disabled:opacity-55';
 
   const options = appData?.options;
   const sortUniqueOptions = (items: string[]) =>
@@ -230,6 +277,9 @@ const TodayJobs: React.FC = () => {
   const locationOptions = useMemo(() => sortUniqueOptions(options?.locations ?? []), [options?.locations]);
   const driverOptions = useMemo(() => sortUniqueOptions(options?.drivers ?? []), [options?.drivers]);
   const plateOptions = useMemo(() => sortUniqueOptions(options?.licensePlates ?? []), [options?.licensePlates]);
+  const employerCompanyOptions = useMemo(() => sortUniqueOptions(options?.employerCompanies ?? []), [options?.employerCompanies]);
+  const productTypeOptions = useMemo(() => sortUniqueOptions(options?.productTypes ?? []), [options?.productTypes]);
+  const contactOptions = useMemo(() => sortUniqueOptions(options?.contacts ?? []), [options?.contacts]);
 
   useEffect(() => {
     const unsubscribe = subscribeToTodayJobs((rows) => setJobs(rows), (error) => {
@@ -250,6 +300,13 @@ const TodayJobs: React.FC = () => {
         console.error('Load assignable users failed:', error);
       });
   }, [isAdmin]);
+
+  useEffect(() => {
+    const fromSearch = resolveMainTabFromSearch(location.search);
+    if (fromSearch) {
+      setActiveMainTab(fromSearch);
+    }
+  }, [location.search]);
 
   const selectedAssignedUser = useMemo(
     () => assignableUsers.find((row) => row.uid === formData.assignedToUid) || null,
@@ -423,6 +480,57 @@ const TodayJobs: React.FC = () => {
   };
 
   const handleReset = () => setFormData(initialFormData());
+
+  const openQuickAddModal = (
+    category: OptionCategory,
+    label: string,
+    target: QuickAddTarget
+  ) => {
+    if (quickAddSubmitting) return;
+    setQuickAddValue('');
+    setQuickAddModal({
+      open: true,
+      category,
+      label,
+      target,
+    });
+  };
+
+  const closeQuickAddModal = () => {
+    if (quickAddSubmitting) return;
+    setQuickAddModal((prev) => ({ ...prev, open: false, target: null }));
+    setQuickAddValue('');
+  };
+
+  const handleConfirmQuickAdd = async () => {
+    if (!quickAddModal.open || !quickAddModal.target || quickAddSubmitting) return;
+
+    const normalized = quickAddValue.trim();
+    if (!normalized) {
+      alert(`กรุณากรอก${quickAddModal.label}`);
+      return;
+    }
+
+    setQuickAddSubmitting(true);
+    try {
+      await addOption(quickAddModal.category, normalized);
+      const target = quickAddModal.target;
+      if (target.kind === 'field') {
+        setFormData((prev) => ({ ...prev, [target.field]: normalized }));
+      } else {
+        setFormData((prev) => ({
+          ...prev,
+          [target.point]: { ...prev[target.point], [target.field]: normalized },
+        }));
+      }
+      closeQuickAddModal();
+    } catch (error) {
+      console.error(`Add ${quickAddModal.label} option failed:`, error);
+      alert(`เพิ่ม${quickAddModal.label}ไม่สำเร็จ กรุณาลองใหม่`);
+    } finally {
+      setQuickAddSubmitting(false);
+    }
+  };
 
   const handleCopySummary = async () => {
     try {
@@ -783,8 +891,48 @@ const TodayJobs: React.FC = () => {
         ? 'bg-amber-500/15 text-amber-500'
         : 'bg-slate-500/15 text-slate-500';
 
+  const mainTabs: Array<{ id: MainSectionTab; label: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = [
+    { id: 'overview', label: 'งานวันนี้', icon: CalendarClock },
+    { id: 'form', label: 'ฟอร์มแจ้งงาน', icon: Pencil },
+    { id: 'table', label: 'ตารางข้อมูลแจ้งงาน', icon: Truck },
+  ];
+
   return (
     <div className="space-y-6 animate-fade-in overflow-x-hidden">
+      <section className={`${cardClass} p-3 md:p-4`}>
+        <div className={`rounded-2xl border p-2 ${isDark ? 'border-dark-muted/30 bg-dark-bg/45' : 'border-white/80 bg-[#e8ecf1]'}`}>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="tablist" aria-label="งานวันนี้แท็บหลัก">
+            {mainTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeMainTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  id={`today-tab-${tab.id}`}
+                  aria-selected={isActive}
+                  aria-controls={`today-panel-${tab.id}`}
+                  onClick={() => setActiveMainTab(tab.id)}
+                  className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition ${
+                    isActive
+                      ? 'bg-gradient-to-r from-[#0f766e] via-[#0e7490] to-[#075985] text-white shadow-lg'
+                      : isDark
+                        ? 'text-dark-muted hover:bg-white/5'
+                        : 'text-light-muted hover:bg-white/60'
+                  }`}
+                >
+                  <Icon size={16} className={isActive ? 'text-white' : 'text-current'} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {activeMainTab === 'overview' && (
+        <div role="tabpanel" id="today-panel-overview" aria-labelledby="today-tab-overview" className="space-y-6">
       <section className={`${cardClass} overflow-hidden`}>
         <div className="bg-gradient-to-r from-[#0f766e] via-[#0e7490] to-[#075985] px-6 py-4 text-white md:px-7 md:py-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -865,7 +1013,11 @@ const TodayJobs: React.FC = () => {
           </div>
         </div>
       </section>
+        </div>
+      )}
 
+      {activeMainTab === 'form' && (
+        <div role="tabpanel" id="today-panel-form" aria-labelledby="today-tab-form" className="space-y-6">
       <section className={`${cardClass} overflow-hidden`}>
         <div className="bg-gradient-to-r from-[#0f766e] via-[#0e7490] to-[#075985] px-5 py-4 text-white md:px-7">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -888,7 +1040,29 @@ const TodayJobs: React.FC = () => {
             </label>
             <label className="text-sm">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>บริษัทผู้ว่าจ้าง</span>
-              <input className={inputClass} value={formData.employerCompany} onChange={(e) => updateField('employerCompany', e.target.value)} />
+              <div className="flex items-center gap-2">
+                <input
+                  list="employer-company-options"
+                  className={inputClass}
+                  value={formData.employerCompany}
+                  onChange={(e) => updateField('employerCompany', e.target.value)}
+                  placeholder="พิมพ์ค้นหาหรือเลือกบริษัทผู้ว่าจ้าง"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    openQuickAddModal(OptionCategory.EMPLOYER_COMPANY, 'บริษัทผู้ว่าจ้าง', {
+                      kind: 'field',
+                      field: 'employerCompany',
+                    })
+                  }
+                  disabled={quickAddSubmitting}
+                  className={quickAddButtonClass}
+                  aria-label="เพิ่มบริษัทผู้ว่าจ้าง"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
             </label>
           </div>
 
@@ -899,11 +1073,55 @@ const TodayJobs: React.FC = () => {
             </label>
             <label className="text-sm md:col-span-1">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ประเภทสินค้า</span>
-              <input className={inputClass} value={formData.productName} onChange={(e) => updateField('productName', e.target.value)} />
+              <div className="flex items-center gap-2">
+                <input
+                  list="product-type-options"
+                  className={inputClass}
+                  value={formData.productName}
+                  onChange={(e) => updateField('productName', e.target.value)}
+                  placeholder="พิมพ์ค้นหาหรือเลือกประเภทสินค้า"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    openQuickAddModal(OptionCategory.PRODUCT_TYPE, 'ประเภทสินค้า', {
+                      kind: 'field',
+                      field: 'productName',
+                    })
+                  }
+                  disabled={quickAddSubmitting}
+                  className={quickAddButtonClass}
+                  aria-label="เพิ่มประเภทสินค้า"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
             </label>
             <label className="text-sm md:col-span-1">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ประเภทรถ</span>
-              <input list="vehicle-type-options" className={selectClass} value={formData.vehicleType} onChange={(e) => updateField('vehicleType', e.target.value)} placeholder="พิมพ์ค้นหาหรือเลือกประเภทรถ" />
+              <div className="flex items-center gap-2">
+                <input
+                  list="vehicle-type-options"
+                  className={selectClass}
+                  value={formData.vehicleType}
+                  onChange={(e) => updateField('vehicleType', e.target.value)}
+                  placeholder="พิมพ์ค้นหาหรือเลือกประเภทรถ"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    openQuickAddModal(OptionCategory.VEHICLE, 'ประเภทรถ', {
+                      kind: 'field',
+                      field: 'vehicleType',
+                    })
+                  }
+                  disabled={quickAddSubmitting}
+                  className={quickAddButtonClass}
+                  aria-label="เพิ่มประเภทรถ"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
             </label>
             <label className="text-sm md:col-span-1">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>จำนวนรอบ</span>
@@ -917,7 +1135,30 @@ const TodayJobs: React.FC = () => {
               <div className="space-y-3">
                 <label className="block text-sm">
                   <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>สถานที่</span>
-                  <input list="location-options" className={selectClass} value={formData.pickup.location} onChange={(e) => updatePoint('pickup', 'location', e.target.value)} placeholder="พิมพ์ค้นหาสถานที่รับ" />
+                  <div className="flex items-center gap-2">
+                    <input
+                      list="location-options"
+                      className={selectClass}
+                      value={formData.pickup.location}
+                      onChange={(e) => updatePoint('pickup', 'location', e.target.value)}
+                      placeholder="พิมพ์ค้นหาสถานที่รับ"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openQuickAddModal(OptionCategory.LOCATION, 'สถานที่', {
+                          kind: 'point',
+                          point: 'pickup',
+                          field: 'location',
+                        })
+                      }
+                      disabled={quickAddSubmitting}
+                      className={quickAddButtonClass}
+                      aria-label="เพิ่มสถานที่รับ"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
                 </label>
                 <label className="block text-sm">
                   <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>วันที่</span>
@@ -929,7 +1170,30 @@ const TodayJobs: React.FC = () => {
                 </label>
                 <label className="block text-sm">
                   <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ติดต่อ</span>
-                  <input className={pointInputClass} value={formData.pickup.contact} onChange={(e) => updatePoint('pickup', 'contact', e.target.value)} />
+                  <div className="flex items-center gap-2">
+                    <input
+                      list="contact-options"
+                      className={pointInputClass}
+                      value={formData.pickup.contact}
+                      onChange={(e) => updatePoint('pickup', 'contact', e.target.value)}
+                      placeholder="พิมพ์ค้นหาหรือเลือกผู้ติดต่อ"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openQuickAddModal(OptionCategory.CONTACT, 'ผู้ติดต่อ', {
+                          kind: 'point',
+                          point: 'pickup',
+                          field: 'contact',
+                        })
+                      }
+                      disabled={quickAddSubmitting}
+                      className={quickAddButtonClass}
+                      aria-label="เพิ่มผู้ติดต่อจุดรับ"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
                 </label>
               </div>
             </div>
@@ -938,7 +1202,30 @@ const TodayJobs: React.FC = () => {
               <div className="space-y-3">
                 <label className="block text-sm">
                   <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>สถานที่</span>
-                  <input list="location-options" className={selectClass} value={formData.delivery.location} onChange={(e) => updatePoint('delivery', 'location', e.target.value)} placeholder="พิมพ์ค้นหาสถานที่ส่ง" />
+                  <div className="flex items-center gap-2">
+                    <input
+                      list="location-options"
+                      className={selectClass}
+                      value={formData.delivery.location}
+                      onChange={(e) => updatePoint('delivery', 'location', e.target.value)}
+                      placeholder="พิมพ์ค้นหาสถานที่ส่ง"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openQuickAddModal(OptionCategory.LOCATION, 'สถานที่', {
+                          kind: 'point',
+                          point: 'delivery',
+                          field: 'location',
+                        })
+                      }
+                      disabled={quickAddSubmitting}
+                      className={quickAddButtonClass}
+                      aria-label="เพิ่มสถานที่ส่ง"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
                 </label>
                 <label className="block text-sm">
                   <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>วันที่</span>
@@ -950,7 +1237,30 @@ const TodayJobs: React.FC = () => {
                 </label>
                 <label className="block text-sm">
                   <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ติดต่อ</span>
-                  <input className={pointInputClass} value={formData.delivery.contact} onChange={(e) => updatePoint('delivery', 'contact', e.target.value)} />
+                  <div className="flex items-center gap-2">
+                    <input
+                      list="contact-options"
+                      className={pointInputClass}
+                      value={formData.delivery.contact}
+                      onChange={(e) => updatePoint('delivery', 'contact', e.target.value)}
+                      placeholder="พิมพ์ค้นหาหรือเลือกผู้ติดต่อ"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openQuickAddModal(OptionCategory.CONTACT, 'ผู้ติดต่อ', {
+                          kind: 'point',
+                          point: 'delivery',
+                          field: 'contact',
+                        })
+                      }
+                      disabled={quickAddSubmitting}
+                      className={quickAddButtonClass}
+                      aria-label="เพิ่มผู้ติดต่อจุดส่ง"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
                 </label>
               </div>
             </div>
@@ -966,10 +1276,56 @@ const TodayJobs: React.FC = () => {
               <div className={`grid grid-cols-[120px_1fr_1fr] ${isDark ? 'border-t border-dark-muted/25' : 'border-t border-light-muted/25'}`}>
                 <div className={`border-r px-3 py-3 text-sm font-medium ${isDark ? 'border-dark-muted/25 text-dark-muted' : 'border-light-muted/25 text-light-muted'}`}>สถานที่</div>
                 <div className={`border-r px-2 py-2 ${isDark ? 'border-dark-muted/25' : 'border-light-muted/25'}`}>
-                  <input list="location-options" className={selectClass} value={formData.pickup.location} onChange={(e) => updatePoint('pickup', 'location', e.target.value)} placeholder="พิมพ์ค้นหาสถานที่รับ" />
+                  <div className="flex items-center gap-2">
+                    <input
+                      list="location-options"
+                      className={selectClass}
+                      value={formData.pickup.location}
+                      onChange={(e) => updatePoint('pickup', 'location', e.target.value)}
+                      placeholder="พิมพ์ค้นหาสถานที่รับ"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openQuickAddModal(OptionCategory.LOCATION, 'สถานที่', {
+                          kind: 'point',
+                          point: 'pickup',
+                          field: 'location',
+                        })
+                      }
+                      disabled={quickAddSubmitting}
+                      className={quickAddButtonClass}
+                      aria-label="เพิ่มสถานที่รับ"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
                 </div>
                 <div className="px-2 py-2">
-                  <input list="location-options" className={selectClass} value={formData.delivery.location} onChange={(e) => updatePoint('delivery', 'location', e.target.value)} placeholder="พิมพ์ค้นหาสถานที่ส่ง" />
+                  <div className="flex items-center gap-2">
+                    <input
+                      list="location-options"
+                      className={selectClass}
+                      value={formData.delivery.location}
+                      onChange={(e) => updatePoint('delivery', 'location', e.target.value)}
+                      placeholder="พิมพ์ค้นหาสถานที่ส่ง"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openQuickAddModal(OptionCategory.LOCATION, 'สถานที่', {
+                          kind: 'point',
+                          point: 'delivery',
+                          field: 'location',
+                        })
+                      }
+                      disabled={quickAddSubmitting}
+                      className={quickAddButtonClass}
+                      aria-label="เพิ่มสถานที่ส่ง"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className={`grid grid-cols-[120px_1fr_1fr] ${isDark ? 'border-t border-dark-muted/25' : 'border-t border-light-muted/25'}`}>
@@ -993,10 +1349,56 @@ const TodayJobs: React.FC = () => {
               <div className={`grid grid-cols-[120px_1fr_1fr] ${isDark ? 'border-t border-dark-muted/25' : 'border-t border-light-muted/25'}`}>
                 <div className={`border-r px-3 py-3 text-sm font-medium ${isDark ? 'border-dark-muted/25 text-dark-muted' : 'border-light-muted/25 text-light-muted'}`}>ติดต่อ</div>
                 <div className={`border-r px-2 py-2 ${isDark ? 'border-dark-muted/25' : 'border-light-muted/25'}`}>
-                  <input className={pointInputClass} value={formData.pickup.contact} onChange={(e) => updatePoint('pickup', 'contact', e.target.value)} />
+                  <div className="flex items-center gap-2">
+                    <input
+                      list="contact-options"
+                      className={pointInputClass}
+                      value={formData.pickup.contact}
+                      onChange={(e) => updatePoint('pickup', 'contact', e.target.value)}
+                      placeholder="พิมพ์ค้นหาหรือเลือกผู้ติดต่อ"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openQuickAddModal(OptionCategory.CONTACT, 'ผู้ติดต่อ', {
+                          kind: 'point',
+                          point: 'pickup',
+                          field: 'contact',
+                        })
+                      }
+                      disabled={quickAddSubmitting}
+                      className={quickAddButtonClass}
+                      aria-label="เพิ่มผู้ติดต่อจุดรับ"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
                 </div>
                 <div className="px-2 py-2">
-                  <input className={pointInputClass} value={formData.delivery.contact} onChange={(e) => updatePoint('delivery', 'contact', e.target.value)} />
+                  <div className="flex items-center gap-2">
+                    <input
+                      list="contact-options"
+                      className={pointInputClass}
+                      value={formData.delivery.contact}
+                      onChange={(e) => updatePoint('delivery', 'contact', e.target.value)}
+                      placeholder="พิมพ์ค้นหาหรือเลือกผู้ติดต่อ"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openQuickAddModal(OptionCategory.CONTACT, 'ผู้ติดต่อ', {
+                          kind: 'point',
+                          point: 'delivery',
+                          field: 'contact',
+                        })
+                      }
+                      disabled={quickAddSubmitting}
+                      className={quickAddButtonClass}
+                      aria-label="เพิ่มผู้ติดต่อจุดส่ง"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1020,7 +1422,29 @@ const TodayJobs: React.FC = () => {
             </label>
             <label className="text-sm">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>พนักงานขับรถ</span>
-              <input list="driver-options" className={selectClass} value={formData.driverName} onChange={(e) => updateField('driverName', e.target.value)} placeholder="พิมพ์ค้นหาคนขับ" />
+              <div className="flex items-center gap-2">
+                <input
+                  list="driver-options"
+                  className={selectClass}
+                  value={formData.driverName}
+                  onChange={(e) => updateField('driverName', e.target.value)}
+                  placeholder="พิมพ์ค้นหาคนขับ"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    openQuickAddModal(OptionCategory.DRIVER, 'พนักงานขับรถ', {
+                      kind: 'field',
+                      field: 'driverName',
+                    })
+                  }
+                  disabled={quickAddSubmitting}
+                  className={quickAddButtonClass}
+                  aria-label="เพิ่มพนักงานขับรถ"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
             </label>
             <label className="text-sm">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>เบอร์ติดต่อ</span>
@@ -1028,7 +1452,29 @@ const TodayJobs: React.FC = () => {
             </label>
             <label className="text-sm">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ทะเบียน</span>
-              <input list="plate-options" className={selectClass} value={formData.plateNo} onChange={(e) => updateField('plateNo', e.target.value)} placeholder="พิมพ์ค้นหาทะเบียนรถ" />
+              <div className="flex items-center gap-2">
+                <input
+                  list="plate-options"
+                  className={selectClass}
+                  value={formData.plateNo}
+                  onChange={(e) => updateField('plateNo', e.target.value)}
+                  placeholder="พิมพ์ค้นหาทะเบียนรถ"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    openQuickAddModal(OptionCategory.PLATE, 'ทะเบียน', {
+                      kind: 'field',
+                      field: 'plateNo',
+                    })
+                  }
+                  disabled={quickAddSubmitting}
+                  className={quickAddButtonClass}
+                  aria-label="เพิ่มทะเบียน"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
             </label>
           </div>
 
@@ -1067,14 +1513,71 @@ const TodayJobs: React.FC = () => {
             {isCopySuccess ? 'คัดลอกแล้ว' : 'คัดลอกข้อความ'}
           </button>
         </div>
-        <textarea readOnly value={summaryText} rows={10} className={isDark ? 'mt-3 w-full rounded-xl border border-dark-muted/30 bg-dark-bg/50 px-3 py-3 text-sm text-dark-text focus:outline-none' : 'mt-3 w-full rounded-xl border border-light-muted/30 bg-slate-50 px-3 py-3 text-sm text-light-text focus:outline-none'} />
+        <div className={isDark ? 'mt-3 w-full rounded-xl border border-dark-muted/30 bg-dark-bg/50 px-3 py-3 text-sm text-dark-text' : 'mt-3 w-full rounded-xl border border-light-muted/30 bg-slate-50 px-3 py-3 text-sm text-light-text'}>
+          <pre className="whitespace-pre-wrap break-words font-sans leading-relaxed">{summaryText}</pre>
+        </div>
       </section>
+
+      <Modal
+        isOpen={quickAddModal.open}
+        onClose={closeQuickAddModal}
+        title={`เพิ่ม${quickAddModal.label}`}
+      >
+        <div className="space-y-4">
+          <p className={`text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+            กรอกค่าใหม่เพื่อเพิ่มเข้าในรายการตั้งค่า แล้วนำมาใช้งานทันที
+          </p>
+          <input
+            autoFocus
+            value={quickAddValue}
+            onChange={(e) => setQuickAddValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                void handleConfirmQuickAdd();
+              }
+            }}
+            placeholder={`ระบุ${quickAddModal.label}`}
+            className={selectClass}
+          />
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={closeQuickAddModal}
+              disabled={quickAddSubmitting}
+              className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+                isDark
+                  ? 'bg-dark-bg/60 text-dark-text hover:bg-dark-bg'
+                  : 'bg-slate-100 text-light-text hover:bg-slate-200'
+              } disabled:opacity-60`}
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleConfirmQuickAdd()}
+              disabled={quickAddSubmitting}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0f766e] via-[#0e7490] to-[#075985] px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:brightness-110 disabled:opacity-60"
+            >
+              {quickAddSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+              เพิ่มรายการ
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <datalist id="vehicle-type-options">{vehicleTypeOptions.map((vehicle) => <option key={vehicle} value={vehicle} />)}</datalist>
       <datalist id="location-options">{locationOptions.map((location) => <option key={location} value={location} />)}</datalist>
       <datalist id="driver-options">{driverOptions.map((driver) => <option key={driver} value={driver} />)}</datalist>
       <datalist id="plate-options">{plateOptions.map((plate) => <option key={plate} value={plate} />)}</datalist>
+      <datalist id="employer-company-options">{employerCompanyOptions.map((company) => <option key={company} value={company} />)}</datalist>
+      <datalist id="product-type-options">{productTypeOptions.map((product) => <option key={product} value={product} />)}</datalist>
+      <datalist id="contact-options">{contactOptions.map((contact) => <option key={contact} value={contact} />)}</datalist>
+        </div>
+      )}
 
+      {activeMainTab === 'table' && (
+      <div role="tabpanel" id="today-panel-table" aria-labelledby="today-tab-table">
       <section className={`${cardClass} overflow-hidden`}>
         <div className="bg-gradient-to-r from-[#0f766e] via-[#0e7490] to-[#075985] px-5 py-4 text-white md:px-7">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1189,6 +1692,8 @@ const TodayJobs: React.FC = () => {
           </table>
         </div>
       </section>
+      </div>
+      )}
 
       <ConfirmModal isOpen={showSuccessModal} onClose={() => setShowSuccessModal(false)} onConfirm={() => setShowSuccessModal(false)} title="บันทึกสำเร็จ!" message="สร้างรายการแจ้งงานเรียบร้อยแล้ว" type="success" confirmText="ตกลง" showCancel={false} />
 

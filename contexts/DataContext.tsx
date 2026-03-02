@@ -21,6 +21,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     vehicleTypes: [],
     drivers: [],
     licensePlates: [],
+    employerCompanies: [],
+    productTypes: [],
+    contacts: [],
   });
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(true);

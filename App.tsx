@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useState, useEffect } from 'react';
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import DriverLayout from './components/DriverLayout';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -108,7 +108,7 @@ const DriverPage: React.FC<{ view: DriverView }> = ({ view }) => (
 const AdminRoutes: React.FC = () => (
   <ProtectedContent>
     <Routes>
-      <Route path="/login" element={<Navigate to="/" replace />} />
+      <Route path="/login" element={<Navigate to="/today?tab=form" replace />} />
       <Route path="/" element={
         <Layout>
           <Suspense fallback={<PageLoader />}>
@@ -178,6 +178,22 @@ const DriverRoutes: React.FC = () => (
   </Routes>
 );
 
+const ScrollToTopOnRouteChange: React.FC = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    const scrollRoot = document.scrollingElement as HTMLElement | null;
+    if (scrollRoot) {
+      scrollRoot.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    }
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [location.pathname, location.search]);
+
+  return null;
+};
+
 // App Routes component (needs to be inside AuthProvider)
 const AppRoutes: React.FC = () => {
   const { user, userProfile, loading } = useAuth();
@@ -205,6 +221,7 @@ const App: React.FC = () => {
   return (
     <AuthProvider>
       <Router>
+        <ScrollToTopOnRouteChange />
         <AppRoutes />
       </Router>
     </AuthProvider>

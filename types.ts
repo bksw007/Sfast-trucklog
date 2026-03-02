@@ -87,6 +87,9 @@ export interface AppData {
     vehicleTypes: string[];
     drivers: string[];
     licensePlates: string[];
+    employerCompanies: string[];
+    productTypes: string[];
+    contacts: string[];
   };
 }
 
@@ -94,7 +97,10 @@ export enum OptionCategory {
   LOCATION = 'locations',
   VEHICLE = 'vehicleTypes',
   DRIVER = 'drivers',
-  PLATE = 'licensePlates'
+  PLATE = 'licensePlates',
+  EMPLOYER_COMPANY = 'employerCompanies',
+  PRODUCT_TYPE = 'productTypes',
+  CONTACT = 'contacts',
 }
 
 export type UserRole = 'admin' | 'user';

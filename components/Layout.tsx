@@ -1,6 +1,19 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, Table2, ChevronLeft, ChevronRight, LogOut, Settings, User, Users, ClipboardList } from 'lucide-react';
+import {
+  LayoutDashboard,
+  PlusCircle,
+  Table2,
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+  Settings,
+  User,
+  Users,
+  ClipboardList,
+  Menu,
+  X,
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import UserProfileModal from './UserProfileModal';
 import UserManagementModal from './UserManagementModal';
@@ -15,6 +28,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showUserManagementModal, setShowUserManagementModal] = useState(false);
+  const [showMobileTopMenu, setShowMobileTopMenu] = useState(false);
 
   const navItems = [
     { path: '/', label: 'แดชบอร์ด', icon: LayoutDashboard },
@@ -25,6 +39,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   ];
 
   const appLogo = '/icons/truck-logo.png';
+
+  useEffect(() => {
+    setShowMobileTopMenu(false);
+  }, [location.pathname]);
 
   return (
     <div className="admin-clay min-h-screen font-sans text-slate-700">
@@ -39,32 +57,63 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <p className="truncate text-sm font-semibold text-slate-500">Admin Workspace</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowProfileModal(true)}
-            className="driver-clay-icon-btn"
-            aria-label="Open profile"
-          >
-            <User size={18} className="text-slate-500" />
-          </button>
-          {user?.uid && userProfile?.role === 'admin' && (
+          <div className="relative">
             <button
               type="button"
-              onClick={() => setShowUserManagementModal(true)}
+              onClick={() => setShowMobileTopMenu((prev) => !prev)}
               className="driver-clay-icon-btn"
-              aria-label="Manage users"
+              aria-label="Open menu"
+              aria-expanded={showMobileTopMenu}
+              aria-controls="admin-mobile-top-menu"
             >
-              <Users size={18} className="text-slate-500" />
+              {showMobileTopMenu ? <X size={18} className="text-slate-600" /> : <Menu size={18} className="text-slate-600" />}
             </button>
-          )}
-          <button
-            type="button"
-            onClick={logout}
-            className="driver-clay-icon-btn text-rose-500"
-            aria-label="Logout"
-          >
-            <LogOut size={18} />
-          </button>
+
+            {showMobileTopMenu && (
+              <div
+                id="admin-mobile-top-menu"
+                className="absolute right-0 top-[calc(100%+0.55rem)] z-50 min-w-[190px] rounded-2xl border border-white/80 bg-[rgba(240,244,248,0.97)] p-2 shadow-[10px_10px_22px_rgba(166,180,200,0.36),-8px_-8px_18px_rgba(255,255,255,0.9)]"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMobileTopMenu(false);
+                    setShowProfileModal(true);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-600 transition hover:bg-[#d9e6f2] hover:text-[#272727] active:bg-[#d9e6f2] active:text-[#272727]"
+                >
+                  <User size={16} />
+                  <span>โปรไฟล์</span>
+                </button>
+
+                {user?.uid && userProfile?.role === 'admin' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMobileTopMenu(false);
+                      setShowUserManagementModal(true);
+                    }}
+                    className="mt-1 flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-600 transition hover:bg-[#d9e6f2] hover:text-[#272727] active:bg-[#d9e6f2] active:text-[#272727]"
+                  >
+                    <Users size={16} />
+                    <span>จัดการผู้ใช้</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMobileTopMenu(false);
+                    logout();
+                  }}
+                  className="mt-1 flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-semibold text-rose-500 transition hover:bg-rose-100/70"
+                >
+                  <LogOut size={16} />
+                  <span>ออกจากระบบ</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

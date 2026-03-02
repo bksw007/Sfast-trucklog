@@ -180,6 +180,9 @@ export const subscribeToOptions = (
         vehicleTypes: [],
         drivers: [],
         licensePlates: [],
+        employerCompanies: [],
+        productTypes: [],
+        contacts: [],
       };
 
       snapshot.docs.forEach((doc) => {
@@ -689,6 +692,12 @@ export const initializeDefaultOptions = async (): Promise<void> => {
       { category: 'licensePlates', value: '70-1234' },
       { category: 'licensePlates', value: '12-5678' },
       { category: 'licensePlates', value: '99-8888' },
+      { category: 'employerCompanies', value: 'MLT' },
+      { category: 'employerCompanies', value: 'S Fast Transport' },
+      { category: 'productTypes', value: 'Inverter' },
+      { category: 'productTypes', value: 'พาเลท' },
+      { category: 'contacts', value: 'คุณเอ' },
+      { category: 'contacts', value: 'คุณบี' },
     ];
 
     for (const option of defaultOptions) {

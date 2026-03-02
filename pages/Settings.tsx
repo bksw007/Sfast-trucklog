@@ -1,5 +1,22 @@
 import React, { useState } from 'react';
-import { Settings as SettingsIcon, Plus, Trash2, RefreshCw, MapPin, Truck, User, Car, Loader2, Check, X, Pencil, Save } from 'lucide-react';
+import {
+  Settings as SettingsIcon,
+  Plus,
+  Trash2,
+  RefreshCw,
+  MapPin,
+  Truck,
+  User,
+  Car,
+  Loader2,
+  Check,
+  X,
+  Pencil,
+  Save,
+  Building2,
+  Package,
+  Contact,
+} from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { addOption, renameOptionAndSyncJobs } from '../services/firebaseService';
 import { OptionCategory } from '../types';
@@ -36,6 +53,9 @@ const Settings: React.FC = () => {
     { id: OptionCategory.VEHICLE, label: 'ประเภทรถ', icon: Truck },
     { id: OptionCategory.DRIVER, label: 'คนขับ', icon: User },
     { id: OptionCategory.PLATE, label: 'ทะเบียน', icon: Car },
+    { id: OptionCategory.EMPLOYER_COMPANY, label: 'บริษัทผู้ว่าจ้าง', icon: Building2 },
+    { id: OptionCategory.PRODUCT_TYPE, label: 'ประเภทสินค้า', icon: Package },
+    { id: OptionCategory.CONTACT, label: 'ผู้ติดต่อ', icon: Contact },
   ];
 
   const getCurrentOptions = (): string[] => {
@@ -46,6 +66,9 @@ const Settings: React.FC = () => {
       case OptionCategory.VEHICLE: options = data.options.vehicleTypes; break;
       case OptionCategory.DRIVER: options = data.options.drivers; break;
       case OptionCategory.PLATE: options = data.options.licensePlates; break;
+      case OptionCategory.EMPLOYER_COMPANY: options = data.options.employerCompanies; break;
+      case OptionCategory.PRODUCT_TYPE: options = data.options.productTypes; break;
+      case OptionCategory.CONTACT: options = data.options.contacts; break;
       default: options = [];
     }
     // Return unique values, sorted A-Z (Thai-aware)
@@ -187,7 +210,7 @@ const Settings: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className={`p-1 rounded-xl flex gap-1 ${isDark ? 'bg-dark-card' : 'bg-light-card shadow-lg'}`}>
+      <div className={`grid grid-cols-2 gap-1 rounded-xl p-1 sm:grid-cols-4 xl:grid-cols-7 ${isDark ? 'bg-dark-card' : 'bg-light-card shadow-lg'}`}>
         {tabs.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -195,7 +218,7 @@ const Settings: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
+              className={`flex flex-col items-center justify-center gap-1.5 rounded-lg px-2 py-2.5 text-center font-medium transition-all sm:flex-row sm:gap-2 sm:px-3 sm:py-3 ${
                 isActive
                   ? 'bg-gradient-to-r from-accent-primary to-accent-secondary text-white shadow-lg'
                   : isDark
@@ -204,7 +227,7 @@ const Settings: React.FC = () => {
               }`}
             >
               <Icon size={18} />
-              <span className="hidden sm:inline">{tab.label}</span>
+              <span className="text-[11px] leading-tight sm:text-sm">{tab.label}</span>
             </button>
           );
         })}
