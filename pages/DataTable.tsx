@@ -11,7 +11,6 @@ import {
   Image as ImageIcon,
   MapPin,
   Package2,
-  Printer,
   Truck,
   UserRound,
   X
@@ -1313,10 +1312,6 @@ const DataTable: React.FC = () => {
             <button onClick={() => generatePDFReport(false)} className="driver-clay-btn driver-clay-btn-info w-full justify-center text-xs sm:w-auto sm:text-sm">
               <Download size={15} />
               PDF
-            </button>
-            <button onClick={() => generatePDFReport(true)} className="driver-clay-btn driver-clay-btn-warning hidden justify-center text-xs sm:inline-flex sm:text-sm">
-              <Printer size={15} />
-              Print
             </button>
           </div>
         </div>

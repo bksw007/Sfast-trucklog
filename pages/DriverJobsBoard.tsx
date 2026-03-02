@@ -113,7 +113,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
   const [errorMessage, setErrorMessage] = useState('');
   const [searchText, setSearchText] = useState('');
   const [historyMonth, setHistoryMonth] = useState('');
-  const [compactHistoryCards, setCompactHistoryCards] = useState(false);
+  const [compactHistoryCards, setCompactHistoryCards] = useState(true);
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
 
   useEffect(() => {

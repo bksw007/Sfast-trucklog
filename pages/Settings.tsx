@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Settings as SettingsIcon,
   Plus,
@@ -16,6 +16,7 @@ import {
   Building2,
   Package,
   Contact,
+  Star,
 } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { addOption, renameOptionAndSyncJobs } from '../services/firebaseService';
@@ -26,6 +27,7 @@ import { collection, query, where, getDocs, deleteDoc } from 'firebase/firestore
 const Settings: React.FC = () => {
   const { data, refreshData, syncing, lastUpdate } = useData();
   const isDark = false;
+  const PINNED_LOCATIONS_STORAGE_KEY = 'settings.pinnedLocations.v1';
 
   const formatLastUpdate = (date: Date | null) => {
     if (!date) return 'ไม่ทราบ';
@@ -47,6 +49,30 @@ const Settings: React.FC = () => {
   const [renamingItem, setRenamingItem] = useState<string | null>(null);
   const [manualSyncing, setManualSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<'success' | 'error' | null>(null);
+  const [pinnedLocations, setPinnedLocations] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PINNED_LOCATIONS_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        setPinnedLocations(
+          Array.from(new Set(parsed.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)))
+        );
+      }
+    } catch (error) {
+      console.error('Failed to parse pinned locations:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PINNED_LOCATIONS_STORAGE_KEY, JSON.stringify(pinnedLocations));
+    } catch (error) {
+      console.error('Failed to persist pinned locations:', error);
+    }
+  }, [pinnedLocations]);
 
   const tabs = [
     { id: OptionCategory.LOCATION, label: 'สถานที่', icon: MapPin },
@@ -71,8 +97,21 @@ const Settings: React.FC = () => {
       case OptionCategory.CONTACT: options = data.options.contacts; break;
       default: options = [];
     }
-    // Return unique values, sorted A-Z (Thai-aware)
-    return Array.from(new Set(options)).sort((a, b) => a.localeCompare(b, 'th'));
+    const uniqueSorted = Array.from(new Set(options)).sort((a, b) => a.localeCompare(b, 'th'));
+    if (activeTab !== OptionCategory.LOCATION) {
+      return uniqueSorted;
+    }
+
+    const pinnedSet = new Set(pinnedLocations);
+    const pinned = uniqueSorted.filter((item) => pinnedSet.has(item));
+    const unpinned = uniqueSorted.filter((item) => !pinnedSet.has(item));
+    return [...pinned, ...unpinned];
+  };
+
+  const togglePinnedLocation = (value: string) => {
+    setPinnedLocations((prev) =>
+      prev.includes(value) ? prev.filter((item) => item !== value) : [value, ...prev]
+    );
   };
 
   const handleAdd = async () => {
@@ -100,6 +139,10 @@ const Settings: React.FC = () => {
       
       const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
       await Promise.all(deletePromises);
+
+      if (activeTab === OptionCategory.LOCATION) {
+        setPinnedLocations((prev) => prev.filter((item) => item !== value));
+      }
       
     } catch (error) {
       console.error('Failed to delete option:', error);
@@ -126,6 +169,11 @@ const Settings: React.FC = () => {
     setRenamingItem(oldValue);
     try {
       await renameOptionAndSyncJobs(activeTab, oldValue, nextValue);
+      if (activeTab === OptionCategory.LOCATION && oldValue !== nextValue) {
+        setPinnedLocations((prev) =>
+          prev.map((item) => (item === oldValue ? nextValue : item))
+        );
+      }
       cancelRename();
     } catch (error) {
       console.error('Failed to rename option:', error);
@@ -157,14 +205,14 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in overflow-x-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <div className="p-3 rounded-xl bg-gradient-to-br from-accent-primary to-accent-secondary shadow-lg shadow-accent-primary/20">
             <SettingsIcon className="text-white" size={24} />
           </div>
-          <div>
+          <div className="min-w-0">
             <h1 className={`text-2xl font-bold ${isDark ? 'text-dark-text' : 'text-light-text'}`}>
               ตั้งค่า
             </h1>
@@ -175,7 +223,7 @@ const Settings: React.FC = () => {
         </div>
 
         {/* Manual Sync Button */}
-        <div className="flex items-center gap-4">
+        <div className="flex w-full items-center gap-4 sm:w-auto">
           <div className="text-right hidden sm:block">
             <div className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
               อัปเดตล่าสุด
@@ -210,7 +258,7 @@ const Settings: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className={`grid grid-cols-2 gap-1 rounded-xl p-1 sm:grid-cols-4 xl:grid-cols-7 ${isDark ? 'bg-dark-card' : 'bg-light-card shadow-lg'}`}>
+      <div className={`grid w-full grid-cols-2 gap-1 rounded-xl p-1 sm:grid-cols-4 xl:grid-cols-7 ${isDark ? 'bg-dark-card' : 'bg-light-card shadow-lg'}`}>
         {tabs.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -238,14 +286,14 @@ const Settings: React.FC = () => {
         isDark ? 'bg-dark-card border-dark-muted/20' : 'bg-light-card border-light-muted/20 shadow-lg'
       }`}>
         {/* Add New */}
-        <div className={`p-4 border-b flex gap-3 ${isDark ? 'border-dark-muted/20' : 'border-light-muted/20'}`}>
+        <div className={`p-4 border-b flex flex-wrap gap-3 ${isDark ? 'border-dark-muted/20' : 'border-light-muted/20'}`}>
           <input
             type="text"
             value={newValue}
             onChange={(e) => setNewValue(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleAdd()}
             placeholder={`เพิ่ม${tabs.find(t => t.id === activeTab)?.label}ใหม่...`}
-            className={`flex-1 px-4 py-2 rounded-xl border ${
+            className={`min-w-0 flex-1 px-4 py-2 rounded-xl border ${
               isDark 
                 ? 'bg-dark-bg border-dark-muted/30 text-dark-text placeholder-dark-muted' 
                 : 'bg-light-bg border-light-muted/30 text-light-text placeholder-light-muted'
@@ -297,6 +345,20 @@ const Settings: React.FC = () => {
                       autoFocus
                     />
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      {activeTab === OptionCategory.LOCATION && (
+                        <button
+                          onClick={() => togglePinnedLocation(item)}
+                          disabled={renamingItem === item}
+                          className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
+                            pinnedLocations.includes(item)
+                              ? 'text-amber-500 hover:bg-amber-500/10'
+                              : 'text-slate-400 hover:bg-slate-500/10'
+                          }`}
+                          title={pinnedLocations.includes(item) ? 'เอาออกจากรายการติดดาว' : 'ติดดาวให้อยู่ด้านบน'}
+                        >
+                          <Star size={16} fill={pinnedLocations.includes(item) ? 'currentColor' : 'none'} />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleRename(item)}
                         disabled={renamingItem === item || !editValue.trim()}
@@ -318,19 +380,41 @@ const Settings: React.FC = () => {
                 ) : (
                   <>
                     <div className="flex items-center gap-2 min-w-0">
+                      {activeTab === OptionCategory.LOCATION && pinnedLocations.includes(item) && (
+                        <Star size={14} className="shrink-0 text-amber-500" fill="currentColor" />
+                      )}
                       <span className={isDark ? 'text-dark-text truncate' : 'text-light-text truncate'}>{item}</span>
                       <Pencil size={14} className={isDark ? 'text-dark-muted shrink-0' : 'text-light-muted shrink-0'} />
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(item);
-                      }}
-                      disabled={deletingItem === item}
-                      className="p-2 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                    >
-                      {deletingItem === item ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {activeTab === OptionCategory.LOCATION && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            togglePinnedLocation(item);
+                          }}
+                          disabled={deletingItem === item}
+                          className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
+                            pinnedLocations.includes(item)
+                              ? 'text-amber-500 hover:bg-amber-500/10'
+                              : 'text-slate-400 hover:bg-slate-500/10'
+                          }`}
+                          title={pinnedLocations.includes(item) ? 'เอาออกจากรายการติดดาว' : 'ติดดาวให้อยู่ด้านบน'}
+                        >
+                          <Star size={16} fill={pinnedLocations.includes(item) ? 'currentColor' : 'none'} />
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(item);
+                        }}
+                        disabled={deletingItem === item}
+                        className="p-2 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                      >
+                        {deletingItem === item ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                      </button>
+                    </div>
                   </>
                 )}
               </div>
