@@ -139,6 +139,24 @@ const DataTable: React.FC = () => {
 
   const hasActiveFilters = filters.month || filters.year || filters.driver || filters.vehicleType || filters.licensePlate;
 
+  const resolveWorkOrderNo = (job: Partial<JobEntry> | null | undefined): string =>
+    (job?.workOrderNo || (job as JobEntry & { ticketNo?: string } | null | undefined)?.ticketNo || '').trim();
+
+  const resolveInvoiceNo = (job: Partial<JobEntry> | null | undefined): string => {
+    const invoice = (job?.invNo || '').trim();
+    if (!invoice) return '';
+
+    const workOrder = resolveWorkOrderNo(job);
+    const linkedTodayJobId = ((job as JobEntry & { linkedTodayJobId?: string } | null | undefined)?.linkedTodayJobId || '').trim();
+
+    // Legacy protection: old sync wrongly copied Work Order into Invoice.
+    if (linkedTodayJobId && workOrder && invoice === workOrder) {
+      return '';
+    }
+
+    return invoice;
+  };
+
   const normalizeImageUrl = (value: unknown): string =>
     typeof value === 'string' && value.trim().length > 0 ? value.trim() : '';
 
@@ -178,6 +196,7 @@ const DataTable: React.FC = () => {
     setSelectedJob(job);
     setEditData({
       ...job,
+      invNo: resolveInvoiceNo(job),
       workOrderNo: job.workOrderNo || (job as JobEntry & { ticketNo?: string }).ticketNo || '',
     });
     setEditOriginImageFiles([]); // Reset origin image files
@@ -295,7 +314,7 @@ const DataTable: React.FC = () => {
           j.licensePlate,
           j.driverName,
           j.jobNo,
-          j.invNo,
+          resolveInvoiceNo(j),
           formatNumericExportValue(j.fuelAndToll),
           j.remarks
         ];
@@ -628,7 +647,7 @@ const DataTable: React.FC = () => {
       job.rounds.toString(),
       `${job.vehicleType}\n${job.licensePlate}`,
       job.driverName,
-      `${job.jobNo || '-'}\n${job.invNo || '-'}`
+      `${job.jobNo || '-'}\n${resolveInvoiceNo(job) || '-'}`
     ]);
 
     autoTable(doc, {
@@ -978,7 +997,7 @@ const DataTable: React.FC = () => {
                     }`}
                   />
                 ) : (
-                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{selectedJob.invNo || '-'}</div>
+                  <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>{resolveInvoiceNo(selectedJob) || '-'}</div>
                 )}
               </div>
 
@@ -1449,7 +1468,7 @@ const DataTable: React.FC = () => {
                 <div>
                   <div className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{formatDate(job.date)}</div>
                   <div className={`text-xs mt-1 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
-                    {job.jobNo || '-'} / {job.invNo || '-'}
+                    {job.jobNo || '-'} / {resolveInvoiceNo(job) || '-'}
                   </div>
                 </div>
                 <span className={`inline-flex items-center justify-center min-w-8 h-8 px-2 rounded-lg text-sm font-bold ${isDark ? 'bg-slate-800 text-white' : 'bg-slate-200 text-slate-800'}`}>
@@ -1576,7 +1595,7 @@ const DataTable: React.FC = () => {
                     </td>
                     <td className="px-2 py-2 md:px-3 md:py-4 w-[130px] md:w-[150px]">
                       <div className={`font-medium text-xs md:text-sm break-words ${isDark ? 'text-white' : 'text-slate-900'}`}>{job.jobNo || '-'}</div>
-                      <div className={`text-[10px] md:text-xs break-words ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{job.invNo || '-'}</div>
+                      <div className={`text-[10px] md:text-xs break-words ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{resolveInvoiceNo(job) || '-'}</div>
                     </td>
                     <td className={`px-2 py-2 md:px-3 md:py-4 text-right text-xs md:text-sm whitespace-nowrap w-[110px] md:w-[130px] ${isDark ? 'text-white' : 'text-slate-900'}`}>
                       {job.fuelAndToll !== null && job.fuelAndToll !== undefined && job.fuelAndToll !== ''

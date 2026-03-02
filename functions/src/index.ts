@@ -485,6 +485,7 @@ const buildJobPayloadFromToday = (
     driverName: job.driverName || job.assignedToName || "",
     licensePlate: job.plateNo || "",
     jobNo: job.jobNo || "",
+    invNo: typeof job.invNo === "string" ? job.invNo : "",
     workOrderNo: job.workOrderNo || job.ticketNo || "",
     transportDocNo: "",
     remarks: job.importantNote || "",
@@ -495,10 +496,6 @@ const buildJobPayloadFromToday = (
     updatedAt: now,
     timestamp: typeof job.timestamp === "number" ? job.timestamp : now,
   };
-
-  if (Object.prototype.hasOwnProperty.call(job, "invNo")) {
-    payload.invNo = typeof job.invNo === "string" ? job.invNo : "";
-  }
 
   const fuelAndToll = toFuelAndToll(job.fuelAndToll);
   if (fuelAndToll !== undefined) {

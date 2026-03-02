@@ -28,8 +28,13 @@ backups/
 
 # Local tool configs
 .config/
+.codex/
 
 # Firebase Functions local env (secrets)
 functions/.env
 functions/.env.*
 !functions/.env.example
+
+# Local utility artifacts/scripts (not for versioning)
+scripts/backfill-assignee-map.json
+scripts/restore-job-images-from-backup.mjs
