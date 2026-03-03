@@ -166,6 +166,45 @@ export const subscribeToJobs = (
 };
 
 /**
+ * Subscribe to jobs by exact driver full name (driver app view)
+ */
+export const subscribeToJobsByDriverName = (
+  driverName: string,
+  callback: (jobs: JobEntry[]) => void,
+  onError?: (error: Error) => void
+): (() => void) => {
+  const trimmedDriverName = driverName.trim();
+  if (!trimmedDriverName) {
+    callback([]);
+    return () => {};
+  }
+
+  const jobsQuery = query(
+    collection(db, JOBS_COLLECTION),
+    where('driverName', '==', trimmedDriverName)
+  );
+
+  const unsubscribe = onSnapshot(
+    jobsQuery,
+    (snapshot) => {
+      const jobs: JobEntry[] = snapshot.docs.map((jobDoc) => ({
+        id: jobDoc.id,
+        ...jobDoc.data(),
+      })) as JobEntry[];
+
+      jobs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      callback(jobs);
+    },
+    (error) => {
+      console.error('[Firebase] Jobs by driver name subscription error:', error);
+      onError?.(error);
+    }
+  );
+
+  return unsubscribe;
+};
+
+/**
  * Subscribe to options collection (real-time updates)
  */
 export const subscribeToOptions = (
@@ -711,6 +750,7 @@ export const initializeDefaultOptions = async (): Promise<void> => {
 // Export service object for compatibility
 export const firebaseService = {
   subscribeToJobs,
+  subscribeToJobsByDriverName,
   subscribeToOptions,
   subscribeToTodayJobs,
   subscribeToTodayJobsByAssignee,

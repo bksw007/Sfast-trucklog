@@ -216,6 +216,16 @@ const DataTable: React.FC = () => {
     return invoice;
   };
 
+  const formatGroupedNumber = (value: unknown): string => {
+    if (value === null || value === undefined || value === '') return '-';
+    const numericValue = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(numericValue)) return '-';
+    return numericValue.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
+  };
+
   const normalizeImageUrl = (value: unknown): string =>
     typeof value === 'string' && value.trim().length > 0 ? value.trim() : '';
 
@@ -1486,26 +1496,26 @@ const DataTable: React.FC = () => {
         )}
       </div>
 
-      <section className={`${cardClass} hidden overflow-hidden md:block`}>
-        <div className="bg-gradient-to-r from-[#0f766e] via-[#0e7490] to-[#075985] px-5 py-3 text-white md:px-6">
+      <section className={`${cardClass} hidden md:block`}>
+        <div className="sticky top-0 z-30 bg-gradient-to-r from-[#0f766e] via-[#0e7490] to-[#075985] px-5 py-3 text-white md:px-6">
           <h3 className="text-lg font-black tracking-tight">ตารางงานวิ่งทั้งหมด</h3>
           <p className="mt-0.5 text-xs text-white/90">คลิกที่แถวเพื่อเปิดรายละเอียด/แก้ไข/ลบ</p>
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
+        <div>
+          <table className="w-full table-fixed text-sm">
             <thead className={isDark ? 'bg-dark-bg/70 text-dark-muted' : 'bg-slate-100/80 text-slate-600'}>
               <tr>
-                <th className="px-3 py-3 text-left font-semibold">วันที่</th>
-                <th className="px-3 py-3 text-left font-semibold">เส้นทาง</th>
-                <th className="px-3 py-3 text-center font-semibold">รอบ</th>
-                <th className="px-3 py-3 text-left font-semibold">รถ / ทะเบียน</th>
-                <th className="px-3 py-3 text-left font-semibold">คนขับ</th>
-                <th className="px-3 py-3 text-left font-semibold">Job / Inv</th>
-                <th className="px-3 py-3 text-right font-semibold">ค่าน้ำมัน/ทางด่วน</th>
+                <th className={`sticky top-[74px] z-20 px-3 py-3 text-left font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[10%]' : 'w-[12%]'}`}>วันที่</th>
+                <th className={`sticky top-[74px] z-20 px-3 py-3 text-left font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[16%]' : 'w-[28%]'}`}>เส้นทาง</th>
+                <th className={`sticky top-[74px] z-20 px-3 py-3 text-center font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[6%]' : 'w-[7%]'}`}>รอบ</th>
+                <th className={`sticky top-[74px] z-20 px-3 py-3 text-left font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[14%]' : 'w-[15%]'}`}>รถ / ทะเบียน</th>
+                <th className={`sticky top-[74px] z-20 px-3 py-3 text-left font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[12%]' : 'w-[14%]'}`}>คนขับ</th>
+                <th className={`sticky top-[74px] z-20 px-3 py-3 text-left font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[12%]' : 'w-[14%]'}`}>Job / Inv</th>
+                <th className={`sticky top-[74px] z-20 px-3 py-3 text-right font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[10%]' : 'w-[10%]'}`}>ค่าน้ำมัน/ทางด่วน</th>
                 {isAdmin && (
                   <>
-                    <th className="px-3 py-3 text-right font-semibold">ราคาลูกค้า</th>
-                    <th className="px-3 py-3 text-right font-semibold">ราคารถร่วม</th>
+                    <th className={`sticky top-[74px] z-20 w-[10%] px-3 py-3 text-right font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'}`}>ราคาลูกค้า</th>
+                    <th className={`sticky top-[74px] z-20 w-[10%] px-3 py-3 text-right font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'}`}>ราคารถร่วม</th>
                   </>
                 )}
               </tr>
@@ -1534,34 +1544,32 @@ const DataTable: React.FC = () => {
                       {formatDate(job.date)}
                     </td>
                     <td className="px-3 py-3 align-top text-xs">
-                      <p className="text-sm text-slate-700">{job.pickupLocation || '-'} → {job.dropoffLocation || '-'}</p>
+                      <p className="break-words whitespace-normal text-sm text-slate-700">{job.pickupLocation || '-'} → {job.dropoffLocation || '-'}</p>
                     </td>
                     <td className="px-3 py-3 align-top text-center">
                       <span className="driver-clay-chip bg-slate-100/85 text-slate-700">{job.rounds}</span>
                     </td>
                     <td className="px-3 py-3 align-top text-xs">
-                      <p className="text-sm font-medium text-slate-700">{job.vehicleType || '-'}</p>
-                      <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>{job.licensePlate || '-'}</p>
+                      <p className="break-words whitespace-normal text-sm font-medium text-slate-700">{job.vehicleType || '-'}</p>
+                      <p className={`break-words whitespace-normal ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{job.licensePlate || '-'}</p>
                     </td>
-                    <td className="px-3 py-3 align-top text-sm text-slate-700">
+                    <td className="px-3 py-3 align-top text-sm text-slate-700 break-words whitespace-normal">
                       {job.driverName || '-'}
                     </td>
                     <td className="px-3 py-3 align-top text-xs">
-                      <p className="text-sm font-medium text-slate-700">{job.jobNo || '-'}</p>
-                      <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>{resolveInvoiceNo(job) || '-'}</p>
+                      <p className="break-words whitespace-normal text-sm font-medium text-slate-700">{job.jobNo || '-'}</p>
+                      <p className={`break-words whitespace-normal ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{resolveInvoiceNo(job) || '-'}</p>
                     </td>
                     <td className="px-3 py-3 align-top text-right text-sm text-slate-700">
-                      {job.fuelAndToll !== null && job.fuelAndToll !== undefined && job.fuelAndToll !== ''
-                        ? Number(job.fuelAndToll).toLocaleString()
-                        : '-'}
+                      {formatGroupedNumber(job.fuelAndToll)}
                     </td>
                     {isAdmin && (
                       <>
                         <td className="px-3 py-3 align-top text-right text-sm text-slate-700">
-                          {job.customerPrice ? job.customerPrice.toLocaleString() : '-'}
+                          {formatGroupedNumber(job.customerPrice)}
                         </td>
                         <td className="px-3 py-3 align-top text-right text-sm text-slate-700">
-                          {job.jointPrice ? job.jointPrice.toLocaleString() : '-'}
+                          {formatGroupedNumber(job.jointPrice)}
                         </td>
                       </>
                     )}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { CalendarDays, CheckCircle2, ClipboardCheck, LogOut, UserCircle2 } from 'lucide-react';
+import { CalendarDays, CheckCircle2, ClipboardCheck, LogOut, TableProperties, UserCircle2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface DriverLayoutProps {
@@ -11,6 +11,7 @@ const navItems = [
   { path: '/driver/today', label: 'งานวันนี้', icon: CalendarDays },
   { path: '/driver/ready-to-close', label: 'รอจบงาน', icon: ClipboardCheck },
   { path: '/driver/history', label: 'สรุปงาน', icon: CheckCircle2 },
+  { path: '/driver/data', label: 'ข้อมูลงานวิ่ง', icon: TableProperties },
   { path: '/driver/profile', label: 'โปรไฟล์', icon: UserCircle2 },
 ];
 
@@ -132,7 +133,7 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({ children }) => {
       </div>
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 px-2 pb-[calc(0.45rem+env(safe-area-inset-bottom))] pt-2 md:hidden">
-        <div className="driver-mobile-nav-surface mx-auto grid w-full max-w-6xl grid-cols-4 gap-2 rounded-[26px] border border-white/85 p-2">
+        <div className="driver-mobile-nav-surface mx-auto grid w-full max-w-6xl grid-cols-5 gap-2 rounded-[26px] border border-white/85 p-2">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -141,7 +142,7 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({ children }) => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex flex-col items-center gap-1 rounded-2xl px-1.5 py-2 text-[10px] font-semibold transition ${
+                className={`flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-center text-[9px] font-semibold leading-tight transition ${
                   isActive
                     ? 'driver-mobile-nav-item-active'
                     : 'text-slate-500 hover:bg-white/55'

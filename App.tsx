@@ -14,6 +14,7 @@ const EntryForm = lazy(() => import('./pages/EntryForm'));
 const DataTable = lazy(() => import('./pages/DataTable'));
 const TodayJobs = lazy(() => import('./pages/TodayJobs'));
 const DriverJobsBoard = lazy(() => import('./pages/DriverJobsBoard'));
+const DriverDataTable = lazy(() => import('./pages/DriverDataTable'));
 const DriverProfile = lazy(() => import('./pages/DriverProfile'));
 const Login = lazy(() => import('./pages/Login'));
 const Settings = lazy(() => import('./pages/Settings'));
@@ -157,6 +158,13 @@ const DriverRoutes: React.FC = () => (
     <Route path="/driver/active" element={<Navigate to="/driver/today" replace />} />
     <Route path="/driver/ready-to-close" element={<DriverPage view="ready-to-close" />} />
     <Route path="/driver/history" element={<DriverPage view="history" />} />
+    <Route path="/driver/data" element={
+      <DriverLayout>
+        <Suspense fallback={<PageLoader />}>
+          <DriverDataTable />
+        </Suspense>
+      </DriverLayout>
+    } />
     <Route path="/driver/entry" element={
       <DataProvider>
         <DriverLayout>
