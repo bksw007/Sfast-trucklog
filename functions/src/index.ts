@@ -109,12 +109,16 @@ const asDisplayContact = (value?: string): string => value?.trim() || "-";
 const getWorkOrderNo = (job: TodayJobEntry): string =>
   job.workOrderNo || job.ticketNo || "-";
 const getJobNo = (job: TodayJobEntry): string => job.jobNo || "-";
-const asDateOnly = (value?: string): string => (value || "").split("T")[0] || "";
+const asDateOnly = (value?: string): string =>
+  (value || "").split("T")[0] || "";
 const getBangkokToday = (): string =>
   new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Bangkok",
   }).format(new Date());
-const isBackdatedCreate = (eventType: NotifyEventType, job: TodayJobEntry): boolean => {
+const isBackdatedCreate = (
+  eventType: NotifyEventType,
+  job: TodayJobEntry
+): boolean => {
   if (eventType !== "create") return false;
   const workDate = asDateOnly(job.workDate);
   if (!workDate) return false;
