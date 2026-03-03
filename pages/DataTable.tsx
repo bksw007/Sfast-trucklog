@@ -171,6 +171,11 @@ const DataTable: React.FC = () => {
   const cardClass = isDark
     ? 'rounded-2xl border border-dark-muted/30 bg-dark-card/70 shadow-xl shadow-black/20'
     : 'rounded-2xl border border-light-muted/20 bg-light-card shadow-xl shadow-slate-200/60';
+  const pastelFilterButtonClass = hasActiveFilters
+    ? 'driver-clay-btn border border-emerald-200 bg-emerald-200/90 text-emerald-800 shadow-[inset_1px_1px_0_rgba(255,255,255,0.7)] hover:bg-emerald-300/85'
+    : 'driver-clay-btn border border-emerald-200/80 bg-emerald-100/85 text-emerald-700 shadow-[inset_1px_1px_0_rgba(255,255,255,0.7)] hover:bg-emerald-200/85';
+  const pastelEditButtonClass =
+    'driver-clay-btn flex-1 border border-sky-200 bg-sky-100/90 text-sky-700 shadow-[inset_1px_1px_0_rgba(255,255,255,0.7)] hover:bg-sky-200/85';
   const selectClass = isDark
     ? 'w-full min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/40 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none'
     : 'w-full min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none';
@@ -1312,7 +1317,7 @@ const DataTable: React.FC = () => {
                   </button>
                   <button
                     onClick={handleEditClick}
-                    className="driver-clay-btn driver-clay-btn-primary flex-1"
+                    className={pastelEditButtonClass}
                   >
                     แก้ไข
                   </button>
@@ -1344,7 +1349,7 @@ const DataTable: React.FC = () => {
         <div className="flex flex-wrap items-center justify-between gap-3 p-4 md:p-6">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`driver-clay-btn ${hasActiveFilters ? 'driver-clay-btn-primary' : 'driver-clay-btn-ghost'} text-xs sm:text-sm`}
+            className={`${pastelFilterButtonClass} text-xs sm:text-sm`}
           >
             <Filter size={16} />
             ตัวกรอง

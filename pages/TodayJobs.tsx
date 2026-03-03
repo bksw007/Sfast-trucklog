@@ -1954,10 +1954,6 @@ const TodayJobs: React.FC = () => {
                 <div className="mt-4 space-y-2 text-sm text-slate-700">
                   <div className="flex items-center gap-2">
                     <CalendarClock size={14} className="driver-clay-muted" />
-                    <span>วันที่แจ้งงาน: {asDateOnly(job.orderDate || getJobDate(job)) || '-'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CalendarClock size={14} className="driver-clay-muted" />
                     <span>วันที่รับงาน: {getJobDate(job) || '-'}</span>
                   </div>
 
@@ -2017,16 +2013,16 @@ const TodayJobs: React.FC = () => {
         </div>
 
         <div className="hidden overflow-x-auto md:block">
-          <table className="min-w-full text-sm">
+          <table className="min-w-full table-fixed text-sm">
             <thead className={isDark ? 'bg-dark-bg/60 text-dark-muted' : 'bg-slate-100 text-slate-600'}>
               <tr>
-                <th className="px-3 py-2 text-left">วันที่งาน</th>
-                <th className="px-3 py-2 text-left">วันที่แจ้งงาน</th>
-                <th className="px-3 py-2 text-left">ลูกค้า</th>
-                <th className="px-3 py-2 text-left">ต้นทาง-ปลายทาง</th>
-                <th className="px-3 py-2 text-left">ประเภทรถ / ป้ายทะเบียน</th>
-                <th className="px-3 py-2 text-left">คนขับ</th>
-                <th className="px-3 py-2 text-left">สถานะ</th>
+                <th className="w-[10%] px-3 py-2 text-left">วันที่งาน</th>
+                <th className="w-[12%] px-3 py-2 text-left">ลูกค้า</th>
+                <th className="w-[24%] px-3 py-2 text-left">ต้นทาง-ปลายทาง</th>
+                <th className="w-[18%] px-3 py-2 text-left">ประเภทรถ / ป้ายทะเบียน</th>
+                <th className="w-[12%] px-3 py-2 text-left">ประเภทสินค้า</th>
+                <th className="w-[16%] px-3 py-2 text-left">คนขับ</th>
+                <th className="w-[8%] px-3 py-2 text-left">สถานะ</th>
               </tr>
             </thead>
             <tbody>
@@ -2038,7 +2034,6 @@ const TodayJobs: React.FC = () => {
                 filteredJobs.map((job) => (
                   <tr key={job.id} onClick={() => openJobDetail(job)} className={`cursor-pointer transition ${isDark ? 'border-t border-dark-muted/20 hover:bg-white/5' : 'border-t border-light-muted/20 hover:bg-slate-50'}`}>
                     <td className="px-3 py-3 align-top">{getJobDate(job)}</td>
-                    <td className="px-3 py-3 align-top">{asDateOnly(job.orderDate || getJobDate(job))}</td>
                     <td className="px-3 py-3 align-top">{job.employerCompany || '-'}</td>
                     <td className="px-3 py-3 align-top text-xs">
                       <p>{job.pickup.location || '-'} → {job.delivery.location || '-'}</p>
@@ -2050,6 +2045,7 @@ const TodayJobs: React.FC = () => {
                       <p className="text-sm font-medium">{job.vehicleType || '-'}</p>
                       <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>{job.plateNo || '-'}</p>
                     </td>
+                    <td className="px-3 py-3 align-top text-sm">{job.productName || '-'}</td>
                     <td className="px-3 py-3 align-top text-xs">
                       <p className="text-sm font-medium">{getDriverFullName(job)}</p>
                       <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>รับงานแอพ: {getAssignedAppLabel(job)}</p>
@@ -2187,7 +2183,7 @@ const TodayJobs: React.FC = () => {
               <button
                 type="button"
                 onClick={() => openEditModal(selectedJob)}
-                className="driver-clay-btn driver-clay-btn-primary text-xs"
+                className="driver-clay-btn border border-sky-200 bg-sky-100/90 text-xs text-sky-700 shadow-[inset_1px_1px_0_rgba(255,255,255,0.7)] hover:bg-sky-200/85"
               >
                 <Pencil size={14} />
                 แก้ไข
