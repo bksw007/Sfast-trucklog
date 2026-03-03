@@ -211,7 +211,12 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
 
   const filteredTodayJobs = useMemo(() => {
     const search = normalizeText(searchText);
-    const visibleTodayJobs = todayJobs.filter((job) => job.status !== 'completed');
+    const visibleTodayJobs = myJobs.filter((job) => {
+      if (job.status === 'completed') return false;
+      const workDate = asDateOnly(job.workDate);
+      // Show today's jobs plus overdue jobs (backdated and still not completed).
+      return workDate === todayDate || (workDate && workDate < todayDate);
+    });
     if (!search) return visibleTodayJobs;
 
     return visibleTodayJobs.filter((job) => {
@@ -220,7 +225,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
       );
       return haystack.includes(search);
     });
-  }, [todayJobs, searchText]);
+  }, [myJobs, searchText, todayDate]);
 
   const filteredReadyToCloseJobs = useMemo(() => {
     const search = normalizeText(searchText);
