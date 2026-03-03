@@ -475,7 +475,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
             <div className="mt-4 space-y-2 text-sm text-slate-700">
               <div className="flex items-center gap-2">
                 <CalendarClock size={14} className="driver-clay-muted" />
-                <span>วันที่แจ้งงาน: {asDateOnly(job.workDate) || '-'}</span>
+                <span>วันที่แจ้งงาน: {asDateOnly(job.orderDate || job.workDate) || '-'}</span>
               </div>
 
               <div className="flex items-start gap-2">

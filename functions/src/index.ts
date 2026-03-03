@@ -19,6 +19,7 @@ type TodayJobEntry = {
   invNo?: string;
   transportDocNo?: string;
   workOrderNo?: string;
+  orderDate?: string;
   workDate?: string;
   vehicleType?: string;
   ticketNo?: string;
@@ -115,11 +116,9 @@ const getBangkokToday = (): string =>
   new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Bangkok",
   }).format(new Date());
-const isBackdatedCreate = (
-  eventType: NotifyEventType,
+const isBackdatedJob = (
   job: TodayJobEntry
 ): boolean => {
-  if (eventType !== "create") return false;
   const workDate = asDateOnly(job.workDate);
   if (!workDate) return false;
   return workDate < getBangkokToday();
@@ -296,10 +295,10 @@ const notifyByEvent = async (
   const driverLabel = job.assignedToName || job.driverName || "พนักงาน";
   const jobLabel = `${getJobNo(job)} | WO ${getWorkOrderNo(job)}`;
 
-  if (eventType !== "ready" && !isBackdatedCreate(eventType, job)) {
+  if (eventType !== "ready" && !isBackdatedJob(job)) {
     await sendLineNotification(eventType, jobId, job);
-  } else if (isBackdatedCreate(eventType, job)) {
-    logger.info("LINE skipped for backdated create", {
+  } else if (isBackdatedJob(job)) {
+    logger.info("LINE skipped for backdated job", {
       eventType,
       jobId,
       workDate: asDateOnly(job.workDate),

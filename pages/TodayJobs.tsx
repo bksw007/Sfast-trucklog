@@ -50,6 +50,7 @@ type TodayJobForm = {
   invNo: string;
   transportDocNo: string;
   workOrderNo: string;
+  orderDate: string;
   workDate: string;
   vehicleType: string;
   productName: string;
@@ -190,6 +191,7 @@ const initialFormData = (): TodayJobForm => ({
   invNo: '',
   transportDocNo: '',
   workOrderNo: generateWorkOrderNo(),
+  orderDate: getLocalDate(),
   workDate: getLocalDate(),
   vehicleType: '',
   productName: '',
@@ -213,6 +215,7 @@ const toEditableForm = (job: TodayJobEntry): TodayJobForm => ({
   invNo: job.invNo || '',
   transportDocNo: job.transportDocNo || '',
   workOrderNo: job.workOrderNo || job.ticketNo || '',
+  orderDate: job.orderDate || job.workDate || getLocalDate(),
   workDate: job.workDate,
   vehicleType: job.vehicleType,
   productName: job.productName,
@@ -683,7 +686,8 @@ const TodayJobs: React.FC = () => {
 
     drawLineField(doc, 'บริษัทผู้ว่าจ้าง :', source.employerCompany, 12, 45, 40);
     drawLineField(doc, 'เลขที่ใบสั่งงาน :', source.workOrderNo, 130, 154, 40);
-    drawLineField(doc, 'วันที่รับงาน :', source.workDate, 12, 45, 50);
+    drawLineField(doc, 'วันที่รับงานจากผู้ว่าจ้าง :', source.orderDate, 12, 45, 50);
+    drawLineField(doc, 'วันที่รับงาน :', source.workDate, 12, 45, 58);
     drawLineField(doc, 'ชนิดรถ :', source.vehicleType, 84, 108, 50);
     drawLineField(doc, 'Job No. :', source.jobNo, 130, 154, 50);
     drawLineField(doc, 'สินค้าที่รับ :', source.productName, 12, 45, 60);
@@ -1320,9 +1324,13 @@ const TodayJobs: React.FC = () => {
             </label>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
             <label className="text-sm md:col-span-1">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>วันที่รับงานจากผู้ว่าจ้าง</span>
+              <input type="date" className={inputClass} value={formData.orderDate} onChange={(e) => updateField('orderDate', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
+            </label>
+            <label className="text-sm md:col-span-1">
+              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>วันที่รับงาน</span>
               <input type="date" className={inputClass} value={formData.workDate} onChange={(e) => updateField('workDate', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
             </label>
             <label className="text-sm md:col-span-1">
@@ -1901,7 +1909,11 @@ const TodayJobs: React.FC = () => {
                 <div className="mt-4 space-y-2 text-sm text-slate-700">
                   <div className="flex items-center gap-2">
                     <CalendarClock size={14} className="driver-clay-muted" />
-                    <span>วันที่แจ้งงาน: {asDateOnly(job.workDate) || '-'}</span>
+                    <span>วันที่แจ้งงาน: {asDateOnly(job.orderDate || job.workDate) || '-'}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CalendarClock size={14} className="driver-clay-muted" />
+                    <span>วันที่รับงาน: {asDateOnly(job.workDate) || '-'}</span>
                   </div>
 
                   <div className="flex items-start gap-2">
@@ -1964,6 +1976,7 @@ const TodayJobs: React.FC = () => {
             <thead className={isDark ? 'bg-dark-bg/60 text-dark-muted' : 'bg-slate-100 text-slate-600'}>
               <tr>
                 <th className="px-3 py-2 text-left">วันที่งาน</th>
+                <th className="px-3 py-2 text-left">วันที่แจ้งงาน</th>
                 <th className="px-3 py-2 text-left">ลูกค้า</th>
                 <th className="px-3 py-2 text-left">ต้นทาง-ปลายทาง</th>
                 <th className="px-3 py-2 text-left">ประเภทรถ / ป้ายทะเบียน</th>
@@ -1974,12 +1987,13 @@ const TodayJobs: React.FC = () => {
             <tbody>
               {filteredJobs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className={`px-3 py-6 text-center ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>ไม่พบข้อมูล</td>
+                  <td colSpan={7} className={`px-3 py-6 text-center ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>ไม่พบข้อมูล</td>
                 </tr>
               ) : (
                 filteredJobs.map((job) => (
                   <tr key={job.id} onClick={() => openJobDetail(job)} className={`cursor-pointer transition ${isDark ? 'border-t border-dark-muted/20 hover:bg-white/5' : 'border-t border-light-muted/20 hover:bg-slate-50'}`}>
                     <td className="px-3 py-3 align-top">{asDateOnly(job.workDate)}</td>
+                    <td className="px-3 py-3 align-top">{asDateOnly(job.orderDate || job.workDate)}</td>
                     <td className="px-3 py-3 align-top">{job.employerCompany || '-'}</td>
                     <td className="px-3 py-3 align-top text-xs">
                       <p>{job.pickup.location || '-'} → {job.delivery.location || '-'}</p>
@@ -2078,7 +2092,8 @@ const TodayJobs: React.FC = () => {
               </div>
 
               <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-slate-700 sm:grid-cols-2">
-                <div><span className="driver-clay-muted">วันที่งาน:</span> {asDateOnly(selectedJob.workDate) || '-'}</div>
+                <div><span className="driver-clay-muted">วันที่แจ้งงาน:</span> {asDateOnly(selectedJob.orderDate || selectedJob.workDate) || '-'}</div>
+                <div><span className="driver-clay-muted">วันที่รับงาน:</span> {asDateOnly(selectedJob.workDate) || '-'}</div>
                 <div><span className="driver-clay-muted">Job No.:</span> {selectedJob.jobNo || '-'}</div>
                 <div><span className="driver-clay-muted">คนขับ:</span> {getDriverFullName(selectedJob)}</div>
                 <div><span className="driver-clay-muted">รับงานแอพ:</span> {getAssignedAppLabel(selectedJob)}</div>
@@ -2218,7 +2233,11 @@ const TodayJobs: React.FC = () => {
                     <input className={modalInputClass} value={editForm.workOrderNo} onChange={(e) => handleEditField('workOrderNo', e.target.value)} />
                   </label>
                   <label className="space-y-1">
-                    <span className={modalLabelClass}>วันที่</span>
+                    <span className={modalLabelClass}>วันที่รับงานจากผู้ว่าจ้าง</span>
+                    <input type="date" className={modalInputClass} value={editForm.orderDate} onChange={(e) => handleEditField('orderDate', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
+                  </label>
+                  <label className="space-y-1">
+                    <span className={modalLabelClass}>วันที่รับงาน</span>
                     <input type="date" className={modalInputClass} value={editForm.workDate} onChange={(e) => handleEditField('workDate', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
                   </label>
                   <label className="space-y-1">
