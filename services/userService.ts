@@ -45,6 +45,7 @@ export const createUserProfile = async (user: User, additionalData?: Partial<Use
     role: 'user', // Default role
     createdAt: now,
     photoURL: user.photoURL || undefined,
+    pinnedLocations: [],
     ...additionalData
   };
 

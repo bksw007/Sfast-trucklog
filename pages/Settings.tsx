@@ -19,15 +19,17 @@ import {
   Star,
 } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
+import { useAuth } from '../contexts/AuthContext';
 import { addOption, renameOptionAndSyncJobs } from '../services/firebaseService';
+import { updateUserProfile } from '../services/userService';
 import { OptionCategory } from '../types';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, deleteDoc } from 'firebase/firestore';
 
 const Settings: React.FC = () => {
   const { data, refreshData, syncing, lastUpdate } = useData();
+  const { user, userProfile, refreshProfile } = useAuth();
   const isDark = false;
-  const PINNED_LOCATIONS_STORAGE_KEY = 'settings.pinnedLocations.v1';
 
   const formatLastUpdate = (date: Date | null) => {
     if (!date) return 'ไม่ทราบ';
@@ -50,29 +52,41 @@ const Settings: React.FC = () => {
   const [manualSyncing, setManualSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<'success' | 'error' | null>(null);
   const [pinnedLocations, setPinnedLocations] = useState<string[]>([]);
+  const [savingPinnedLocations, setSavingPinnedLocations] = useState(false);
+  const LEGACY_PINNED_LOCATIONS_STORAGE_KEY = 'settings.pinnedLocations.v1';
+
+  const normalizePinnedLocations = (value: unknown): string[] =>
+    Array.from(
+      new Set(
+        (Array.isArray(value) ? value : [])
+          .filter((item): item is string => typeof item === 'string')
+          .map((item) => item.trim())
+          .filter(Boolean)
+      )
+    );
 
   useEffect(() => {
+    setPinnedLocations(normalizePinnedLocations(userProfile?.pinnedLocations));
+  }, [userProfile?.pinnedLocations]);
+
+  useEffect(() => {
+    if (!user?.uid || !userProfile) return;
+    if (normalizePinnedLocations(userProfile.pinnedLocations).length > 0) return;
+
     try {
-      const raw = localStorage.getItem(PINNED_LOCATIONS_STORAGE_KEY);
+      const raw = localStorage.getItem(LEGACY_PINNED_LOCATIONS_STORAGE_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        setPinnedLocations(
-          Array.from(new Set(parsed.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)))
-        );
-      }
-    } catch (error) {
-      console.error('Failed to parse pinned locations:', error);
-    }
-  }, []);
+      const legacyPinned = normalizePinnedLocations(parsed);
+      if (legacyPinned.length === 0) return;
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(PINNED_LOCATIONS_STORAGE_KEY, JSON.stringify(pinnedLocations));
+      void persistPinnedLocations(legacyPinned).then(() => {
+        localStorage.removeItem(LEGACY_PINNED_LOCATIONS_STORAGE_KEY);
+      });
     } catch (error) {
-      console.error('Failed to persist pinned locations:', error);
+      console.error('Failed to migrate legacy pinned locations:', error);
     }
-  }, [pinnedLocations]);
+  }, [user?.uid, userProfile]);
 
   const tabs = [
     { id: OptionCategory.LOCATION, label: 'สถานที่', icon: MapPin },
@@ -108,10 +122,36 @@ const Settings: React.FC = () => {
     return [...pinned, ...unpinned];
   };
 
-  const togglePinnedLocation = (value: string) => {
-    setPinnedLocations((prev) =>
-      prev.includes(value) ? prev.filter((item) => item !== value) : [value, ...prev]
-    );
+  const persistPinnedLocations = async (nextPinnedLocations: string[]) => {
+    if (!user?.uid) {
+      setPinnedLocations(nextPinnedLocations);
+      return;
+    }
+
+    const normalized = normalizePinnedLocations(nextPinnedLocations);
+    const previous = pinnedLocations;
+    setPinnedLocations(normalized);
+    setSavingPinnedLocations(true);
+    try {
+      await updateUserProfile(user.uid, {
+        pinnedLocations: normalized,
+        profileUpdatedAt: Date.now(),
+      });
+      await refreshProfile();
+    } catch (error) {
+      console.error('Failed to save pinned locations:', error);
+      setPinnedLocations(previous);
+      alert('บันทึกสถานที่ติดดาวไม่สำเร็จ');
+    } finally {
+      setSavingPinnedLocations(false);
+    }
+  };
+
+  const togglePinnedLocation = async (value: string) => {
+    const next = pinnedLocations.includes(value)
+      ? pinnedLocations.filter((item) => item !== value)
+      : [value, ...pinnedLocations];
+    await persistPinnedLocations(next);
   };
 
   const handleAdd = async () => {
@@ -141,7 +181,7 @@ const Settings: React.FC = () => {
       await Promise.all(deletePromises);
 
       if (activeTab === OptionCategory.LOCATION) {
-        setPinnedLocations((prev) => prev.filter((item) => item !== value));
+        await persistPinnedLocations(pinnedLocations.filter((item) => item !== value));
       }
       
     } catch (error) {
@@ -170,8 +210,8 @@ const Settings: React.FC = () => {
     try {
       await renameOptionAndSyncJobs(activeTab, oldValue, nextValue);
       if (activeTab === OptionCategory.LOCATION && oldValue !== nextValue) {
-        setPinnedLocations((prev) =>
-          prev.map((item) => (item === oldValue ? nextValue : item))
+        await persistPinnedLocations(
+          pinnedLocations.map((item) => (item === oldValue ? nextValue : item))
         );
       }
       cancelRename();
@@ -347,8 +387,10 @@ const Settings: React.FC = () => {
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                       {activeTab === OptionCategory.LOCATION && (
                         <button
-                          onClick={() => togglePinnedLocation(item)}
-                          disabled={renamingItem === item}
+                          onClick={() => {
+                            void togglePinnedLocation(item);
+                          }}
+                          disabled={renamingItem === item || savingPinnedLocations}
                           className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
                             pinnedLocations.includes(item)
                               ? 'text-amber-500 hover:bg-amber-500/10'
@@ -391,9 +433,9 @@ const Settings: React.FC = () => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            togglePinnedLocation(item);
+                            void togglePinnedLocation(item);
                           }}
-                          disabled={deletingItem === item}
+                          disabled={deletingItem === item || savingPinnedLocations}
                           className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
                             pinnedLocations.includes(item)
                               ? 'text-amber-500 hover:bg-amber-500/10'

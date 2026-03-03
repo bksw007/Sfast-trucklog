@@ -519,6 +519,7 @@ export const updateJob = async (
     pickupLocation: job.pickupLocation,
     dropoffLocation: job.dropoffLocation,
     rounds: job.rounds,
+    productName: job.productName,
     vehicleType: job.vehicleType,
     driverName: job.driverName,
     licensePlate: job.licensePlate,
@@ -673,6 +674,9 @@ export const renameOptionAndSyncJobs = async (
       break;
     case OptionCategory.PLATE:
       await collectJobsForField('licensePlate');
+      break;
+    case OptionCategory.PRODUCT_TYPE:
+      await collectJobsForField('productName');
       break;
     default:
       break;

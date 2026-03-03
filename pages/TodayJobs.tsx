@@ -106,6 +106,12 @@ const parseDate = (dateStr: string) => {
 };
 
 const hasValue = (value?: string) => !!value && value.trim().length > 0;
+const formatPhoneNumber = (value: string): string => {
+  const digits = value.replace(/\D/g, '').slice(0, 10);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+};
 const parseRounds = (value?: string) => {
   const match = (value || '').match(/\d+/);
   if (!match) return 1;
@@ -224,7 +230,7 @@ const toEditableForm = (job: TodayJobEntry): TodayJobForm => ({
   assignedToUid: job.assignedToUid || '',
   driverName: job.driverName,
   plateNo: job.plateNo,
-  driverPhone: job.driverPhone,
+  driverPhone: formatPhoneNumber(job.driverPhone || ''),
   fuelAndToll: job.fuelAndToll === null || job.fuelAndToll === undefined ? '' : String(job.fuelAndToll),
   importantNote: job.importantNote,
   originImageUrls: toImageUrls(job.originImageUrls, job.originImageUrl),
@@ -280,7 +286,7 @@ const TodayJobs: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | JobStatus>('all');
   const [activeMainTab, setActiveMainTab] = useState<MainSectionTab>(
-    () => resolveMainTabFromSearch(location.search) ?? 'overview'
+    () => resolveMainTabFromSearch(location.search) ?? 'form'
   );
   const [quickAddValue, setQuickAddValue] = useState('');
   const [quickAddSubmitting, setQuickAddSubmitting] = useState(false);
@@ -321,8 +327,18 @@ const TodayJobs: React.FC = () => {
   const [cardModalTitle, setCardModalTitle] = useState('');
   const [cardModalJobs, setCardModalJobs] = useState<TodayJobEntry[]>([]);
   const [showCardModal, setShowCardModal] = useState(false);
-  const [pinnedLocations, setPinnedLocations] = useState<string[]>([]);
-  const PINNED_LOCATIONS_STORAGE_KEY = 'settings.pinnedLocations.v1';
+  const pinnedLocations = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (Array.isArray(userProfile?.pinnedLocations) ? userProfile.pinnedLocations : [])
+            .filter((item): item is string => typeof item === 'string')
+            .map((item) => item.trim())
+            .filter(Boolean)
+        )
+      ),
+    [userProfile?.pinnedLocations]
+  );
 
   const inputClass = isDark
     ? 'w-full min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/40 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none'
@@ -371,27 +387,6 @@ const TodayJobs: React.FC = () => {
     });
 
     return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(PINNED_LOCATIONS_STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return;
-      setPinnedLocations(
-        Array.from(
-          new Set(
-            parsed
-              .filter((item): item is string => typeof item === 'string')
-              .map((item) => item.trim())
-              .filter(Boolean)
-          )
-        )
-      );
-    } catch (error) {
-      console.error('Load pinned locations failed:', error);
-    }
   }, []);
 
   useEffect(() => {
@@ -559,6 +554,10 @@ const TodayJobs: React.FC = () => {
   }, [jobs, selectedJobId]);
 
   const updateField = (field: keyof TodayJobForm, value: string) => {
+    if (field === 'driverPhone') {
+      setFormData((prev) => ({ ...prev, driverPhone: formatPhoneNumber(value) }));
+      return;
+    }
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -573,7 +572,7 @@ const TodayJobs: React.FC = () => {
       ...prev,
       assignedToUid,
       driverName: driverFullName || prev.driverName,
-      driverPhone: profilePhone || '',
+      driverPhone: formatPhoneNumber(profilePhone || ''),
     }));
 
     if (!assignedToUid || profilePhone) return;
@@ -583,7 +582,7 @@ const TodayJobs: React.FC = () => {
         if (!fetchedPhone) return;
         setFormData((prev) =>
           prev.assignedToUid === assignedToUid
-            ? { ...prev, driverPhone: fetchedPhone }
+            ? { ...prev, driverPhone: formatPhoneNumber(fetchedPhone) }
             : prev
         );
       })
@@ -917,6 +916,10 @@ const TodayJobs: React.FC = () => {
   };
 
   const handleEditField = (field: keyof TodayJobForm, value: string) => {
+    if (field === 'driverPhone') {
+      setEditForm((prev) => (prev ? { ...prev, driverPhone: formatPhoneNumber(value) } : prev));
+      return;
+    }
     setEditForm((prev) => (prev ? { ...prev, [field]: value } : prev));
   };
 
@@ -933,7 +936,7 @@ const TodayJobs: React.FC = () => {
             ...prev,
             assignedToUid,
             driverName: driverFullName || prev.driverName,
-            driverPhone: profilePhone || '',
+            driverPhone: formatPhoneNumber(profilePhone || ''),
           }
         : prev
     ));
@@ -945,7 +948,7 @@ const TodayJobs: React.FC = () => {
         if (!fetchedPhone) return;
         setEditForm((prev) =>
           prev && prev.assignedToUid === assignedToUid
-            ? { ...prev, driverPhone: fetchedPhone }
+            ? { ...prev, driverPhone: formatPhoneNumber(fetchedPhone) }
             : prev
         );
       })
@@ -1149,8 +1152,8 @@ const TodayJobs: React.FC = () => {
   };
 
   const mainTabs: Array<{ id: MainSectionTab; label: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = [
-    { id: 'overview', label: 'งานวันนี้', icon: CalendarClock },
     { id: 'form', label: 'ฟอร์มแจ้งงาน', icon: Pencil },
+    { id: 'overview', label: 'งานวันนี้', icon: CalendarClock },
     { id: 'table', label: 'ตารางข้อมูลแจ้งงาน', icon: Truck },
   ];
 
@@ -1298,13 +1301,18 @@ const TodayJobs: React.FC = () => {
             <label className="text-sm">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>บริษัทผู้ว่าจ้าง</span>
               <div className="flex items-center gap-2">
-                <input
-                  list="employer-company-options"
+                <select
                   className={inputClass}
                   value={formData.employerCompany}
                   onChange={(e) => updateField('employerCompany', e.target.value)}
-                  placeholder="พิมพ์ค้นหาหรือเลือกบริษัทผู้ว่าจ้าง"
-                />
+                >
+                  <option value="">เลือกบริษัทผู้ว่าจ้าง</option>
+                  {buildDropdownOptions(employerCompanyOptions, formData.employerCompany).map((option) => (
+                    <option key={`form-employer-${option}`} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
                 <button
                   type="button"
                   onClick={() =>
@@ -1323,21 +1331,26 @@ const TodayJobs: React.FC = () => {
             </label>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-            <label className="text-sm md:col-span-1">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+            <label className="text-sm">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>วันที่รับงานจากผู้ว่าจ้าง</span>
               <input type="date" className={inputClass} value={formData.orderDate} onChange={(e) => updateField('orderDate', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
             </label>
-            <label className="text-sm md:col-span-1">
+            <label className="text-sm">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ประเภทสินค้า</span>
               <div className="flex items-center gap-2">
-                <input
-                  list="product-type-options"
+                <select
                   className={inputClass}
                   value={formData.productName}
                   onChange={(e) => updateField('productName', e.target.value)}
-                  placeholder="พิมพ์ค้นหาหรือเลือกประเภทสินค้า"
-                />
+                >
+                  <option value="">เลือกประเภทสินค้า</option>
+                  {buildDropdownOptions(productTypeOptions, formData.productName).map((option) => (
+                    <option key={`form-product-${option}`} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
                 <button
                   type="button"
                   onClick={() =>
@@ -1354,16 +1367,21 @@ const TodayJobs: React.FC = () => {
                 </button>
               </div>
             </label>
-            <label className="text-sm md:col-span-1">
+            <label className="text-sm">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ประเภทรถ</span>
               <div className="flex items-center gap-2">
-                <input
-                  list="vehicle-type-options"
+                <select
                   className={selectClass}
                   value={formData.vehicleType}
                   onChange={(e) => updateField('vehicleType', e.target.value)}
-                  placeholder="พิมพ์ค้นหาหรือเลือกประเภทรถ"
-                />
+                >
+                  <option value="">เลือกประเภทรถ</option>
+                  {buildDropdownOptions(vehicleTypeOptions, formData.vehicleType).map((option) => (
+                    <option key={`form-vehicle-${option}`} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
                 <button
                   type="button"
                   onClick={() =>
@@ -1380,7 +1398,7 @@ const TodayJobs: React.FC = () => {
                 </button>
               </div>
             </label>
-            <label className="text-sm md:col-span-1">
+            <label className="text-sm">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>จำนวนรอบ</span>
               <input className={inputClass} value={formData.quantity} onChange={(e) => updateField('quantity', e.target.value)} />
             </label>
@@ -1428,13 +1446,18 @@ const TodayJobs: React.FC = () => {
                 <label className="block text-sm">
                   <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ติดต่อ</span>
                   <div className="flex items-center gap-2">
-                    <input
-                      list="contact-options"
+                    <select
                       className={pointInputClass}
                       value={formData.pickup.contact}
                       onChange={(e) => updatePoint('pickup', 'contact', e.target.value)}
-                      placeholder="พิมพ์ค้นหาหรือเลือกผู้ติดต่อ"
-                    />
+                    >
+                      <option value="">เลือกผู้ติดต่อ</option>
+                      {buildDropdownOptions(contactOptions, formData.pickup.contact).map((option) => (
+                        <option key={`form-pickup-contact-${option}`} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
                     <button
                       type="button"
                       onClick={() =>
@@ -1495,13 +1518,18 @@ const TodayJobs: React.FC = () => {
                 <label className="block text-sm">
                   <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ติดต่อ</span>
                   <div className="flex items-center gap-2">
-                    <input
-                      list="contact-options"
+                    <select
                       className={pointInputClass}
                       value={formData.delivery.contact}
                       onChange={(e) => updatePoint('delivery', 'contact', e.target.value)}
-                      placeholder="พิมพ์ค้นหาหรือเลือกผู้ติดต่อ"
-                    />
+                    >
+                      <option value="">เลือกผู้ติดต่อ</option>
+                      {buildDropdownOptions(contactOptions, formData.delivery.contact).map((option) => (
+                        <option key={`form-delivery-contact-${option}`} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
                     <button
                       type="button"
                       onClick={() =>
@@ -1607,13 +1635,18 @@ const TodayJobs: React.FC = () => {
                 <div className={`border-r px-3 py-3 text-sm font-medium ${isDark ? 'border-dark-muted/25 text-dark-muted' : 'border-light-muted/25 text-light-muted'}`}>ติดต่อ</div>
                 <div className={`border-r px-2 py-2 ${isDark ? 'border-dark-muted/25' : 'border-light-muted/25'}`}>
                   <div className="flex items-center gap-2">
-                    <input
-                      list="contact-options"
+                    <select
                       className={pointInputClass}
                       value={formData.pickup.contact}
                       onChange={(e) => updatePoint('pickup', 'contact', e.target.value)}
-                      placeholder="พิมพ์ค้นหาหรือเลือกผู้ติดต่อ"
-                    />
+                    >
+                      <option value="">เลือกผู้ติดต่อ</option>
+                      {buildDropdownOptions(contactOptions, formData.pickup.contact).map((option) => (
+                        <option key={`form-desktop-pickup-contact-${option}`} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
                     <button
                       type="button"
                       onClick={() =>
@@ -1633,13 +1666,18 @@ const TodayJobs: React.FC = () => {
                 </div>
                 <div className="px-2 py-2">
                   <div className="flex items-center gap-2">
-                    <input
-                      list="contact-options"
+                    <select
                       className={pointInputClass}
                       value={formData.delivery.contact}
                       onChange={(e) => updatePoint('delivery', 'contact', e.target.value)}
-                      placeholder="พิมพ์ค้นหาหรือเลือกผู้ติดต่อ"
-                    />
+                    >
+                      <option value="">เลือกผู้ติดต่อ</option>
+                      {buildDropdownOptions(contactOptions, formData.delivery.contact).map((option) => (
+                        <option key={`form-desktop-delivery-contact-${option}`} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
                     <button
                       type="button"
                       onClick={() =>
@@ -1680,13 +1718,18 @@ const TodayJobs: React.FC = () => {
             <label className="text-sm">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>พนักงานขับรถ</span>
               <div className="flex items-center gap-2">
-                <input
-                  list="driver-options"
+                <select
                   className={selectClass}
                   value={formData.driverName}
                   onChange={(e) => updateField('driverName', e.target.value)}
-                  placeholder="พิมพ์ค้นหาคนขับ"
-                />
+                >
+                  <option value="">เลือกพนักงานขับรถ</option>
+                  {buildDropdownOptions(driverOptions, formData.driverName).map((option) => (
+                    <option key={`form-driver-${option}`} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
                 <button
                   type="button"
                   onClick={() =>
@@ -1705,18 +1748,31 @@ const TodayJobs: React.FC = () => {
             </label>
             <label className="text-sm">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>เบอร์ติดต่อ</span>
-              <input className={inputClass} value={formData.driverPhone} onChange={(e) => updateField('driverPhone', e.target.value)} />
+              <input
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}"
+                placeholder="080-123-4567"
+                className={inputClass}
+                value={formData.driverPhone}
+                onChange={(e) => updateField('driverPhone', e.target.value)}
+              />
             </label>
             <label className="text-sm">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ทะเบียน</span>
               <div className="flex items-center gap-2">
-                <input
-                  list="plate-options"
+                <select
                   className={selectClass}
                   value={formData.plateNo}
                   onChange={(e) => updateField('plateNo', e.target.value)}
-                  placeholder="พิมพ์ค้นหาทะเบียนรถ"
-                />
+                >
+                  <option value="">เลือกทะเบียนรถ</option>
+                  {buildDropdownOptions(plateOptions, formData.plateNo).map((option) => (
+                    <option key={`form-plate-${option}`} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
                 <button
                   type="button"
                   onClick={() =>
@@ -1823,13 +1879,7 @@ const TodayJobs: React.FC = () => {
         </div>
       </Modal>
 
-      <datalist id="vehicle-type-options">{vehicleTypeOptions.map((vehicle) => <option key={vehicle} value={vehicle} />)}</datalist>
       <datalist id="location-options">{locationOptions.map((location) => <option key={location} value={location} />)}</datalist>
-      <datalist id="driver-options">{driverOptions.map((driver) => <option key={driver} value={driver} />)}</datalist>
-      <datalist id="plate-options">{plateOptions.map((plate) => <option key={plate} value={plate} />)}</datalist>
-      <datalist id="employer-company-options">{employerCompanyOptions.map((company) => <option key={company} value={company} />)}</datalist>
-      <datalist id="product-type-options">{productTypeOptions.map((product) => <option key={product} value={product} />)}</datalist>
-      <datalist id="contact-options">{contactOptions.map((contact) => <option key={contact} value={contact} />)}</datalist>
         </div>
       )}
 
@@ -2303,7 +2353,15 @@ const TodayJobs: React.FC = () => {
                   </label>
                   <label className="space-y-1">
                     <span className={modalLabelClass}>เบอร์ติดต่อคนขับ</span>
-                    <input className={modalInputClass} value={editForm.driverPhone} onChange={(e) => handleEditField('driverPhone', e.target.value)} />
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}"
+                      placeholder="080-123-4567"
+                      className={modalInputClass}
+                      value={editForm.driverPhone}
+                      onChange={(e) => handleEditField('driverPhone', e.target.value)}
+                    />
                   </label>
                   <label className="space-y-1">
                     <span className={modalLabelClass}>Job No.</span>

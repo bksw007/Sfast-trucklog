@@ -32,6 +32,13 @@ const emptyProfileForm = (): ProfileFormState => ({
   personalNote: '',
 });
 
+const formatPhone = (value: string): string => {
+  const digits = value.replace(/\D/g, '').slice(0, 10);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+};
+
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) => {
   const { user, userProfile, refreshProfile } = useAuth();
   const isDark = false;
@@ -50,10 +57,10 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
       setProfileForm({
         nickname: userProfile.nickname || '',
         employeeCode: userProfile.employeeCode || '',
-        phoneNumber: userProfile.phoneNumber || '',
+        phoneNumber: formatPhone(userProfile.phoneNumber || ''),
         lineUserId: userProfile.lineUserId || '',
         emergencyContactName: userProfile.emergencyContactName || '',
-        emergencyContactPhone: userProfile.emergencyContactPhone || '',
+        emergencyContactPhone: formatPhone(userProfile.emergencyContactPhone || ''),
         address: userProfile.address || '',
         personalNote: userProfile.personalNote || '',
       });
@@ -67,6 +74,10 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
   }, [isOpen, userProfile]);
 
   const handleProfileField = (field: keyof ProfileFormState, value: string) => {
+    if (field === 'phoneNumber' || field === 'emergencyContactPhone') {
+      setProfileForm((prev) => ({ ...prev, [field]: formatPhone(value) }));
+      return;
+    }
     setProfileForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -79,10 +90,10 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
         displayName: displayName.trim(),
         nickname: profileForm.nickname.trim(),
         employeeCode: profileForm.employeeCode.trim(),
-        phoneNumber: profileForm.phoneNumber.trim(),
+        phoneNumber: formatPhone(profileForm.phoneNumber.trim()),
         lineUserId: profileForm.lineUserId.trim(),
         emergencyContactName: profileForm.emergencyContactName.trim(),
-        emergencyContactPhone: profileForm.emergencyContactPhone.trim(),
+        emergencyContactPhone: formatPhone(profileForm.emergencyContactPhone.trim()),
         address: profileForm.address.trim(),
         personalNote: profileForm.personalNote.trim(),
         profileUpdatedAt: Date.now(),
@@ -251,14 +262,17 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
               <div className="relative">
                 <Phone size={15} className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`} />
                 <input
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}"
                   value={profileForm.phoneNumber}
                   onChange={(e) => handleProfileField('phoneNumber', e.target.value)}
                   className={`w-full rounded-xl border py-2.5 pl-9 pr-3 text-sm outline-none ${
                     isDark
                       ? 'border-dark-muted/30 bg-dark-bg/60 text-dark-text focus:border-accent-primary'
-                      : 'border-light-muted/30 bg-white text-light-text focus:border-accent-primary'
+                    : 'border-light-muted/30 bg-white text-light-text focus:border-accent-primary'
                   }`}
-                  placeholder="เบอร์โทรศัพท์"
+                  placeholder="080-123-4567"
                 />
               </div>
               <input
@@ -282,14 +296,17 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
                 placeholder="ผู้ติดต่อฉุกเฉิน"
               />
               <input
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}"
                 value={profileForm.emergencyContactPhone}
                 onChange={(e) => handleProfileField('emergencyContactPhone', e.target.value)}
                 className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none ${
                   isDark
                     ? 'border-dark-muted/30 bg-dark-bg/60 text-dark-text focus:border-accent-primary'
-                    : 'border-light-muted/30 bg-white text-light-text focus:border-accent-primary'
+                  : 'border-light-muted/30 bg-white text-light-text focus:border-accent-primary'
                 }`}
-                placeholder="เบอร์ฉุกเฉิน"
+                placeholder="080-123-4567"
               />
             </div>
 

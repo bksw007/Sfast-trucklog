@@ -23,8 +23,6 @@ import autoTable from 'jspdf-autotable';
 import { NotoSansThaiBase64 } from '../fonts/NotoSansThai';
 import { formatDate } from '../utils/formatters';
 
-const PINNED_LOCATIONS_STORAGE_KEY = 'settings.pinnedLocations.v1';
-
 const MONTHS = [
   { value: 1, label: 'มกราคม' },
   { value: 2, label: 'กุมภาพันธ์' },
@@ -109,7 +107,18 @@ const DataTable: React.FC = () => {
   const [showConfirmEdit, setShowConfirmEdit] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
-  const [pinnedLocations, setPinnedLocations] = useState<string[]>([]);
+  const pinnedLocations = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (Array.isArray(userProfile?.pinnedLocations) ? userProfile.pinnedLocations : [])
+            .filter((item): item is string => typeof item === 'string')
+            .map((item) => item.trim())
+            .filter(Boolean)
+        )
+      ),
+    [userProfile?.pinnedLocations]
+  );
   
   // New Images for Edit
   // New Images for Edit
@@ -124,29 +133,6 @@ const DataTable: React.FC = () => {
       setLoading(false);
     }
   }, [appData]);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(PINNED_LOCATIONS_STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return;
-      setPinnedLocations(
-        Array.from(
-          new Set(
-            parsed
-              .filter((item): item is string => typeof item === 'string')
-              .map((item) => item.trim())
-              .filter(Boolean)
-          )
-        )
-      );
-    } catch (error) {
-      console.error('Failed to load pinned locations:', error);
-    }
-  }, []);
-
-
 
   // Extract unique years from data
   const availableYears = useMemo(() => {
@@ -216,6 +202,9 @@ const DataTable: React.FC = () => {
     return invoice;
   };
 
+  const resolveProductName = (job: Partial<JobEntry> | null | undefined): string =>
+    (job?.productName || '').trim() || 'Inverter';
+
   const formatGroupedNumber = (value: unknown): string => {
     if (value === null || value === undefined || value === '') return '-';
     const numericValue = typeof value === 'number' ? value : Number(value);
@@ -265,6 +254,7 @@ const DataTable: React.FC = () => {
     setSelectedJob(job);
     setEditData({
       ...job,
+      productName: resolveProductName(job),
       invNo: resolveInvoiceNo(job),
       workOrderNo: job.workOrderNo || (job as JobEntry & { ticketNo?: string }).ticketNo || '',
       transportDocNo: job.transportDocNo || '',
@@ -368,7 +358,7 @@ const DataTable: React.FC = () => {
       return Number.isNaN(parsedTime) ? Number.POSITIVE_INFINITY : parsedTime;
     };
 
-    const headers = ["Date", "Pickup", "Dropoff", "Rounds", "Vehicle", "Plate", "Driver", "Job No", "Inv No", "Fuel/Toll", "Remarks"];
+    const headers = ["Date", "Pickup", "Dropoff", "Rounds", "Product", "Vehicle", "Plate", "Driver", "Job No", "Inv No", "Fuel/Toll", "Remarks"];
     if (isAdmin) {
       headers.push("Customer Price", "Joint Price");
     }
@@ -384,6 +374,7 @@ const DataTable: React.FC = () => {
           j.pickupLocation,
           j.dropoffLocation,
           j.rounds,
+          resolveProductName(j),
           j.vehicleType,
           j.licensePlate,
           j.driverName,
@@ -714,11 +705,12 @@ const DataTable: React.FC = () => {
     const chartsBottomY = Math.max(barBottomY, pieLegendBottomY);
     
     // Table - Thai headers
-    const tableColumn = ['วันที่', 'เส้นทาง', 'รอบ', 'รถ/ทะเบียน', 'คนขับ', 'Job/Inv'];
+    const tableColumn = ['วันที่', 'เส้นทาง', 'รอบ', 'สินค้า', 'รถ/ทะเบียน', 'คนขับ', 'Job/Inv'];
     const tableRows = pdfJobs.map(job => [
       formatDate(job.date),
       `${job.pickupLocation} > ${job.dropoffLocation}`,
       job.rounds.toString(),
+      resolveProductName(job),
       `${job.vehicleType}\n${job.licensePlate}`,
       job.driverName,
       `${job.jobNo || '-'}\n${resolveInvoiceNo(job) || '-'}`
@@ -735,9 +727,10 @@ const DataTable: React.FC = () => {
         0: { cellWidth: 25 }, // Date - wider to prevent wrap
         1: { cellWidth: 'auto' }, // Route
         2: { cellWidth: 15, halign: 'center' }, // Round
-        3: { cellWidth: 35, halign: 'center' }, // Vehicle - center
-        4: { cellWidth: 30, halign: 'center' }, // Driver - center
-        5: { cellWidth: 35, halign: 'center' }  // Job/Inv - center
+        3: { cellWidth: 20, halign: 'center' }, // Product
+        4: { cellWidth: 30, halign: 'center' }, // Vehicle - center
+        5: { cellWidth: 28, halign: 'center' }, // Driver - center
+        6: { cellWidth: 30, halign: 'center' }  // Job/Inv - center
       }
     });
 
@@ -952,6 +945,24 @@ const DataTable: React.FC = () => {
                   />
                 ) : (
                   <div className="font-medium text-slate-700">{selectedJob.rounds} รอบ</div>
+                )}
+              </div>
+
+              <div className="driver-clay-soft p-4">
+                <div className="driver-clay-muted text-xs mb-1">ประเภทสินค้า</div>
+                {isEditing ? (
+                  <select
+                    value={editData.productName || 'Inverter'}
+                    onChange={(e) => handleEditChange('productName', e.target.value)}
+                    className="driver-clay-input w-full px-3 py-2 text-sm"
+                  >
+                    <option value="Inverter">Inverter</option>
+                    {sortUniqueOptions(appData?.options.productTypes || []).map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="font-medium text-slate-700">{resolveProductName(selectedJob)}</div>
                 )}
               </div>
 
@@ -1478,11 +1489,15 @@ const DataTable: React.FC = () => {
                   <span>รถ: {job.vehicleType || '-'} | ทะเบียน: {job.licensePlate || '-'}</span>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Package2 size={14} className="driver-clay-muted" />
+                  <span>สินค้า: {resolveProductName(job)}</span>
+                </div>
+                <div className="flex items-center gap-2">
                   <UserRound size={14} className="driver-clay-muted" />
                   <span>คนขับ: {job.driverName || '-'}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Package2 size={14} className="driver-clay-muted" />
+                  <CalendarClock size={14} className="driver-clay-muted" />
                   <span>
                     ค่าน้ำมัน/ทางด่วน:{' '}
                     {job.fuelAndToll !== null && job.fuelAndToll !== undefined && job.fuelAndToll !== ''
@@ -1508,9 +1523,10 @@ const DataTable: React.FC = () => {
                 <th className={`sticky top-[74px] z-20 px-3 py-3 text-left font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[10%]' : 'w-[12%]'}`}>วันที่</th>
                 <th className={`sticky top-[74px] z-20 px-3 py-3 text-left font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[16%]' : 'w-[28%]'}`}>เส้นทาง</th>
                 <th className={`sticky top-[74px] z-20 px-3 py-3 text-center font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[6%]' : 'w-[7%]'}`}>รอบ</th>
-                <th className={`sticky top-[74px] z-20 px-3 py-3 text-left font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[14%]' : 'w-[15%]'}`}>รถ / ทะเบียน</th>
-                <th className={`sticky top-[74px] z-20 px-3 py-3 text-left font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[12%]' : 'w-[14%]'}`}>คนขับ</th>
-                <th className={`sticky top-[74px] z-20 px-3 py-3 text-left font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[12%]' : 'w-[14%]'}`}>Job / Inv</th>
+                <th className={`sticky top-[74px] z-20 px-3 py-3 text-left font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[10%]' : 'w-[11%]'}`}>สินค้า</th>
+                <th className={`sticky top-[74px] z-20 px-3 py-3 text-left font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[13%]' : 'w-[14%]'}`}>รถ / ทะเบียน</th>
+                <th className={`sticky top-[74px] z-20 px-3 py-3 text-left font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[11%]' : 'w-[12%]'}`}>คนขับ</th>
+                <th className={`sticky top-[74px] z-20 px-3 py-3 text-left font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[11%]' : 'w-[12%]'}`}>Job / Inv</th>
                 <th className={`sticky top-[74px] z-20 px-3 py-3 text-right font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[10%]' : 'w-[10%]'}`}>ค่าน้ำมัน/ทางด่วน</th>
                 {isAdmin && (
                   <>
@@ -1523,13 +1539,13 @@ const DataTable: React.FC = () => {
             <tbody className={isDark ? 'divide-y divide-dark-muted/15' : 'divide-y divide-light-muted/20'}>
               {loading ? (
                 <tr>
-                  <td colSpan={isAdmin ? 9 : 7} className="px-3 py-10 text-center text-sm text-slate-500">
+                  <td colSpan={isAdmin ? 10 : 8} className="px-3 py-10 text-center text-sm text-slate-500">
                     กำลังโหลดข้อมูล...
                   </td>
                 </tr>
               ) : filteredJobs.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 9 : 7} className="px-3 py-10 text-center text-sm text-slate-500">
+                  <td colSpan={isAdmin ? 10 : 8} className="px-3 py-10 text-center text-sm text-slate-500">
                     ไม่พบข้อมูล
                   </td>
                 </tr>
@@ -1548,6 +1564,9 @@ const DataTable: React.FC = () => {
                     </td>
                     <td className="px-3 py-3 align-top text-center">
                       <span className="driver-clay-chip bg-slate-100/85 text-slate-700">{job.rounds}</span>
+                    </td>
+                    <td className="px-3 py-3 align-top text-sm text-slate-700">
+                      {resolveProductName(job)}
                     </td>
                     <td className="px-3 py-3 align-top text-xs">
                       <p className="break-words whitespace-normal text-sm font-medium text-slate-700">{job.vehicleType || '-'}</p>

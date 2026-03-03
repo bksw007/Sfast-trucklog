@@ -538,7 +538,7 @@ const buildJobPayloadFromToday = (
     remarks: job.importantNote || "",
     linkedTodayJobId: todayJobId,
     employerCompany: job.employerCompany || "",
-    productName: job.productName || "",
+    productName: (job.productName || "Inverter").trim() || "Inverter",
     todayQuantity: job.quantity || "",
     updatedAt: now,
     timestamp: typeof job.timestamp === "number" ? job.timestamp : now,

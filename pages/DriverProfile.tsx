@@ -54,10 +54,10 @@ const emptyForm = (): ProfileFormState => ({
 });
 
 const formatPhone = (value: string): string => {
-  const digits = value.replace(/\D/g, '').slice(0, 11);
+  const digits = value.replace(/\D/g, '').slice(0, 10);
   if (digits.length <= 3) return digits;
-  if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
-  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
 };
 
 const loadImageMeta = (dataUrl: string): Promise<CropMeta> =>
@@ -611,10 +611,13 @@ const DriverProfile: React.FC = () => {
               <div className="relative">
                 <Phone size={14} className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${iconClass}`} />
                 <input
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}"
                   className={`${inputClass} pl-8`}
                   value={form.phoneNumber}
                   onChange={(e) => handleField('phoneNumber', e.target.value)}
-                  placeholder="080-1234-567"
+                  placeholder="080-123-4567"
                 />
               </div>
             </label>
@@ -636,10 +639,13 @@ const DriverProfile: React.FC = () => {
               <div className="relative">
                 <Phone size={14} className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${iconClass}`} />
                 <input
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}"
                   className={`${inputClass} pl-8`}
                   value={form.emergencyContactPhone}
                   onChange={(e) => handleField('emergencyContactPhone', e.target.value)}
-                  placeholder="080-1234-567"
+                  placeholder="080-123-4567"
                 />
               </div>
             </label>

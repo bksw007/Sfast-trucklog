@@ -4,6 +4,7 @@ export interface JobEntry {
   pickupLocation: string;
   dropoffLocation: string;
   rounds: number;
+  productName: string;
   vehicleType: string;
   driverName: string;
   licensePlate: string;
@@ -122,6 +123,7 @@ export interface UserProfile {
   personalNote?: string;
   profileUpdatedAt?: number;
   photoURL?: string;
+  pinnedLocations?: string[];
   fcmTokens?: string[];
   lastPushTokenUpdatedAt?: number;
 }

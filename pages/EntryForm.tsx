@@ -10,8 +10,6 @@ import ConfirmModal from '../components/ConfirmModal';
 import { formatDate } from '../utils/formatters';
 import { FirebaseError } from 'firebase/app';
 
-const PINNED_LOCATIONS_STORAGE_KEY = 'settings.pinnedLocations.v1';
-
 type DriverEntryRouteState = {
   fromTodayJob?: {
     id?: string;
@@ -26,6 +24,7 @@ type DriverEntryRouteState = {
     licensePlate?: string;
     driverName?: string;
     rounds?: number;
+    productName?: string;
   };
 };
 
@@ -111,7 +110,18 @@ const EntryForm: React.FC = () => {
   // Confirm Modal States
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [pinnedLocations, setPinnedLocations] = useState<string[]>([]);
+  const pinnedLocations = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (Array.isArray(userProfile?.pinnedLocations) ? userProfile.pinnedLocations : [])
+            .filter((item): item is string => typeof item === 'string')
+            .map((item) => item.trim())
+            .filter(Boolean)
+        )
+      ),
+    [userProfile?.pinnedLocations]
+  );
 
   // Helper to get local date string YYYY-MM-DD
   const getLocalDate = () => {
@@ -127,6 +137,7 @@ const EntryForm: React.FC = () => {
     pickupLocation: '',
     dropoffLocation: '',
     rounds: 1,
+    productName: 'Inverter',
     vehicleType: '',
     driverName: '',
     licensePlate: '',
@@ -152,6 +163,7 @@ const EntryForm: React.FC = () => {
     licensePlate?: string;
     driverName?: string;
     rounds?: number;
+    productName?: string;
     remarks?: string;
     fuelAndToll?: number | null;
   }) => {
@@ -169,6 +181,7 @@ const EntryForm: React.FC = () => {
       tryAssignText('date', payload.date);
       tryAssignText('pickupLocation', payload.pickupLocation);
       tryAssignText('dropoffLocation', payload.dropoffLocation);
+      tryAssignText('productName', payload.productName);
       tryAssignText('vehicleType', payload.vehicleType);
       tryAssignText('licensePlate', payload.licensePlate);
       tryAssignText('driverName', payload.driverName);
@@ -220,6 +233,7 @@ const EntryForm: React.FC = () => {
           date: row.pickup?.date || '',
           pickupLocation: row.pickup?.location,
           dropoffLocation: row.delivery?.location,
+          productName: row.productName || 'Inverter',
           vehicleType: row.vehicleType,
           licensePlate: row.plateNo,
           driverName: row.driverName,
@@ -245,27 +259,6 @@ const EntryForm: React.FC = () => {
       driverName: driverFullName,
     }));
   }, [driverFullName, isDriverEntryMode]);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(PINNED_LOCATIONS_STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return;
-      setPinnedLocations(
-        Array.from(
-          new Set(
-            parsed
-              .filter((item): item is string => typeof item === 'string')
-              .map((item) => item.trim())
-              .filter(Boolean)
-          )
-        )
-      );
-    } catch (error) {
-      console.error('Failed to load pinned locations:', error);
-    }
-  }, []);
 
   const locationOptions = useMemo(() => {
     const sortedLocations = Array.from(
@@ -515,6 +508,9 @@ const EntryForm: React.FC = () => {
           plateNo: dirtyFields.has('licensePlate') ? formData.licensePlate : (latestTodayJob.plateNo || ''),
           driverName: driverFullName || mergedDriverName || latestTodayJob.assignedToName || '',
           rounds: mergedRounds,
+          productName: dirtyFields.has('productName')
+            ? (formData.productName || 'Inverter')
+            : (latestTodayJob.productName || 'Inverter'),
           driverUpdateCount: nextDriverUpdateCount,
           fuelAndToll: dirtyFields.has('fuelAndToll') ? nextFuelAndToll : (latestTodayJob.fuelAndToll ?? null),
           readyToClose: nextReadyToClose,
@@ -595,6 +591,7 @@ const EntryForm: React.FC = () => {
         pickupLocation: '',
         dropoffLocation: '',
         rounds: 1,
+        productName: 'Inverter',
         vehicleType: '',
         driverName: '',
         licensePlate: '',
@@ -644,6 +641,9 @@ const EntryForm: React.FC = () => {
           [OptionCategory.VEHICLE]: 'vehicleType',
           [OptionCategory.DRIVER]: 'driverName',
           [OptionCategory.PLATE]: 'licensePlate',
+          [OptionCategory.EMPLOYER_COMPANY]: null,
+          [OptionCategory.PRODUCT_TYPE]: 'productName',
+          [OptionCategory.CONTACT]: null,
         };
         
         const fieldName = fieldMap[modalCategory];
@@ -669,6 +669,7 @@ const EntryForm: React.FC = () => {
       pickupLocation: 'สถานที่รับ',
       dropoffLocation: 'สถานที่ส่ง',
       rounds: 'จำนวนรอบ',
+      productName: 'ประเภทสินค้า',
       vehicleType: 'ประเภทรถ',
       driverName: 'พนักงานขับรถ',
       licensePlate: 'ป้ายทะเบียน',
@@ -777,6 +778,7 @@ const EntryForm: React.FC = () => {
             <DisplayRow label="วันที่ (Date)" value={formatDate(formData.date || '-')} isDark={isDark} isDriverStyle={isDriverEntryMode} />
             <DisplayRow label="สถานที่รับ (Pickup)" value={formData.pickupLocation || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
             <DisplayRow label="สถานที่ส่ง (Dropoff)" value={formData.dropoffLocation || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
+            <DisplayRow label="ประเภทสินค้า (Product)" value={formData.productName || 'Inverter'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
             <DisplayRow label="ประเภทรถ (Type)" value={formData.vehicleType || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
             <DisplayRow label="ป้ายทะเบียน (Plate)" value={formData.licensePlate || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
             <DisplayRow label="พนักงานขับรถ (Driver)" value={formData.driverName || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
@@ -833,8 +835,17 @@ const EntryForm: React.FC = () => {
               />
             </div>
 
-            {/* Row 3: Vehicle Info */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Row 3: Product & Vehicle Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+              <SelectWithAdd
+                label="ประเภทสินค้า (Product)"
+                name="productName"
+                value={formData.productName}
+                options={data.options.productTypes}
+                onChange={handleInputChange}
+                onAdd={() => openAddModal(OptionCategory.PRODUCT_TYPE)}
+                isDark={isDark}
+              />
               <SelectWithAdd 
                 label="ประเภทรถ (Type)" 
                 name="vehicleType"
