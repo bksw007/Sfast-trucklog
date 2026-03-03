@@ -20,7 +20,6 @@ type TodayJobEntry = {
   transportDocNo?: string;
   workOrderNo?: string;
   orderDate?: string;
-  workDate?: string;
   vehicleType?: string;
   ticketNo?: string;
   quantity?: string;
@@ -119,9 +118,9 @@ const getBangkokToday = (): string =>
 const isBackdatedJob = (
   job: TodayJobEntry
 ): boolean => {
-  const workDate = asDateOnly(job.workDate);
-  if (!workDate) return false;
-  return workDate < getBangkokToday();
+  const pickupDate = asDateOnly(job.pickup?.date);
+  if (!pickupDate) return false;
+  return pickupDate < getBangkokToday();
 };
 
 const buildLineText = (
@@ -301,7 +300,7 @@ const notifyByEvent = async (
     logger.info("LINE skipped for backdated job", {
       eventType,
       jobId,
-      workDate: asDateOnly(job.workDate),
+      pickupDate: asDateOnly(job.pickup?.date),
       today: getBangkokToday(),
     });
   }
@@ -523,8 +522,9 @@ const buildJobPayloadFromToday = (
   job: TodayJobEntry,
   now: number
 ): Record<string, unknown> => {
+  const pickupDate = asDateOnly(job.pickup?.date);
   const payload: Record<string, unknown> = {
-    date: toJobDate(job.workDate),
+    date: toJobDate(pickupDate),
     pickupLocation: job.pickup?.location || "",
     dropoffLocation: job.delivery?.location || "",
     rounds: toRoundsFromToday(job),

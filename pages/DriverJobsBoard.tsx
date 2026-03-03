@@ -15,6 +15,8 @@ interface DriverJobsBoardProps {
 }
 
 const asDateOnly = (dateStr: string) => (dateStr || '').split('T')[0];
+const getJobDate = (job: Pick<TodayJobEntry, 'pickup'>) =>
+  asDateOnly(job.pickup?.date || '');
 
 const getLocalDate = () => {
   const now = new Date();
@@ -32,9 +34,7 @@ const parseRounds = (value?: string) => {
 };
 
 const parsePickupTimestamp = (job: TodayJobEntry): number => {
-  const pickupDate = (job.pickup?.date || '').trim();
-  const fallbackDate = asDateOnly(job.workDate || '').trim();
-  const datePart = pickupDate || fallbackDate;
+  const datePart = getJobDate(job).trim();
   if (!datePart) return Number.POSITIVE_INFINITY;
 
   const pickupTime = (job.pickup?.time || '').trim();
@@ -145,7 +145,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
   const myJobs = useMemo(() => jobs, [jobs]);
 
   const todayJobs = useMemo(
-    () => myJobs.filter((job) => asDateOnly(job.workDate) === todayDate),
+    () => myJobs.filter((job) => getJobDate(job) === todayDate),
     [myJobs, todayDate]
   );
   const activeJobs = useMemo(
@@ -168,7 +168,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
   const monthOptions = useMemo(() => {
     const months = new Set(
       historyJobs
-        .map((job) => asDateOnly(job.workDate).slice(0, 7))
+        .map((job) => getJobDate(job).slice(0, 7))
         .filter(Boolean)
     );
 
@@ -179,7 +179,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
     const search = normalizeText(searchText);
 
     return historyJobs.filter((job) => {
-      if (historyMonth && !asDateOnly(job.workDate).startsWith(historyMonth)) return false;
+      if (historyMonth && !getJobDate(job).startsWith(historyMonth)) return false;
       if (!search) return true;
 
       const haystack = normalizeText(
@@ -213,7 +213,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
     const search = normalizeText(searchText);
     const visibleTodayJobs = myJobs.filter((job) => {
       if (job.status === 'completed') return false;
-      const workDate = asDateOnly(job.workDate);
+      const workDate = getJobDate(job);
       // Show today's jobs plus overdue jobs (backdated and still not completed).
       return workDate === todayDate || (workDate && workDate < todayDate);
     });
@@ -318,7 +318,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
           jobNo: job.jobNo || '',
           invNo: job.invNo || '',
           transportDocNo: job.transportDocNo || '',
-          date: job.workDate || '',
+          date: getJobDate(job),
           pickupLocation: job.pickup.location || '',
           dropoffLocation: job.delivery.location || '',
           vehicleType: job.vehicleType || '',
@@ -464,7 +464,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
               <div className="mt-3 space-y-1 text-sm text-slate-700">
                 <div className="flex items-center gap-2">
                   <CalendarClock size={14} className="driver-clay-muted" />
-                  <span>{asDateOnly(job.workDate) || '-'}</span>
+                  <span>{getJobDate(job) || '-'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin size={14} className="driver-clay-muted" />
@@ -475,7 +475,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
             <div className="mt-4 space-y-2 text-sm text-slate-700">
               <div className="flex items-center gap-2">
                 <CalendarClock size={14} className="driver-clay-muted" />
-                <span>วันที่แจ้งงาน: {asDateOnly(job.orderDate || job.workDate) || '-'}</span>
+                <span>วันที่แจ้งงาน: {asDateOnly(job.orderDate || getJobDate(job)) || '-'}</span>
               </div>
 
               <div className="flex items-start gap-2">

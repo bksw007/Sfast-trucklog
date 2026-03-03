@@ -217,7 +217,7 @@ const EntryForm: React.FC = () => {
           invNo: row.invNo,
           transportDocNo: row.transportDocNo,
           workOrderNo: row.workOrderNo || row.ticketNo,
-          date: row.workDate,
+          date: row.pickup?.date || '',
           pickupLocation: row.pickup?.location,
           dropoffLocation: row.delivery?.location,
           vehicleType: row.vehicleType,
@@ -511,7 +511,6 @@ const EntryForm: React.FC = () => {
           transportDocNo: mergedTransportDocNo,
           workOrderNo: mergedWorkOrderNo,
           ticketNo: mergedWorkOrderNo,
-          workDate: dirtyFields.has('date') ? formData.date : (latestTodayJob.workDate || formData.date),
           vehicleType: dirtyFields.has('vehicleType') ? formData.vehicleType : (latestTodayJob.vehicleType || ''),
           plateNo: dirtyFields.has('licensePlate') ? formData.licensePlate : (latestTodayJob.plateNo || ''),
           driverName: driverFullName || mergedDriverName || latestTodayJob.assignedToName || '',
@@ -522,6 +521,9 @@ const EntryForm: React.FC = () => {
           readyToCloseAt: nextReadyToClose ? Date.now() : null,
           pickup: {
             ...pickupBase,
+            date: dirtyFields.has('date')
+              ? (formData.date || '')
+              : (pickupBase.date || formData.date),
             location: dirtyFields.has('pickupLocation')
               ? (formData.pickupLocation || '')
               : (pickupBase.location || ''),
