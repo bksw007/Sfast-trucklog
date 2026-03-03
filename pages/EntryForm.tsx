@@ -59,7 +59,7 @@ const mergeImageUrls = (existing: string[], incoming: string[]): string[] => {
 
 type EntryFormData = Omit<JobEntry, 'id' | 'timestamp' | 'originImageUrl' | 'destinationImageUrl'>;
 
-const EntryForm: React.FC = () => {
+const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const { data } = useData();
   const { user, userProfile } = useAuth();
   const location = useLocation();
@@ -759,19 +759,24 @@ const EntryForm: React.FC = () => {
     : `space-y-6 rounded-3xl border p-8 shadow-2xl ${
         isDark ? 'bg-dark-card border-dark-muted/10' : 'bg-light-card border-light-muted/10'
       }`;
+  const embeddedFormClass = `space-y-6 rounded-2xl border p-4 shadow-sm sm:p-6 ${
+    isDark ? 'bg-dark-card border-dark-muted/10' : 'bg-light-card border-light-muted/10'
+  }`;
 
   return (
-    <div className={`mx-auto max-w-4xl ${pageClass}`}>
-      <header className="mb-8">
-        <h2 className={`${headerTitleClass} mb-2`}>
-          {isDriverEntryMode ? 'บันทึกหน้างาน' : 'บันทึกงานวิ่งรถ'}
-        </h2>
-        <p className={headerTextClass}>
-          {isDriverEntryMode ? 'อัปเดตข้อมูลหน้างานจากใบแจ้งงานที่ได้รับมอบหมาย' : 'กรอกข้อมูลงานวิ่งรถใหม่ลงในระบบ'}
-        </p>
-      </header>
+    <div className={embedded ? 'w-full' : `mx-auto max-w-4xl ${pageClass}`}>
+      {!embedded && (
+        <header className="mb-8">
+          <h2 className={`${headerTitleClass} mb-2`}>
+            {isDriverEntryMode ? 'บันทึกหน้างาน' : 'บันทึกงานวิ่งรถ'}
+          </h2>
+          <p className={headerTextClass}>
+            {isDriverEntryMode ? 'อัปเดตข้อมูลหน้างานจากใบแจ้งงานที่ได้รับมอบหมาย' : 'กรอกข้อมูลงานวิ่งรถใหม่ลงในระบบ'}
+          </p>
+        </header>
+      )}
 
-      <form onSubmit={handleSubmitClick} className={formClass}>
+      <form onSubmit={handleSubmitClick} className={embedded ? embeddedFormClass : formClass}>
         {isDriverEntryMode ? (
           <div className="driver-clay-soft space-y-3 rounded-2xl border p-4">
             <DisplayRow label="เลขที่ใบสั่งงาน (Work Order)" value={formData.workOrderNo || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
@@ -836,7 +841,7 @@ const EntryForm: React.FC = () => {
             </div>
 
             {/* Row 3: Product & Vehicle Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            <div className={`grid grid-cols-1 md:grid-cols-2 ${embedded ? 'xl:grid-cols-2' : 'xl:grid-cols-4'} gap-6`}>
               <SelectWithAdd
                 label="ประเภทสินค้า (Product)"
                 name="productName"
@@ -1413,7 +1418,7 @@ const EntryForm: React.FC = () => {
 
 // Helper Components
 const FormGroup: React.FC<{ label: string; children: React.ReactNode; isDark: boolean; isDriverStyle?: boolean }> = ({ label, children, isDark, isDriverStyle = false }) => (
-  <div className="flex flex-col gap-2">
+  <div className="min-w-0 flex flex-col gap-2">
     <label className={`text-sm font-medium ${isDriverStyle ? 'driver-clay-muted' : isDark ? 'text-dark-text' : 'text-light-text'}`}>{label}</label>
     {children}
   </div>
@@ -1437,8 +1442,8 @@ const SelectWithAdd: React.FC<{
   isDriverStyle?: boolean;
 }> = ({ label, name, value, options, onChange, onAdd, isDark, isDriverStyle = false }) => {
   const selectClass = isDriverStyle
-    ? 'driver-clay-input w-full appearance-none rounded-xl px-4 py-3 pr-10 text-light-text focus:outline-none'
-    : `w-full appearance-none border rounded-xl px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-accent-primary transition-all ${
+    ? 'driver-clay-input min-w-0 w-full appearance-none rounded-xl px-4 py-3 pr-10 text-light-text focus:outline-none'
+    : `min-w-0 w-full appearance-none border rounded-xl px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-accent-primary transition-all ${
         isDark
           ? 'bg-dark-bg border-dark-muted/30 text-dark-text'
           : 'bg-light-bg border-light-muted/30 text-light-text'
@@ -1448,8 +1453,8 @@ const SelectWithAdd: React.FC<{
 
   return (
     <FormGroup label={label} isDark={isDark} isDriverStyle={isDriverStyle}>
-      <div className="flex gap-2">
-        <div className="relative flex-1">
+      <div className="flex min-w-0 gap-2">
+        <div className="relative min-w-0 flex-1">
           <select 
             name={name}
             value={value}
@@ -1468,8 +1473,8 @@ const SelectWithAdd: React.FC<{
           onClick={onAdd}
           className={
             isDriverStyle
-              ? 'driver-clay-btn driver-clay-btn-primary h-[46px] w-[52px] rounded-xl p-0'
-              : `border p-3 rounded-xl transition-all ${
+              ? 'driver-clay-btn driver-clay-btn-primary h-[46px] w-[52px] shrink-0 rounded-xl p-0'
+              : `shrink-0 border p-3 rounded-xl transition-all ${
                   isDark
                     ? 'bg-dark-card border-dark-muted/30 text-accent-primary hover:bg-accent-primary hover:text-white'
                     : 'bg-light-card border-light-muted/30 text-accent-primary hover:bg-accent-primary hover:text-white'

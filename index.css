@@ -308,12 +308,14 @@ select.no-arrow {
 }
 
 .driver-desktop-sidebar {
-  width: 270px;
   min-height: 100vh;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-right-color: rgba(255, 255, 255, 0.78);
   background: var(--driver-bg-color);
   box-shadow:
     8px 0 24px var(--driver-shadow-dark),
     -4px 0 12px var(--driver-shadow-light);
+  backdrop-filter: blur(8px);
 }
 
 .driver-desktop-nav-item {
@@ -338,6 +340,13 @@ select.no-arrow {
 .driver-desktop-nav-item-active {
   background: var(--driver-clay-blue);
   color: #fff;
+}
+
+.driver-desktop-nav-item-collapsed {
+  justify-content: center !important;
+  gap: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 .driver-mobile-nav-surface {

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
-  PlusCircle,
   Table2,
   ChevronLeft,
   ChevronRight,
@@ -32,13 +31,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const navItems = [
     { path: '/', label: 'แดชบอร์ด', icon: LayoutDashboard },
-    { path: '/entry', label: 'บันทึกงาน', icon: PlusCircle },
     { path: '/today', label: 'งานวันนี้', icon: ClipboardList },
     { path: '/data', label: 'ข้อมูลงานวิ่ง', icon: Table2 },
     { path: '/settings', label: 'ตั้งค่า', icon: Settings },
   ];
 
   const appLogo = '/icons/truck-logo.png';
+  const desktopActionClass = (isDanger = false) => `driver-desktop-nav-item w-full whitespace-nowrap transition-all duration-200 ${
+    sidebarOpen ? 'justify-start gap-3 px-4 py-3' : 'driver-desktop-nav-item-collapsed py-3'
+  } ${isDanger ? 'text-rose-500 hover:text-rose-600' : 'text-slate-500 hover:text-[#2f4658]'}`;
 
   useEffect(() => {
     setShowMobileTopMenu(false);
@@ -118,9 +119,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </header>
 
       <div className="flex">
-        <aside className={`hidden md:flex flex-col fixed left-0 top-0 h-screen border-r transition-all duration-300 z-40 ${
+        <aside className={`driver-desktop-sidebar hidden md:flex flex-col fixed left-0 top-0 h-screen transition-all duration-300 z-40 ${
           sidebarOpen ? 'w-64' : 'w-20'
-        } border-white/85 bg-[rgba(240,244,248,0.96)] shadow-[6px_0_14px_rgba(166,180,200,0.26)]`}>
+        } bg-[rgba(240,244,248,0.96)]`}>
           <div className={`p-6 flex items-center ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
             <div className={`flex items-center transition-all duration-300 ${sidebarOpen ? 'gap-3' : 'gap-0 justify-center'}`}>
               <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-accent-primary/20 flex-shrink-0 bg-[#272727]">
@@ -144,11 +145,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   to={item.path}
                   title={!sidebarOpen ? item.label : ''}
                   className={`flex items-center px-4 py-3 rounded-xl transition-all duration-200 group whitespace-nowrap ${
-                    sidebarOpen ? 'gap-3' : 'gap-0 justify-center'
-                  } ${
+                    sidebarOpen ? 'gap-3' : 'driver-desktop-nav-item-collapsed'
+                  } driver-desktop-nav-item ${
                     isActive
-                      ? 'bg-accent-primary/20 text-accent-primary shadow-lg shadow-accent-primary/10'
-                      : 'text-slate-500 hover:bg-[#d9e6f2] hover:text-[#272727] active:bg-[#d9e6f2] active:text-[#272727]'
+                      ? 'driver-desktop-nav-item-active text-[#2f4658]'
+                      : 'text-slate-500 hover:text-[#2f4658]'
                   }`}
                 >
                   <Icon size={20} className={`flex-shrink-0 ${isActive ? 'text-accent-primary' : ''}`} />
@@ -164,9 +165,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <button
               onClick={() => setShowProfileModal(true)}
               title={!sidebarOpen ? 'โปรไฟล์' : ''}
-              className={`w-full flex items-center px-4 py-3 rounded-xl transition-all mt-2 whitespace-nowrap ${
-                sidebarOpen ? 'gap-3' : 'gap-0 justify-center'
-              } text-slate-500 hover:bg-[#d9e6f2] hover:text-[#272727] active:bg-[#d9e6f2] active:text-[#272727]`}
+              className={`${desktopActionClass()} mt-2`}
             >
               <User size={20} className="flex-shrink-0" />
               <span className={`font-medium transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
@@ -178,9 +177,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <button
                 onClick={() => setShowUserManagementModal(true)}
                 title={!sidebarOpen ? 'จัดการผู้ใช้' : ''}
-                className={`w-full flex items-center px-4 py-3 rounded-xl transition-all mt-2 whitespace-nowrap ${
-                  sidebarOpen ? 'gap-3' : 'gap-0 justify-center'
-                } text-slate-500 hover:bg-[#d9e6f2] hover:text-[#272727] active:bg-[#d9e6f2] active:text-[#272727]`}
+                className={`${desktopActionClass()} mt-2`}
               >
                 <Users size={20} className="flex-shrink-0" />
                 <span className={`font-medium transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
@@ -192,9 +189,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <button
               onClick={logout}
               title={!sidebarOpen ? 'ออกจากระบบ' : ''}
-              className={`w-full flex items-center px-4 py-3 rounded-xl transition-all mt-2 whitespace-nowrap ${
-                sidebarOpen ? 'gap-3' : 'gap-0 justify-center'
-              } text-red-500 hover:bg-red-500/10`}
+              className={`${desktopActionClass(true)} mt-2`}
             >
               <LogOut size={20} className="flex-shrink-0" />
               <span className={`font-medium transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
@@ -204,9 +199,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className={`w-full flex items-center px-4 py-3 rounded-xl transition-all mt-2 whitespace-nowrap ${
-                sidebarOpen ? 'gap-3' : 'gap-0 justify-center'
-              } text-slate-500 hover:bg-[#d9e6f2] hover:text-[#272727] active:bg-[#d9e6f2] active:text-[#272727]`}
+              className={`${desktopActionClass()} mt-2`}
             >
               <div className="flex-shrink-0">
                 {sidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
@@ -228,7 +221,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </div>
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 px-2 pb-[calc(0.45rem+env(safe-area-inset-bottom))] pt-2 md:hidden">
-        <div className="driver-mobile-nav-surface mx-auto grid w-full max-w-6xl grid-cols-5 gap-2 rounded-[22px] border border-white/85 p-2">
+        <div className="driver-mobile-nav-surface mx-auto grid w-full max-w-6xl grid-cols-4 gap-2 rounded-[22px] border border-white/85 p-2">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;

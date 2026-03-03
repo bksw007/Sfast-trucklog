@@ -11,6 +11,7 @@ import {
   Image as ImageIcon,
   MapPin,
   Package2,
+  PlusCircle,
   Truck,
   UserRound,
   X
@@ -22,6 +23,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { NotoSansThaiBase64 } from '../fonts/NotoSansThai';
 import { formatDate } from '../utils/formatters';
+import EntryForm from './EntryForm';
 
 const MONTHS = [
   { value: 1, label: 'มกราคม' },
@@ -107,6 +109,7 @@ const DataTable: React.FC = () => {
   const [showConfirmEdit, setShowConfirmEdit] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [showAddJobModal, setShowAddJobModal] = useState(false);
   const pinnedLocations = useMemo(
     () =>
       Array.from(
@@ -133,6 +136,21 @@ const DataTable: React.FC = () => {
       setLoading(false);
     }
   }, [appData]);
+
+  useEffect(() => {
+    const lockScroll = isDetailModalOpen || showAddJobModal;
+    if (!lockScroll) return undefined;
+
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, [isDetailModalOpen, showAddJobModal]);
 
   // Extract unique years from data
   const availableYears = useMemo(() => {
@@ -1330,6 +1348,42 @@ const DataTable: React.FC = () => {
     );
   };
 
+  const renderAddJobModal = () => {
+    if (!showAddJobModal) return null;
+
+    return (
+      <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-hidden px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:items-center sm:py-6">
+        <div className="modal-clay-backdrop absolute inset-0" onClick={() => setShowAddJobModal(false)} />
+
+        <div className="modal-clay-panel relative w-full max-w-5xl max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl shadow-2xl animate-fade-in sm:max-h-[90dvh]">
+          <div className="modal-clay-header rounded-t-3xl p-5 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="modal-clay-soft rounded-xl p-3">
+                  <PlusCircle size={22} className="text-[#5d8aa8]" />
+                </div>
+                <div>
+                  <h3 className="modal-clay-title text-xl">เพิ่มงานวิ่ง</h3>
+                  <p className="modal-clay-muted text-sm">กรอกข้อมูลและบันทึกเข้าตารางงานวิ่ง</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddJobModal(false)}
+                className="driver-clay-icon-btn rounded-xl p-2 transition-colors"
+              >
+                <X size={20} className="modal-clay-muted" />
+              </button>
+            </div>
+          </div>
+
+          <div className="p-4 sm:p-6">
+            <EntryForm embedded />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <section className={`${cardClass} overflow-hidden`}>
@@ -1347,29 +1401,63 @@ const DataTable: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 p-4 md:p-6">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`${pastelFilterButtonClass} text-xs sm:text-sm`}
-          >
-            <Filter size={16} />
-            ตัวกรอง
-            {hasActiveFilters && (
-              <span className="rounded-full bg-white/45 px-2 py-0.5 text-[11px] font-bold">
-                {[filters.month, filters.year, filters.driver, filters.vehicleType, filters.licensePlate].filter(Boolean).length}
-              </span>
-            )}
-            <ChevronDown size={16} className={`transition-transform ${showFilters ? 'rotate-180' : ''}`} />
-          </button>
+          <div className="grid w-full grid-cols-2 gap-2 md:hidden">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`${pastelFilterButtonClass} justify-center text-xs`}
+            >
+              <Filter size={16} />
+              ตัวกรอง
+              {hasActiveFilters && (
+                <span className="rounded-full bg-white/45 px-2 py-0.5 text-[11px] font-bold">
+                  {[filters.month, filters.year, filters.driver, filters.vehicleType, filters.licensePlate].filter(Boolean).length}
+                </span>
+              )}
+              <ChevronDown size={16} className={`transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+            </button>
+            <button
+              onClick={() => setShowAddJobModal(true)}
+              className="driver-clay-btn justify-center border border-sky-200 bg-sky-100/90 text-xs text-sky-700 shadow-[inset_1px_1px_0_rgba(255,255,255,0.7)] hover:bg-sky-200/85"
+            >
+              <PlusCircle size={15} />
+              เพิ่มงาน
+            </button>
+          </div>
 
-          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
-            <button onClick={exportCSV} className="driver-clay-btn driver-clay-btn-ghost w-full justify-center text-xs sm:w-auto sm:text-sm">
+          <div className="hidden md:block">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`${pastelFilterButtonClass} text-sm`}
+            >
+              <Filter size={16} />
+              ตัวกรอง
+              {hasActiveFilters && (
+                <span className="rounded-full bg-white/45 px-2 py-0.5 text-[11px] font-bold">
+                  {[filters.month, filters.year, filters.driver, filters.vehicleType, filters.licensePlate].filter(Boolean).length}
+                </span>
+              )}
+              <ChevronDown size={16} className={`transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+
+          <div className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:flex-wrap">
+            <button onClick={exportCSV} className="driver-clay-btn driver-clay-btn-ghost w-full justify-center text-xs md:w-auto md:text-sm">
               <Download size={15} />
               CSV
             </button>
-            <button onClick={() => generatePDFReport(false)} className="driver-clay-btn driver-clay-btn-info w-full justify-center text-xs sm:w-auto sm:text-sm">
+            <button onClick={() => generatePDFReport(false)} className="driver-clay-btn driver-clay-btn-info w-full justify-center text-xs md:w-auto md:text-sm">
               <Download size={15} />
               PDF
             </button>
+            <div className="hidden md:block">
+              <button
+                onClick={() => setShowAddJobModal(true)}
+                className="driver-clay-btn w-full justify-center border border-sky-200 bg-sky-100/90 text-xs text-sky-700 shadow-[inset_1px_1px_0_rgba(255,255,255,0.7)] hover:bg-sky-200/85 md:w-auto md:text-sm"
+              >
+                <PlusCircle size={15} />
+                เพิ่มงาน
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -1607,6 +1695,7 @@ const DataTable: React.FC = () => {
 
       {/* Detail Modal */}
       {isDetailModalOpen && renderDetailModal()}
+      {renderAddJobModal()}
 
       {/* Confirm Edit Modal */}
       <ConfirmModal

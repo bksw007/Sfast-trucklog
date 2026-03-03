@@ -6,9 +6,11 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  panelClassName?: string;
+  bodyClassName?: string;
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, panelClassName = '', bodyClassName = '' }) => {
   useEffect(() => {
     if (!isOpen) return undefined;
     const prevBodyOverflow = document.body.style.overflow;
@@ -24,6 +26,8 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
 
   if (!isOpen) return null;
 
+  const resolvedBodyClassName = bodyClassName || 'max-h-[calc(100dvh-8rem)] overflow-y-auto pr-1';
+
   return (
     <div className="fixed inset-0 z-[85] flex items-start justify-center overflow-hidden px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:items-center sm:py-8">
       {/* Backdrop */}
@@ -33,7 +37,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
       />
       
       {/* Modal Content */}
-      <div className="modal-clay-panel relative my-auto w-full max-w-md p-6 shadow-2xl animate-fade-in max-h-[calc(100dvh-2rem)] overflow-y-auto">
+      <div className={`modal-clay-panel relative my-auto w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-hidden p-6 shadow-2xl animate-fade-in ${panelClassName}`}>
         {/* Header */}
         <div className="modal-clay-header mb-4 flex items-center justify-between pb-3">
           <h3 className="modal-clay-title text-lg">
@@ -48,7 +52,9 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
         </div>
         
         {/* Body */}
-        {children}
+        <div className={resolvedBodyClassName}>
+          {children}
+        </div>
       </div>
     </div>
   );
