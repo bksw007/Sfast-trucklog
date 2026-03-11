@@ -104,8 +104,13 @@ const parseDate = (dateStr: string) => {
   const parsed = new Date(`${dateOnly}T00:00:00`);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
+type DatePickerEvent = React.MouseEvent<HTMLInputElement> | React.FocusEvent<HTMLInputElement>;
 
 const hasValue = (value?: string) => !!value && value.trim().length > 0;
+const isDeliveryBeforePickup = (pickupDate?: string, deliveryDate?: string) =>
+  !!pickupDate && !!deliveryDate && deliveryDate < pickupDate;
+const isPickupBeforeOrderDate = (orderDate?: string, pickupDate?: string) =>
+  !!orderDate && !!pickupDate && pickupDate < orderDate;
 const formatPhoneNumber = (value: string): string => {
   const digits = value.replace(/\D/g, '').slice(0, 10);
   if (digits.length <= 3) return digits;
@@ -558,6 +563,19 @@ const TodayJobs: React.FC = () => {
       setFormData((prev) => ({ ...prev, driverPhone: formatPhoneNumber(value) }));
       return;
     }
+    if (field === 'orderDate') {
+      setFormData((prev) => {
+        const nextPickupDate =
+          prev.pickup.date && prev.pickup.date < value ? value : prev.pickup.date;
+        return {
+          ...prev,
+          orderDate: value,
+          pickup: { ...prev.pickup, date: nextPickupDate },
+          delivery: { ...prev.delivery, date: nextPickupDate },
+        };
+      });
+      return;
+    }
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -592,7 +610,30 @@ const TodayJobs: React.FC = () => {
   };
 
   const updatePoint = (point: 'pickup' | 'delivery', field: keyof DispatchPoint, value: string) => {
-    setFormData((prev) => ({ ...prev, [point]: { ...prev[point], [field]: value } }));
+    setFormData((prev) => {
+      if (field !== 'date') {
+        return { ...prev, [point]: { ...prev[point], [field]: value } };
+      }
+
+      if (point === 'delivery' && isDeliveryBeforePickup(prev.pickup.date, value)) {
+        alert('วันที่ส่งงานต้องมากกว่าหรือเท่ากับวันที่รับงาน');
+        return prev;
+      }
+
+      if (point === 'pickup') {
+        if (isPickupBeforeOrderDate(prev.orderDate, value)) {
+          alert('วันที่รับงานต้องมากกว่าหรือเท่ากับวันที่รับงานจากผู้ว่าจ้าง');
+          return prev;
+        }
+        return {
+          ...prev,
+          pickup: { ...prev.pickup, date: value },
+          delivery: { ...prev.delivery, date: value },
+        };
+      }
+
+      return { ...prev, delivery: { ...prev.delivery, date: value } };
+    });
   };
 
   const handleReset = () => setFormData(initialFormData());
@@ -659,7 +700,7 @@ const TodayJobs: React.FC = () => {
     }
   };
 
-  const openNativePicker = (event: React.MouseEvent<HTMLInputElement> | React.FocusEvent<HTMLInputElement>) => {
+  const openNativePicker = (event: DatePickerEvent) => {
     const input = event.currentTarget as HTMLInputElement & { showPicker?: () => void };
     if (typeof input.showPicker === 'function') input.showPicker();
   };
@@ -746,6 +787,14 @@ const TodayJobs: React.FC = () => {
     }
     if (!formData.assignedToUid) {
       alert('กรุณาระบุพนักงานผู้รับงาน');
+      return;
+    }
+    if (isPickupBeforeOrderDate(formData.orderDate, formData.pickup.date)) {
+      alert('วันที่รับงานต้องมากกว่าหรือเท่ากับวันที่รับงานจากผู้ว่าจ้าง');
+      return;
+    }
+    if (isDeliveryBeforePickup(formData.pickup.date, formData.delivery.date)) {
+      alert('วันที่ส่งงานต้องมากกว่าหรือเท่ากับวันที่รับงาน');
       return;
     }
 
@@ -920,6 +969,25 @@ const TodayJobs: React.FC = () => {
       setEditForm((prev) => (prev ? { ...prev, driverPhone: formatPhoneNumber(value) } : prev));
       return;
     }
+    if (field === 'orderDate') {
+      setEditForm((prev) =>
+        prev
+          ? {
+              ...prev,
+              orderDate: value,
+              pickup: {
+                ...prev.pickup,
+                date: prev.pickup.date && prev.pickup.date < value ? value : prev.pickup.date,
+              },
+              delivery: {
+                ...prev.delivery,
+                date: prev.pickup.date && prev.pickup.date < value ? value : prev.delivery.date,
+              },
+            }
+          : prev
+      );
+      return;
+    }
     setEditForm((prev) => (prev ? { ...prev, [field]: value } : prev));
   };
 
@@ -958,7 +1026,29 @@ const TodayJobs: React.FC = () => {
   };
 
   const handleEditPoint = (point: 'pickup' | 'delivery', field: keyof DispatchPoint, value: string) => {
-    setEditForm((prev) => (prev ? { ...prev, [point]: { ...prev[point], [field]: value } } : prev));
+    setEditForm((prev) => {
+      if (!prev) return prev;
+      if (field !== 'date') return { ...prev, [point]: { ...prev[point], [field]: value } };
+
+      if (point === 'delivery' && isDeliveryBeforePickup(prev.pickup.date, value)) {
+        alert('วันที่ส่งงานต้องมากกว่าหรือเท่ากับวันที่รับงาน');
+        return prev;
+      }
+
+      if (point === 'pickup') {
+        if (isPickupBeforeOrderDate(prev.orderDate, value)) {
+          alert('วันที่รับงานต้องมากกว่าหรือเท่ากับวันที่รับงานจากผู้ว่าจ้าง');
+          return prev;
+        }
+        return {
+          ...prev,
+          pickup: { ...prev.pickup, date: value },
+          delivery: { ...prev.delivery, date: value },
+        };
+      }
+
+      return { ...prev, delivery: { ...prev.delivery, date: value } };
+    });
   };
 
   const handleEditImageSelect = (
@@ -1032,6 +1122,14 @@ const TodayJobs: React.FC = () => {
     setIsEditingSave(true);
 
     try {
+      if (isPickupBeforeOrderDate(editForm.orderDate, editForm.pickup.date)) {
+        alert('วันที่รับงานต้องมากกว่าหรือเท่ากับวันที่รับงานจากผู้ว่าจ้าง');
+        return;
+      }
+      if (isDeliveryBeforePickup(editForm.pickup.date, editForm.delivery.date)) {
+        alert('วันที่ส่งงานต้องมากกว่าหรือเท่ากับวันที่รับงาน');
+        return;
+      }
       const fuelAndTollRaw = (editForm.fuelAndToll || '').trim();
       if (fuelAndTollRaw && Number.isNaN(Number(fuelAndTollRaw))) {
         alert('ค่าน้ำมัน/ทางด่วนต้องเป็นตัวเลข');
@@ -1437,7 +1535,7 @@ const TodayJobs: React.FC = () => {
                 </label>
                 <label className="block text-sm">
                   <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>วันที่</span>
-                  <input type="date" className={pointInputClass} value={formData.pickup.date} onChange={(e) => updatePoint('pickup', 'date', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
+                  <input type="date" min={formData.orderDate || undefined} className={pointInputClass} value={formData.pickup.date} onChange={(e) => updatePoint('pickup', 'date', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
                 </label>
                 <label className="block text-sm">
                   <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>เวลา</span>
@@ -1509,7 +1607,7 @@ const TodayJobs: React.FC = () => {
                 </label>
                 <label className="block text-sm">
                   <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>วันที่</span>
-                  <input type="date" className={pointInputClass} value={formData.delivery.date} onChange={(e) => updatePoint('delivery', 'date', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
+                  <input type="date" min={formData.pickup.date || undefined} className={pointInputClass} value={formData.delivery.date} onChange={(e) => updatePoint('delivery', 'date', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
                 </label>
                 <label className="block text-sm">
                   <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>เวลา</span>
@@ -1616,10 +1714,10 @@ const TodayJobs: React.FC = () => {
               <div className={`grid grid-cols-[120px_1fr_1fr] ${isDark ? 'border-t border-dark-muted/25' : 'border-t border-light-muted/25'}`}>
                 <div className={`border-r px-3 py-3 text-sm font-medium ${isDark ? 'border-dark-muted/25 text-dark-muted' : 'border-light-muted/25 text-light-muted'}`}>วันที่</div>
                 <div className={`border-r px-2 py-2 ${isDark ? 'border-dark-muted/25' : 'border-light-muted/25'}`}>
-                  <input type="date" className={pointInputClass} value={formData.pickup.date} onChange={(e) => updatePoint('pickup', 'date', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
+                  <input type="date" min={formData.orderDate || undefined} className={pointInputClass} value={formData.pickup.date} onChange={(e) => updatePoint('pickup', 'date', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
                 </div>
                 <div className="px-2 py-2">
-                  <input type="date" className={pointInputClass} value={formData.delivery.date} onChange={(e) => updatePoint('delivery', 'date', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
+                  <input type="date" min={formData.pickup.date || undefined} className={pointInputClass} value={formData.delivery.date} onChange={(e) => updatePoint('delivery', 'date', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
                 </div>
               </div>
               <div className={`grid grid-cols-[120px_1fr_1fr] ${isDark ? 'border-t border-dark-muted/25' : 'border-t border-light-muted/25'}`}>
@@ -2394,7 +2492,7 @@ const TodayJobs: React.FC = () => {
                   </label>
                   <label className="space-y-1">
                     <span className={modalLabelClass}>วันที่รับ</span>
-                    <input type="date" className={modalInputClass} value={editForm.pickup.date} onChange={(e) => handleEditPoint('pickup', 'date', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
+                    <input type="date" min={editForm.orderDate || undefined} className={modalInputClass} value={editForm.pickup.date} onChange={(e) => handleEditPoint('pickup', 'date', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
                   </label>
                   <label className="space-y-1">
                     <span className={modalLabelClass}>เวลารับ</span>
@@ -2430,7 +2528,7 @@ const TodayJobs: React.FC = () => {
                   </label>
                   <label className="space-y-1">
                     <span className={modalLabelClass}>วันที่ส่ง</span>
-                    <input type="date" className={modalInputClass} value={editForm.delivery.date} onChange={(e) => handleEditPoint('delivery', 'date', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
+                    <input type="date" min={editForm.pickup.date || undefined} className={modalInputClass} value={editForm.delivery.date} onChange={(e) => handleEditPoint('delivery', 'date', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
                   </label>
                   <label className="space-y-1">
                     <span className={modalLabelClass}>เวลาส่ง</span>

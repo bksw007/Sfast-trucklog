@@ -213,9 +213,9 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
     const search = normalizeText(searchText);
     const visibleTodayJobs = myJobs.filter((job) => {
       if (job.status === 'completed') return false;
-      const workDate = getJobDate(job);
+      const jobDate = getJobDate(job);
       // Show today's jobs plus overdue jobs (backdated and still not completed).
-      return workDate === todayDate || (workDate && workDate < todayDate);
+      return jobDate === todayDate || (jobDate && jobDate < todayDate);
     });
     if (!search) return visibleTodayJobs;
 
