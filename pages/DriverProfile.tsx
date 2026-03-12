@@ -532,7 +532,7 @@ const DriverProfile: React.FC = () => {
 
               <div className="space-y-1">
                 <p className="text-base font-black text-slate-700">{profileName}</p>
-                <p className="driver-clay-muted text-xs">
+                <p className="driver-clay-muted max-w-full break-all text-xs">
                   {userProfile.email}
                 </p>
               </div>
@@ -562,7 +562,7 @@ const DriverProfile: React.FC = () => {
               <span className="driver-clay-muted">อีเมล</span>
               <div className="flex items-center gap-2 px-1">
                 <Mail size={15} className={iconClass} />
-                <span className="truncate font-semibold text-slate-700">{userProfile.email}</span>
+                <span className="break-all font-semibold text-slate-700">{userProfile.email}</span>
               </div>
             </div>
             <div className="driver-clay-soft space-y-1 p-3 text-sm">

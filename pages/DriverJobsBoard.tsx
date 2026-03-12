@@ -502,6 +502,9 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
               job.readyToClose &&
               (view === 'ready-to-close' || view === 'today');
             const imageSections = getJobImageSections(job);
+            const futureToneClass = isFutureScheduled
+              ? 'border border-sky-300/90 bg-[linear-gradient(145deg,rgba(224,242,254,0.96),rgba(240,249,255,0.92))] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),10px_10px_22px_rgba(125,171,203,0.18),-8px_-8px_18px_rgba(255,255,255,0.88)]'
+              : '';
 
             return (
               <article
@@ -515,10 +518,15 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                     toggleExpanded(job.id);
                   }
                 }}
-                className={`${cardClass} cursor-pointer transition hover:-translate-y-[1px] ${
-                  isFutureScheduled ? 'border border-sky-200/80 bg-sky-50/70' : ''
-                }`}
+                className={`${cardClass} cursor-pointer transition hover:-translate-y-[1px] ${futureToneClass}`}
               >
+                {isFutureScheduled && (
+                  <div className="-mx-4 -mt-4 mb-3 flex items-center justify-between rounded-t-[1.45rem] border-b border-sky-200/80 bg-[linear-gradient(90deg,#0284c7,#38bdf8)] px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-white sm:-mx-5 sm:-mt-5 sm:px-5">
+                    <span>งานล่วงหน้า</span>
+                    <span>อีก {futureOffset} วัน</span>
+                  </div>
+                )}
+
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="break-words text-base font-black text-slate-700">
@@ -544,14 +552,14 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                       </span>
                     )}
                     {isFutureScheduled && (
-                      <span className="driver-clay-chip whitespace-nowrap bg-sky-100/90 text-sky-700">
-                        +{futureOffset} วัน
+                      <span className="driver-clay-chip whitespace-nowrap border border-sky-200/70 bg-white/75 text-sky-700">
+                        นัดล่วงหน้า
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="mt-4 space-y-2 text-sm text-slate-700">
+                <div className="mt-3 space-y-1.5 text-[13px] text-slate-700 sm:mt-4 sm:space-y-2 sm:text-sm">
                   <DetailRow
                     icon={<CalendarClock size={14} className="driver-clay-muted" />}
                     value={
@@ -571,7 +579,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                 </div>
 
                 {expanded && (
-                  <div className="mt-4 space-y-2 border-t border-white/70 pt-4 text-sm text-slate-700">
+                  <div className="mt-3 space-y-2 border-t border-white/70 pt-3 text-[13px] text-slate-700 sm:mt-4 sm:pt-4 sm:text-sm">
                     <DetailRow
                       icon={<Clock3 size={14} className="driver-clay-muted" />}
                       value={`เวลารับ: ${`${job.pickup.date || '-'} ${job.pickup.time || ''}`.trim()}`}
@@ -637,7 +645,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                   </div>
                 )}
 
-                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <div className="mt-4 grid grid-cols-1 gap-2 sm:flex sm:flex-row sm:flex-wrap">
                   {job.status === 'pending' && (
                     <button
                       type="button"
@@ -646,7 +654,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                         void handleAcceptJob(job);
                       }}
                       disabled={!canAcceptToday || updatingJobId === job.id}
-                      className="driver-clay-btn driver-clay-btn-success disabled:opacity-55"
+                      className={`driver-clay-btn driver-clay-btn-success min-h-[2.85rem] justify-center text-sm ${!canAcceptToday ? 'opacity-70' : ''}`}
                     >
                       <Truck size={15} />
                       {canAcceptToday
@@ -664,7 +672,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                         event.stopPropagation();
                         handleOpenEntryForm(job);
                       }}
-                      className="driver-clay-btn driver-clay-btn-warning"
+                      className="driver-clay-btn driver-clay-btn-warning min-h-[2.85rem] justify-center text-sm"
                     >
                       <CircleDashed size={15} />
                       อัพเดทข้อมูล
@@ -679,7 +687,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                         void handleCompleteJob(job);
                       }}
                       disabled={updatingJobId === job.id}
-                      className="driver-clay-btn driver-clay-btn-info"
+                      className="driver-clay-btn driver-clay-btn-info min-h-[2.85rem] justify-center text-sm"
                     >
                       <CheckCircle2 size={15} />
                       {updatingJobId === job.id ? 'กำลังจบงาน...' : 'จบงาน'}
@@ -692,14 +700,14 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                       event.stopPropagation();
                       setSelectedJob(job);
                     }}
-                    className="driver-clay-btn driver-clay-btn-ghost"
+                    className="driver-clay-btn driver-clay-btn-ghost min-h-[2.85rem] justify-center text-sm"
                   >
                     <Eye size={15} />
                     ดูรายละเอียด
                   </button>
                 </div>
 
-                <p className="driver-clay-muted mt-3 text-xs">
+                <p className="driver-clay-muted mt-2 text-[11px] sm:mt-3 sm:text-xs">
                   แตะการ์ดเพื่อ{expanded ? 'ย่อ' : 'ขยาย'}รายละเอียด
                 </p>
               </article>
@@ -840,7 +848,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
 
 const SummaryCard: React.FC<{ label: string; value: number }> = ({ label, value }) => (
   <div className="driver-clay-soft rounded-2xl p-3 text-center">
-    <p className="driver-clay-muted text-xs">{label}</p>
+    <p className="driver-clay-muted text-[11px]">{label}</p>
     <p className="mt-1 text-lg font-black text-slate-700">{value}</p>
   </div>
 );
