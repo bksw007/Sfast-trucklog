@@ -789,32 +789,35 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   );
 
   const inputClass = isDriverEntryMode
-    ? 'driver-clay-input w-full rounded-xl px-4 py-3 text-base text-light-text transition-all focus:outline-none sm:text-lg'
+    ? 'driver-clay-input w-full rounded-2xl border border-white/65 bg-white/55 px-4 py-3 text-base text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition focus:outline-none focus:ring-0 sm:text-[17px]'
     : `w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-accent-primary transition-all ${
         isDark
           ? 'bg-dark-bg border-dark-muted/30 text-dark-text placeholder-dark-muted/50'
           : 'bg-light-bg border-light-muted/30 text-light-text placeholder-light-muted/50'
       }`;
 
-  const pageClass = isDriverEntryMode ? 'driver-clay rounded-[28px] p-2 sm:p-3' : '';
+  const pageClass = isDriverEntryMode ? 'driver-clay rounded-[30px] p-2.5 sm:p-3' : '';
   const headerTitleClass = isDriverEntryMode ? 'text-3xl font-black text-slate-700 sm:text-4xl' : `text-3xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`;
   const headerTextClass = isDriverEntryMode ? 'driver-clay-muted text-base sm:text-lg' : isDark ? 'text-dark-muted' : 'text-light-muted';
   const mutedTextClass = isDriverEntryMode ? 'driver-clay-muted' : isDark ? 'text-dark-muted' : 'text-light-muted';
   const uploadButtonClass = isDriverEntryMode
-    ? 'driver-clay-btn driver-clay-btn-info w-full'
+    ? 'driver-clay-btn driver-clay-btn-info w-full rounded-2xl'
     : `w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border transition-all ${
         isDark
           ? 'bg-dark-bg border-dark-muted/30 text-dark-text hover:border-accent-primary'
           : 'bg-light-bg border-light-muted/30 text-light-text hover:border-accent-primary'
       }`;
   const submitButtonClass = isDriverEntryMode
-    ? 'driver-clay-btn driver-clay-btn-primary rounded-xl px-8 py-3 font-bold'
+    ? 'driver-clay-btn driver-clay-btn-primary rounded-2xl px-8 py-3 font-bold'
     : 'flex items-center gap-2 bg-gradient-to-r from-accent-primary to-accent-secondary hover:brightness-110 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg shadow-accent-primary/25 disabled:opacity-50 disabled:cursor-not-allowed';
   const formClass = isDriverEntryMode
-    ? 'driver-clay-card space-y-6 rounded-3xl border p-6 shadow-2xl sm:p-8'
+    ? 'driver-clay-card space-y-5 rounded-[2rem] p-5 sm:p-6'
     : `space-y-6 rounded-3xl border p-8 shadow-2xl ${
         isDark ? 'bg-dark-card border-dark-muted/10' : 'bg-light-card border-light-muted/10'
       }`;
+  const driverSectionClass = isDriverEntryMode
+    ? 'driver-clay-soft space-y-4 rounded-[1.7rem] p-4 sm:p-5'
+    : '';
   const embeddedFormClass = `space-y-6 rounded-2xl border p-4 shadow-sm sm:p-6 ${
     isDark ? 'bg-dark-card border-dark-muted/10' : 'bg-light-card border-light-muted/10'
   }`;
@@ -834,7 +837,7 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
 
       <form onSubmit={handleSubmitClick} className={embedded ? embeddedFormClass : formClass}>
         {isDriverEntryMode ? (
-          <div className="driver-clay-soft space-y-3 rounded-2xl border p-4">
+          <div className="driver-clay-soft space-y-3 rounded-[1.7rem] p-4 sm:p-5">
             <DisplayRow label="เลขที่ใบสั่งงาน (Work Order)" value={formData.workOrderNo || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
             <DisplayRow label="วันที่ (Date)" value={formatDate(formData.date || '-')} isDark={isDark} isDriverStyle={isDriverEntryMode} />
             <DisplayRow label="สถานที่รับ (Pickup)" value={formData.pickupLocation || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
@@ -939,45 +942,47 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
         )}
 
         {isDriverEntryMode && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormGroup label="จำนวนรอบ (Rounds)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
-              <input
-                type="number"
-                name="rounds"
-                min="1"
-                required
-                value={formData.rounds}
-                onChange={handleInputChange}
-                className={inputClass}
-              />
-            </FormGroup>
-            <FormGroup label="Job No." isDark={isDark} isDriverStyle={isDriverEntryMode}>
-              <input
-                type="text"
-                name="jobNo"
-                value={formData.jobNo}
-                onChange={handleInputChange}
-                className={inputClass}
-              />
-            </FormGroup>
-            <FormGroup label="Invoice No." isDark={isDark} isDriverStyle={isDriverEntryMode}>
-              <input
-                type="text"
-                name="invNo"
-                value={formData.invNo}
-                onChange={handleInputChange}
-                className={inputClass}
-              />
-            </FormGroup>
-            <FormGroup label="เลขที่ใบขนส่ง (Transport Doc)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
-              <input
-                type="text"
-                name="transportDocNo"
-                value={formData.transportDocNo}
-                onChange={handleInputChange}
-                className={inputClass}
-              />
-            </FormGroup>
+          <div className={driverSectionClass}>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <FormGroup label="จำนวนรอบ (Rounds)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
+                <input
+                  type="number"
+                  name="rounds"
+                  min="1"
+                  required
+                  value={formData.rounds}
+                  onChange={handleInputChange}
+                  className={inputClass}
+                />
+              </FormGroup>
+              <FormGroup label="Job No." isDark={isDark} isDriverStyle={isDriverEntryMode}>
+                <input
+                  type="text"
+                  name="jobNo"
+                  value={formData.jobNo}
+                  onChange={handleInputChange}
+                  className={inputClass}
+                />
+              </FormGroup>
+              <FormGroup label="Invoice No." isDark={isDark} isDriverStyle={isDriverEntryMode}>
+                <input
+                  type="text"
+                  name="invNo"
+                  value={formData.invNo}
+                  onChange={handleInputChange}
+                  className={inputClass}
+                />
+              </FormGroup>
+              <FormGroup label="เลขที่ใบขนส่ง (Transport Doc)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
+                <input
+                  type="text"
+                  name="transportDocNo"
+                  value={formData.transportDocNo}
+                  onChange={handleInputChange}
+                  className={inputClass}
+                />
+              </FormGroup>
+            </div>
           </div>
         )}
 
@@ -1032,7 +1037,8 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
         )}
 
         {/* Row 4.6: Fuel/Toll & Admin Prices */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className={isDriverEntryMode ? driverSectionClass : ''}>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
           <FormGroup label="ค่าน้ำมัน/ทางด่วน" isDark={isDark} isDriverStyle={isDriverEntryMode}>
             <input 
               type="number" 
@@ -1072,8 +1078,10 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
               </FormGroup>
             </>
           )}
+          </div>
         </div>
 
+        <div className={isDriverEntryMode ? driverSectionClass : ''}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Row 5: Image Upload - Origin (รูปภาพต้นทาง) */}
           <FormGroup label="รูปภาพต้นทาง (Origin Photo)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
@@ -1351,6 +1359,7 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
             </div>
           </FormGroup>
         </div>
+        </div>
 
         {/* Row 6: Remarks */}
         <FormGroup label="หมายเหตุ (Remarks)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
@@ -1370,7 +1379,7 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
               type="button"
               onClick={() => navigate('/driver/today')}
               disabled={isSubmitting}
-              className="driver-clay-btn driver-clay-btn-ghost rounded-xl px-8 py-3 font-bold disabled:opacity-60"
+              className="driver-clay-btn driver-clay-btn-ghost rounded-2xl px-8 py-3 font-bold disabled:opacity-60"
             >
               กลับ
             </button>

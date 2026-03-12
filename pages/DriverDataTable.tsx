@@ -52,7 +52,6 @@ const DriverDataTable: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [monthFilter, setMonthFilter] = useState(getCurrentMonthYear().month);
   const [yearFilter, setYearFilter] = useState(getCurrentMonthYear().year);
-  const [expandedJobIds, setExpandedJobIds] = useState<string[]>([]);
   const [selectedJob, setSelectedJob] = useState<JobEntry | null>(null);
 
   const driverNameCandidates = useMemo(
@@ -157,14 +156,6 @@ const DriverDataTable: React.FC = () => {
     [filteredJobs]
   );
 
-  const toggleExpanded = (jobId: string) => {
-    setExpandedJobIds((prev) =>
-      prev.includes(jobId)
-        ? prev.filter((id) => id !== jobId)
-        : [...prev, jobId]
-    );
-  };
-
   if (!canLookupJobs) {
     return (
       <section className="driver-clay-card p-5 sm:p-6">
@@ -250,19 +241,16 @@ const DriverDataTable: React.FC = () => {
             </article>
           ) : (
             filteredJobs.map((job) => {
-              const expanded = expandedJobIds.includes(job.id);
-              const imageSections = getJobImageSections(job);
-
               return (
                 <article
                   key={job.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => toggleExpanded(job.id)}
+                  onClick={() => setSelectedJob(job)}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
-                      toggleExpanded(job.id);
+                      setSelectedJob(job);
                     }
                   }}
                   className="driver-clay-card cursor-pointer p-4 transition hover:-translate-y-[1px] sm:p-5"
@@ -272,7 +260,7 @@ const DriverDataTable: React.FC = () => {
                       {formatDate(job.date)}
                     </p>
                     <p className="mt-1 break-words text-sm font-semibold text-slate-600">
-                      {job.workOrderNo || '-'}
+                      {job.productName || '-'}
                     </p>
                   </div>
 
@@ -290,77 +278,7 @@ const DriverDataTable: React.FC = () => {
                       value={`รถ: ${job.vehicleType || '-'} | ทะเบียน: ${job.licensePlate || '-'}`}
                     />
                   </div>
-
-                  {expanded && (
-                    <div className="mt-4 space-y-2 border-t border-white/70 pt-4 text-sm text-slate-700">
-                      <DetailRow
-                        icon={<UserRound size={14} className="driver-clay-muted" />}
-                        value={`พนักงานขับรถ: ${job.driverName || '-'}`}
-                      />
-                      <DetailRow
-                        icon={<Package2 size={14} className="driver-clay-muted" />}
-                        value={`ประเภทสินค้า: ${job.productName || '-'}`}
-                      />
-                      <DetailRow
-                        icon={<CalendarClock size={14} className="driver-clay-muted" />}
-                        value={`วันที่งาน: ${formatDate(job.date)}`}
-                      />
-                      <DetailRow
-                        icon={<FileText size={14} className="driver-clay-muted" />}
-                        value={`เลขที่ใบแจ้งงาน: ${job.workOrderNo || '-'}`}
-                      />
-                      <DetailRow
-                        icon={<FileText size={14} className="driver-clay-muted" />}
-                        value={`Job No.: ${job.jobNo || '-'}`}
-                      />
-                      <DetailRow
-                        icon={<FileText size={14} className="driver-clay-muted" />}
-                        value={`Invoice No.: ${job.invNo || '-'}`}
-                      />
-                      <DetailRow
-                        icon={<Package2 size={14} className="driver-clay-muted" />}
-                        value={`จำนวนรอบ: ${job.rounds || 0}`}
-                      />
-                      <DetailRow
-                        icon={<Fuel size={14} className="driver-clay-muted" />}
-                        value={`ค่าน้ำมัน/ทางด่วน: ${
-                          job.fuelAndToll !== null && job.fuelAndToll !== undefined && job.fuelAndToll !== ''
-                            ? Number(job.fuelAndToll).toLocaleString('en-US')
-                            : '-'
-                        }`}
-                      />
-                      {job.remarks && (
-                        <div className="driver-clay-soft px-3 py-2 text-xs leading-relaxed text-slate-600">
-                          หมายเหตุ: {job.remarks}
-                        </div>
-                      )}
-                      {imageSections.length > 0 && (
-                        <div className="driver-clay-soft px-3 py-2 text-xs text-slate-600">
-                          รูปแนบทั้งหมด {imageSections.reduce((sum, section) => sum + section.urls.length, 0)} รูป
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {expanded && (
-                    <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setSelectedJob(job);
-                        }}
-                        className="driver-clay-btn driver-clay-btn-ghost"
-                      >
-                        <Eye size={15} />
-                        ดูรายละเอียด
-                      </button>
-                    </div>
-                  )}
-
-                  <p className="driver-clay-muted mt-3 text-xs">
-                    แตะการ์ดเพื่อ{expanded ? 'ย่อ' : 'ขยาย'}รายละเอียด
-                  </p>
+                  <p className="driver-clay-muted mt-3 text-xs">แตะการ์ดเพื่อดูรายละเอียดงาน</p>
                 </article>
               );
             })
