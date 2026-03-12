@@ -2,7 +2,6 @@ import {initializeApp} from "firebase-admin/app";
 import {getAuth} from "firebase-admin/auth";
 import {getFirestore} from "firebase-admin/firestore";
 import {getMessaging} from "firebase-admin/messaging";
-import {onDocumentWritten} from "firebase-functions/v2/firestore";
 import {setGlobalOptions} from "firebase-functions/v2";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
@@ -115,7 +114,9 @@ const getAdminTokens = async (): Promise<string[]> => {
 const isUserRole = (value: unknown): value is UserRole =>
   value === "admin" || value === "user";
 
-const getRoleFromClaims = (authToken?: Record<string, unknown>): UserRole | null => {
+const getRoleFromClaims = (
+  authToken?: Record<string, unknown>
+): UserRole | null => {
   const claimRole = authToken?.role;
   return isUserRole(claimRole) ? claimRole : null;
 };
@@ -131,7 +132,10 @@ const getUserRole = async (
   return userSnapshot.data()?.role === "admin" ? "admin" : "user";
 };
 
-const syncUserRoleClaim = async (uid: string, role: UserRole): Promise<void> => {
+const syncUserRoleClaim = async (
+  uid: string,
+  role: UserRole
+): Promise<void> => {
   const userRecord = await adminAuth.getUser(uid);
   const existingClaims = userRecord.customClaims || {};
   const nextClaims = {
@@ -164,7 +168,8 @@ const getMonthDateRange = (
   return {
     startDate: `${yearPart}-${monthPart.padStart(2, "0")}-01`,
     endDateExclusive:
-      `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}-01`,
+      `${next.getFullYear()}-` +
+      `${String(next.getMonth() + 1).padStart(2, "0")}-01`,
   };
 };
 
@@ -223,7 +228,9 @@ const buildDashboardMetricSummary = (
   };
 };
 
-const rebuildDashboardMetricsForMonth = async (monthKey: string): Promise<void> => {
+const rebuildDashboardMetricsForMonth = async (
+  monthKey: string
+): Promise<void> => {
   const normalizedMonthKey = monthKey.trim();
   if (!normalizedMonthKey) {
     throw new HttpsError("invalid-argument", "monthKey is required");
@@ -234,7 +241,8 @@ const rebuildDashboardMetricsForMonth = async (monthKey: string): Promise<void> 
     .where("date", ">=", startDate)
     .where("date", "<", endDateExclusive)
     .get();
-  const jobs = snapshot.docs.map((doc) => doc.data() as Record<string, unknown>);
+  const jobs = snapshot.docs
+    .map((doc) => doc.data() as Record<string, unknown>);
   const payload = buildDashboardMetricSummary(normalizedMonthKey, jobs);
 
   await db.collection(DASHBOARD_METRICS_COLLECTION)
@@ -882,6 +890,7 @@ export const syncTodayJobToJobs = onCall(async (request) => {
   const payload = buildJobPayloadFromToday(todayJobId, job, now);
 
   await db.collection("jobs").doc(targetJobId).set(payload, {merge: true});
+  await rebuildDashboardMetricsForMonth(getMonthKey(payload.date as string));
 
   return {
     ok: true,
@@ -910,23 +919,6 @@ export const rebuildDashboardMetrics = onCall(async (request) => {
     monthKey,
   };
 });
-
-export const syncDashboardMetricsOnJobsWrite = onDocumentWritten(
-  "jobs/{jobId}",
-  async (event) => {
-    const before = event.data?.before?.data() as Record<string, unknown> | undefined;
-    const after = event.data?.after?.data() as Record<string, unknown> | undefined;
-    const monthKeys = Array.from(
-      new Set([getMonthKey(before?.date as string), getMonthKey(after?.date as string)]
-        .map((value) => value.trim())
-        .filter(Boolean))
-    );
-
-    for (const monthKey of monthKeys) {
-      await rebuildDashboardMetricsForMonth(monthKey);
-    }
-  }
-);
 
 export const setUserRole = onCall(async (request) => {
   if (!request.auth?.uid) {

@@ -56,6 +56,8 @@ export type DashboardMetricSummary = {
   updatedAt?: number;
 };
 
+const getMonthKeyFromDate = (dateStr?: string) => (dateStr || '').split('T')[0].slice(0, 7);
+
 export const getLineNotificationWarningMessage = (
   result?: TriggerTodayJobNotificationResult | null
 ): string => {
@@ -410,6 +412,11 @@ export const addJob = async (
 
   await updateDoc(docRef, updates);
 
+  const monthKey = getMonthKeyFromDate(job.date);
+  if (monthKey) {
+    await rebuildDashboardMetricsMonth(monthKey);
+  }
+
   return {
     ...job,
     id: docRef.id,
@@ -730,6 +737,11 @@ export const updateJob = async (
   await updateDoc(jobRef, sanitizedUpdateData);
   console.log('[Firebase] Job updated:', job.id);
 
+  const monthKey = getMonthKeyFromDate(job.date);
+  if (monthKey) {
+    await rebuildDashboardMetricsMonth(monthKey);
+  }
+
   return { ...job, ...sanitizedUpdateData };
 };
 
@@ -762,6 +774,11 @@ export const deleteJob = async (job: JobEntry): Promise<void> => {
   // Delete job document
   await deleteDoc(doc(db, JOBS_COLLECTION, job.id));
   console.log('[Firebase] Job deleted:', job.id);
+
+  const monthKey = getMonthKeyFromDate(job.date);
+  if (monthKey) {
+    await rebuildDashboardMetricsMonth(monthKey);
+  }
 };
 
 /**
