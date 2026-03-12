@@ -158,8 +158,8 @@ const DriverRoutes: React.FC = () => (
   <Routes>
     <Route path="/login" element={<Navigate to="/driver/today" replace />} />
     <Route path="/driver/today" element={<DriverPage view="today" />} />
-    <Route path="/driver/active" element={<Navigate to="/driver/today" replace />} />
-    <Route path="/driver/ready-to-close" element={<DriverPage view="ready-to-close" />} />
+    <Route path="/driver/active" element={<DriverPage view="active" />} />
+    <Route path="/driver/ready-to-close" element={<Navigate to="/driver/active" replace />} />
     <Route path="/driver/history" element={<DriverPage view="history" />} />
     <Route path="/driver/data" element={
       <DriverLayout>

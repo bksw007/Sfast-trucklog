@@ -328,19 +328,21 @@ const DriverDataTable: React.FC = () => {
                     </div>
                   )}
 
-                  <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setSelectedJob(job);
-                      }}
-                      className="driver-clay-btn driver-clay-btn-ghost"
-                    >
-                      <Eye size={15} />
-                      ดูรายละเอียด
-                    </button>
-                  </div>
+                  {expanded && (
+                    <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setSelectedJob(job);
+                        }}
+                        className="driver-clay-btn driver-clay-btn-ghost"
+                      >
+                        <Eye size={15} />
+                        ดูรายละเอียด
+                      </button>
+                    </div>
+                  )}
 
                   <p className="driver-clay-muted mt-3 text-xs">
                     แตะการ์ดเพื่อ{expanded ? 'ย่อ' : 'ขยาย'}รายละเอียด

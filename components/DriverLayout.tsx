@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { CalendarDays, CheckCircle2, ClipboardCheck, LogOut, TableProperties, UserCircle2 } from 'lucide-react';
+import { CalendarDays, CheckCircle2, CircleDashed, LogOut, TableProperties, UserCircle2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface DriverLayoutProps {
@@ -9,7 +9,7 @@ interface DriverLayoutProps {
 
 const navItems = [
   { path: '/driver/today', label: 'งานวันนี้', icon: CalendarDays },
-  { path: '/driver/ready-to-close', label: 'รอจบงาน', icon: ClipboardCheck },
+  { path: '/driver/active', label: 'กำลังทำงาน', icon: CircleDashed },
   { path: '/driver/history', label: 'สรุปงาน', icon: CheckCircle2 },
   { path: '/driver/data', label: 'ข้อมูลงานวิ่ง', icon: TableProperties },
   { path: '/driver/profile', label: 'โปรไฟล์', icon: UserCircle2 },

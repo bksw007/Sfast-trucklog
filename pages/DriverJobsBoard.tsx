@@ -126,6 +126,30 @@ const compareByPickupSchedule = (a: TodayJobEntry, b: TodayJobEntry): number => 
 const compareHistoryJobs = (a: TodayJobEntry, b: TodayJobEntry) =>
   (b.completedAt || parsePickupTimestamp(b) || 0) - (a.completedAt || parsePickupTimestamp(a) || 0);
 
+const getDatePriority = (jobDate: string, todayDate: string) => {
+  if (jobDate === todayDate) return 0;
+  if (jobDate > todayDate) return 1;
+  return 2;
+};
+
+const getStatusPriority = (job: TodayJobEntry, todayDate: string) => {
+  if (job.status === 'in_progress') return 0;
+  const jobDate = getJobDate(job);
+  if (job.status === 'pending' && jobDate === todayDate) return 1;
+  if (job.status === 'pending' && jobDate > todayDate) return 2;
+  return 3;
+};
+
+const compareDriverQueue = (a: TodayJobEntry, b: TodayJobEntry, todayDate: string) => {
+  const datePriorityDiff = getDatePriority(getJobDate(a), todayDate) - getDatePriority(getJobDate(b), todayDate);
+  if (datePriorityDiff !== 0) return datePriorityDiff;
+
+  const statusPriorityDiff = getStatusPriority(a, todayDate) - getStatusPriority(b, todayDate);
+  if (statusPriorityDiff !== 0) return statusPriorityDiff;
+
+  return compareByPickupSchedule(a, b);
+};
+
 const getFutureDayOffset = (jobDate: string, todayDate: string) => {
   const start = new Date(`${todayDate}T00:00:00`).getTime();
   const end = new Date(`${jobDate}T00:00:00`).getTime();
@@ -191,8 +215,8 @@ const viewMetaMap: Record<DriverView, { title: string; subtitle: string }> = {
     subtitle: 'งานที่รับแล้วและกำลังดำเนินการอยู่ในตอนนี้',
   },
   'ready-to-close': {
-    title: 'งานที่รอจบงาน',
-    subtitle: 'งานที่พร้อมจบงานและรอปิดรายการ',
+    title: 'กำลังทำงาน',
+    subtitle: 'งานที่คุณรับแล้วและกำลังดำเนินการอยู่',
   },
   history: {
     title: 'สรุปงานของฉัน',
@@ -262,14 +286,14 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
   const myJobs = useMemo(() => jobs, [jobs]);
 
   const todayJobs = useMemo(
-    () => myJobs.filter((job) => getJobDate(job) === todayDate && job.status !== 'completed'),
+    () => myJobs.filter((job) => getJobDate(job) === todayDate && job.status === 'pending'),
     [myJobs, todayDate]
   );
   const upcomingJobs = useMemo(
     () =>
       myJobs.filter((job) => {
         const jobDate = getJobDate(job);
-        return job.status !== 'completed' && jobDate > todayDate && jobDate <= upcomingLimitDate;
+        return job.status === 'pending' && jobDate > todayDate && jobDate <= upcomingLimitDate;
       }),
     [myJobs, todayDate, upcomingLimitDate]
   );
@@ -291,16 +315,8 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
     [historyJobs, search]
   );
   const filteredActiveJobs = useMemo(
-    () =>
-      myJobs.filter((job) => {
-        const jobDate = getJobDate(job);
-        return (
-          jobDate <= todayDate &&
-          (job.status === 'pending' || (job.status === 'in_progress' && !job.readyToClose)) &&
-          matchesSearch(job, search)
-        );
-      }),
-    [myJobs, search, todayDate]
+    () => myJobs.filter((job) => job.status === 'in_progress' && matchesSearch(job, search)),
+    [myJobs, search]
   );
   const filteredReadyToCloseJobs = useMemo(
     () => readyToCloseJobs.filter((job) => matchesSearch(job, search)),
@@ -309,7 +325,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
   const filteredTodayJobs = useMemo(
     () =>
       myJobs.filter((job) => {
-        if (job.status === 'completed') return false;
+        if (job.status !== 'pending') return false;
         const jobDate = getJobDate(job);
         if (!jobDate || jobDate > upcomingLimitDate) return false;
         return matchesSearch(job, search);
@@ -318,11 +334,11 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
   );
 
   const jobsByView = useMemo(() => {
-    if (view === 'today') return [...filteredTodayJobs].sort(compareByPickupSchedule);
-    if (view === 'active') return [...filteredActiveJobs].sort(compareByPickupSchedule);
-    if (view === 'ready-to-close') return [...filteredReadyToCloseJobs].sort(compareByPickupSchedule);
+    if (view === 'today') return [...filteredTodayJobs].sort((a, b) => compareDriverQueue(a, b, todayDate));
+    if (view === 'active') return [...filteredActiveJobs].sort((a, b) => compareDriverQueue(a, b, todayDate));
+    if (view === 'ready-to-close') return [...filteredReadyToCloseJobs].sort((a, b) => compareDriverQueue(a, b, todayDate));
     return [...filteredHistoryJobs].sort(compareHistoryJobs);
-  }, [filteredActiveJobs, filteredHistoryJobs, filteredReadyToCloseJobs, filteredTodayJobs, view]);
+  }, [filteredActiveJobs, filteredHistoryJobs, filteredReadyToCloseJobs, filteredTodayJobs, todayDate, view]);
 
   const toggleExpanded = (jobId: string) => {
     setExpandedJobIds((prev) =>
@@ -493,18 +509,27 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
             const expanded = expandedJobIds.includes(job.id);
             const futureOffset = getFutureDayOffset(jobDate, todayDate);
             const isFutureScheduled = view === 'today' && futureOffset > 0;
+            const isTodayScheduled = view === 'today' && jobDate === todayDate;
+            const isOverdueScheduled = view === 'today' && !!jobDate && jobDate < todayDate;
             const canAcceptToday = job.status === 'pending' && jobDate === todayDate;
             const canUpdateJob =
               job.status === 'in_progress' &&
-              (view === 'active' || view === 'today' || view === 'ready-to-close');
+              (view === 'active' || view === 'ready-to-close');
             const canCompleteJob =
               job.status === 'in_progress' &&
               job.readyToClose &&
-              (view === 'ready-to-close' || view === 'today');
+              (view === 'active' || view === 'ready-to-close');
             const imageSections = getJobImageSections(job);
             const futureToneClass = isFutureScheduled
               ? 'border border-sky-300/90 bg-[linear-gradient(145deg,rgba(224,242,254,0.96),rgba(240,249,255,0.92))] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),10px_10px_22px_rgba(125,171,203,0.18),-8px_-8px_18px_rgba(255,255,255,0.88)]'
               : '';
+            const todayToneClass = isTodayScheduled
+              ? 'border border-orange-200/90 bg-[linear-gradient(145deg,rgba(255,247,237,0.98),rgba(255,251,235,0.94))] shadow-[inset_0_1px_0_rgba(255,255,255,0.88),10px_10px_22px_rgba(215,176,126,0.14),-8px_-8px_18px_rgba(255,255,255,0.9)]'
+              : '';
+            const overdueToneClass = isOverdueScheduled
+              ? 'border border-slate-300/90 bg-[linear-gradient(145deg,rgba(241,245,249,0.98),rgba(248,250,252,0.95))] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),10px_10px_22px_rgba(148,163,184,0.16),-8px_-8px_18px_rgba(255,255,255,0.9)]'
+              : '';
+            const cardToneClass = futureToneClass || todayToneClass || overdueToneClass;
 
             return (
               <article
@@ -518,12 +543,24 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                     toggleExpanded(job.id);
                   }
                 }}
-                className={`${cardClass} cursor-pointer transition hover:-translate-y-[1px] ${futureToneClass}`}
+                className={`${cardClass} cursor-pointer transition hover:-translate-y-[1px] ${cardToneClass}`}
               >
                 {isFutureScheduled && (
                   <div className="-mx-4 -mt-4 mb-3 flex items-center justify-between rounded-t-[1.45rem] border-b border-sky-200/80 bg-[linear-gradient(90deg,#0284c7,#38bdf8)] px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-white sm:-mx-5 sm:-mt-5 sm:px-5">
                     <span>งานล่วงหน้า</span>
                     <span>อีก {futureOffset} วัน</span>
+                  </div>
+                )}
+                {isTodayScheduled && (
+                  <div className="-mx-4 -mt-4 mb-3 flex items-center justify-between rounded-t-[1.45rem] border-b border-orange-200/80 bg-[linear-gradient(90deg,#f59e0b,#fbbf24)] px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-white sm:-mx-5 sm:-mt-5 sm:px-5">
+                    <span>งานวันนี้</span>
+                    <span>พร้อมดำเนินงาน</span>
+                  </div>
+                )}
+                {isOverdueScheduled && (
+                  <div className="-mx-4 -mt-4 mb-3 flex items-center justify-between rounded-t-[1.45rem] border-b border-slate-300/80 bg-[linear-gradient(90deg,#64748b,#94a3b8)] px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-white sm:-mx-5 sm:-mt-5 sm:px-5">
+                    <span>งานล่าช้า</span>
+                    <span>ย้อนหลัง</span>
                   </div>
                 )}
 
@@ -554,6 +591,16 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                     {isFutureScheduled && (
                       <span className="driver-clay-chip whitespace-nowrap border border-sky-200/70 bg-white/75 text-sky-700">
                         นัดล่วงหน้า
+                      </span>
+                    )}
+                    {isTodayScheduled && (
+                      <span className="driver-clay-chip whitespace-nowrap border border-orange-200/80 bg-white/80 text-orange-700">
+                        วันนี้
+                      </span>
+                    )}
+                    {isOverdueScheduled && (
+                      <span className="driver-clay-chip whitespace-nowrap border border-slate-300/80 bg-white/80 text-slate-600">
+                        ล่าช้า
                       </span>
                     )}
                   </div>
@@ -645,7 +692,40 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                   </div>
                 )}
 
-                <div className="mt-4 grid grid-cols-1 gap-2 sm:flex sm:flex-row sm:flex-wrap">
+                <div className="mt-4 flex flex-col gap-2">
+                  {(canUpdateJob || canCompleteJob) && (
+                    <div className={`grid gap-2 ${canUpdateJob && canCompleteJob ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                      {canUpdateJob && (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleOpenEntryForm(job);
+                          }}
+                          className="driver-clay-btn driver-clay-btn-warning min-h-[2.85rem] justify-center text-sm"
+                        >
+                          <CircleDashed size={15} />
+                          อัพเดทข้อมูล
+                        </button>
+                      )}
+
+                      {canCompleteJob && (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleCompleteJob(job);
+                          }}
+                          disabled={updatingJobId === job.id}
+                          className="driver-clay-btn driver-clay-btn-info min-h-[2.85rem] justify-center text-sm"
+                        >
+                          <CheckCircle2 size={15} />
+                          {updatingJobId === job.id ? 'กำลังจบงาน...' : 'จบงาน'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {job.status === 'pending' && (
                     <button
                       type="button"
@@ -665,46 +745,19 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                     </button>
                   )}
 
-                  {canUpdateJob && (
+                  {expanded && (
                     <button
                       type="button"
                       onClick={(event) => {
                         event.stopPropagation();
-                        handleOpenEntryForm(job);
+                        setSelectedJob(job);
                       }}
-                      className="driver-clay-btn driver-clay-btn-warning min-h-[2.85rem] justify-center text-sm"
+                      className="driver-clay-btn driver-clay-btn-ghost min-h-[2.85rem] justify-center text-sm"
                     >
-                      <CircleDashed size={15} />
-                      อัพเดทข้อมูล
+                      <Eye size={15} />
+                      ดูรายละเอียด
                     </button>
                   )}
-
-                  {canCompleteJob && (
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        void handleCompleteJob(job);
-                      }}
-                      disabled={updatingJobId === job.id}
-                      className="driver-clay-btn driver-clay-btn-info min-h-[2.85rem] justify-center text-sm"
-                    >
-                      <CheckCircle2 size={15} />
-                      {updatingJobId === job.id ? 'กำลังจบงาน...' : 'จบงาน'}
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setSelectedJob(job);
-                    }}
-                    className="driver-clay-btn driver-clay-btn-ghost min-h-[2.85rem] justify-center text-sm"
-                  >
-                    <Eye size={15} />
-                    ดูรายละเอียด
-                  </button>
                 </div>
 
                 <p className="driver-clay-muted mt-2 text-[11px] sm:mt-3 sm:text-xs">
@@ -725,13 +778,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
         {selectedJob && (
           <div className="space-y-4 text-sm text-slate-700">
             <div className="driver-clay-soft space-y-2 rounded-2xl p-4">
-              <p className="break-words text-base font-black text-slate-700">
-                {selectedJob.employerCompany || '-'}
-              </p>
-              <p className="break-words text-sm font-semibold text-slate-600">
-                {selectedJob.productName || '-'}
-              </p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap justify-end gap-2">
                 <span className={`driver-clay-chip whitespace-nowrap ${statusBadgeClass(selectedJob.status)}`}>
                   {statusIcon(selectedJob.status)}
                   {statusLabelMap[selectedJob.status]}
@@ -743,28 +790,18 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                   </span>
                 )}
               </div>
+              <p className="break-words text-base font-black text-slate-700">
+                {selectedJob.employerCompany || '-'}
+              </p>
+              <p className="break-words text-sm font-semibold text-slate-600">
+                {selectedJob.productName || '-'}
+              </p>
             </div>
 
             <div className="space-y-3">
               <DetailRow
                 icon={<CalendarClock size={15} className="driver-clay-muted" />}
                 value={`วันที่งาน: ${getJobDate(selectedJob) || '-'}`}
-              />
-              <DetailRow
-                icon={<MapPin size={15} className="driver-clay-muted mt-0.5" />}
-                value={`จุดรับ: ${selectedJob.pickup.location || '-'}`}
-              />
-              <DetailRow
-                icon={<MapPin size={15} className="driver-clay-muted mt-0.5" />}
-                value={`จุดส่ง: ${selectedJob.delivery.location || '-'}`}
-              />
-              <DetailRow
-                icon={<Clock3 size={15} className="driver-clay-muted" />}
-                value={`เวลารับ: ${`${selectedJob.pickup.date || '-'} ${selectedJob.pickup.time || ''}`.trim()}`}
-              />
-              <DetailRow
-                icon={<Clock3 size={15} className="driver-clay-muted" />}
-                value={`เวลาส่ง: ${`${selectedJob.delivery.date || '-'} ${selectedJob.delivery.time || ''}`.trim()}`}
               />
               <DetailRow
                 icon={<Package2 size={15} className="driver-clay-muted" />}
@@ -790,24 +827,54 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                 icon={<FileText size={15} className="driver-clay-muted" />}
                 value={`เลขที่ใบขนส่ง: ${selectedJob.transportDocNo || '-'}`}
               />
-              {hasValue(selectedJob.pickup.contact) && (
-                <DetailRow
-                  icon={<UserRound size={15} className="driver-clay-muted" />}
-                  value={`ผู้ติดต่อจุดรับ: ${selectedJob.pickup.contact}`}
-                />
-              )}
-              {hasValue(selectedJob.delivery.contact) && (
-                <DetailRow
-                  icon={<UserRound size={15} className="driver-clay-muted" />}
-                  value={`ผู้ติดต่อจุดส่ง: ${selectedJob.delivery.contact}`}
-                />
-              )}
               {(selectedJob.fuelAndToll ?? '') !== '' && selectedJob.fuelAndToll !== null && (
                 <DetailRow
                   icon={<FileText size={15} className="driver-clay-muted" />}
                   value={`ค่าน้ำมัน/ทางด่วน: ${Number(selectedJob.fuelAndToll).toLocaleString('en-US')}`}
                 />
               )}
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="driver-clay-soft rounded-2xl p-4">
+                <p className="mb-2 text-sm font-semibold text-slate-700">จุดรับ</p>
+                <div className="space-y-2">
+                  <DetailRow
+                    icon={<MapPin size={15} className="driver-clay-muted mt-0.5" />}
+                    value={selectedJob.pickup.location || '-'}
+                  />
+                  <DetailRow
+                    icon={<Clock3 size={15} className="driver-clay-muted" />}
+                    value={`${selectedJob.pickup.date || '-'} ${selectedJob.pickup.time || ''}`.trim()}
+                  />
+                  {hasValue(selectedJob.pickup.contact) && (
+                    <DetailRow
+                      icon={<UserRound size={15} className="driver-clay-muted" />}
+                      value={selectedJob.pickup.contact}
+                    />
+                  )}
+                </div>
+              </div>
+
+              <div className="driver-clay-soft rounded-2xl p-4">
+                <p className="mb-2 text-sm font-semibold text-slate-700">จุดส่ง</p>
+                <div className="space-y-2">
+                  <DetailRow
+                    icon={<MapPin size={15} className="driver-clay-muted mt-0.5" />}
+                    value={selectedJob.delivery.location || '-'}
+                  />
+                  <DetailRow
+                    icon={<Clock3 size={15} className="driver-clay-muted" />}
+                    value={`${selectedJob.delivery.date || '-'} ${selectedJob.delivery.time || ''}`.trim()}
+                  />
+                  {hasValue(selectedJob.delivery.contact) && (
+                    <DetailRow
+                      icon={<UserRound size={15} className="driver-clay-muted" />}
+                      value={selectedJob.delivery.contact}
+                    />
+                  )}
+                </div>
+              </div>
             </div>
 
             {selectedJob.importantNote && (
