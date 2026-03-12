@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { deleteJob as firebaseDeleteJob, updateJob as firebaseUpdateJob } from '../services/firebaseService';
-import { JobEntry, AppData } from '../types';
+import { deleteJob as firebaseDeleteJob, subscribeToJobsByMonth, updateJob as firebaseUpdateJob } from '../services/firebaseService';
+import { JobEntry } from '../types';
 import {
   CalendarClock,
   Download,
@@ -129,13 +129,30 @@ const DataTable: React.FC = () => {
   const [editDestinationImageFiles, setEditDestinationImageFiles] = useState<File[]>([]);
   const [editDocumentImageFiles, setEditDocumentImageFiles] = useState<File[]>([]);
 
-  // Use real-time data from context
   useEffect(() => {
-    if (appData?.jobs) {
-      setJobs(appData.jobs.sort((a, b) => b.timestamp - a.timestamp));
+    if (!filters.month || !filters.year) {
+      setJobs([]);
       setLoading(false);
+      return undefined;
     }
-  }, [appData]);
+
+    setLoading(true);
+    const unsubscribe = subscribeToJobsByMonth(
+      filters.year,
+      filters.month,
+      (rows) => {
+        setJobs(rows);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('DataTable jobs subscribe failed:', error);
+        setJobs([]);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [filters.month, filters.year]);
 
   useEffect(() => {
     const lockScroll = isDetailModalOpen || showAddJobModal;
@@ -155,14 +172,8 @@ const DataTable: React.FC = () => {
   // Extract unique years from data
   const availableYears = useMemo(() => {
     const currentYear = new Date().getFullYear();
-    const years = new Set<number>(
-      jobs
-        .map(job => getJobYearMonth(job.date)?.year)
-        .filter((year): year is number => typeof year === 'number')
-    );
-    years.add(currentYear);
-    return Array.from(years).sort((a, b) => b - a);
-  }, [jobs]);
+    return Array.from({ length: 6 }, (_, index) => currentYear - index);
+  }, []);
 
   // Filter jobs
   const filteredJobs = useMemo(() => {

@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import DriverLayout from './components/DriverLayout';
+import { AdminUsersProvider } from './contexts/AdminUsersContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider, useData } from './contexts/DataContext';
 import SyncModal from './components/SyncModal';
@@ -108,46 +109,48 @@ const DriverPage: React.FC<{ view: DriverView }> = ({ view }) => (
 
 const AdminRoutes: React.FC = () => (
   <ProtectedContent>
-    <Routes>
-      <Route path="/login" element={<Navigate to="/today?tab=form" replace />} />
-      <Route path="/" element={
-        <Layout>
-          <Suspense fallback={<PageLoader />}>
-            <Dashboard />
-          </Suspense>
-        </Layout>
-      } />
-      <Route path="/entry" element={
-        <Layout>
-          <Suspense fallback={<PageLoader />}>
-            <EntryForm />
-          </Suspense>
-        </Layout>
-      } />
-      <Route path="/today" element={
-        <Layout>
-          <Suspense fallback={<PageLoader />}>
-            <TodayJobs />
-          </Suspense>
-        </Layout>
-      } />
-      <Route path="/data" element={
-        <Layout>
-          <Suspense fallback={<PageLoader />}>
-            <DataTable />
-          </Suspense>
-        </Layout>
-      } />
-      <Route path="/settings" element={
-        <Layout>
-          <Suspense fallback={<PageLoader />}>
-            <Settings />
-          </Suspense>
-        </Layout>
-      } />
-      <Route path="/driver/*" element={<Navigate to="/" replace />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <AdminUsersProvider>
+      <Routes>
+        <Route path="/login" element={<Navigate to="/today?tab=form" replace />} />
+        <Route path="/" element={
+          <Layout>
+            <Suspense fallback={<PageLoader />}>
+              <Dashboard />
+            </Suspense>
+          </Layout>
+        } />
+        <Route path="/entry" element={
+          <Layout>
+            <Suspense fallback={<PageLoader />}>
+              <EntryForm />
+            </Suspense>
+          </Layout>
+        } />
+        <Route path="/today" element={
+          <Layout>
+            <Suspense fallback={<PageLoader />}>
+              <TodayJobs />
+            </Suspense>
+          </Layout>
+        } />
+        <Route path="/data" element={
+          <Layout>
+            <Suspense fallback={<PageLoader />}>
+              <DataTable />
+            </Suspense>
+          </Layout>
+        } />
+        <Route path="/settings" element={
+          <Layout>
+            <Suspense fallback={<PageLoader />}>
+              <Settings />
+            </Suspense>
+          </Layout>
+        } />
+        <Route path="/driver/*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AdminUsersProvider>
   </ProtectedContent>
 );
 

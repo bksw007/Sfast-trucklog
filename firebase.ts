@@ -1,6 +1,11 @@
 // Firebase Configuration and Initialization
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getAuth } from 'firebase/auth';
 import { getFunctions } from 'firebase/functions';
@@ -18,8 +23,19 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore
-export const db = getFirestore(app);
+// Initialize Firestore with persistent local cache when available.
+export const db = (() => {
+  try {
+    return initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    });
+  } catch (error) {
+    console.warn('[Firebase] Falling back to default Firestore cache:', error);
+    return getFirestore(app);
+  }
+})();
 
 // Initialize Storage
 export const storage = getStorage(app);

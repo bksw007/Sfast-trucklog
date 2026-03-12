@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { User, Shield, AlertTriangle, Search, Loader2 } from 'lucide-react';
 import Modal from './Modal';
+import { useAdminUsers } from '../contexts/AdminUsersContext';
 import { useAuth } from '../contexts/AuthContext';
-import { getAllUsers, updateUserRole } from '../services/userService';
+import { updateUserRole } from '../services/userService';
 import { UserProfile, UserRole } from '../types';
 
 interface UserManagementModalProps {
@@ -12,33 +13,19 @@ interface UserManagementModalProps {
 
 const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen, onClose }) => {
   const { userProfile, user: currentUser } = useAuth();
+  const { users, loading, refreshUsers } = useAdminUsers();
   const isDark = false;
 
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [updatingUser, setUpdatingUser] = useState<string | null>(null);
   const [brokenPhotoUids, setBrokenPhotoUids] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (isOpen && userProfile?.role === 'admin') {
-      fetchUsers();
+      void refreshUsers();
     }
-  }, [isOpen, userProfile]);
-
-  const fetchUsers = async () => {
-    setLoading(true);
-    try {
-      const allUsers = await getAllUsers();
-      setUsers(allUsers);
       setBrokenPhotoUids(new Set());
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
-      alert('ไม่สามารถดึงข้อมูลผู้ใช้ได้');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [isOpen, refreshUsers, userProfile]);
 
   const handleRoleChange = async (targetUid: string, currentRole: UserRole, newRole: UserRole) => {
     if (targetUid === currentUser?.uid) {
@@ -53,10 +40,7 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen, onClo
     setUpdatingUser(targetUid);
     try {
       await updateUserRole(targetUid, newRole);
-      // Update local state
-      setUsers(prev => prev.map(u => 
-        u.uid === targetUid ? { ...u, role: newRole } : u
-      ));
+      await refreshUsers();
     } catch (error) {
       console.error('Failed to update role:', error);
       alert('เกิดข้อผิดพลาดในการเปลี่ยนสิทธิ์');

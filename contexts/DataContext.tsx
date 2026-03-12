@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { AppData, JobEntry } from '../types';
-import { subscribeToJobs, subscribeToOptions, initializeDefaultOptions } from '../services/firebaseService';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
+import { AppData } from '../types';
+import { subscribeToOptions, initializeDefaultOptions } from '../services/firebaseService';
 
 interface DataContextType {
   data: AppData | null;
@@ -15,7 +15,6 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [jobs, setJobs] = useState<JobEntry[]>([]);
   const [options, setOptions] = useState<AppData['options']>({
     locations: [],
     vehicleTypes: [],
@@ -30,9 +29,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [initialSyncComplete, setInitialSyncComplete] = useState(false);
+  const seedAttemptedRef = useRef(false);
 
-  // Combine jobs and options into AppData
-  const data: AppData | null = jobs || options ? { jobs, options } : null;
+  // Shared context now carries lightweight option data only.
+  const data: AppData | null = { jobs: [], options };
 
   // RefreshData is now a no-op since we use real-time subscriptions
   // But we keep it for API compatibility
@@ -44,42 +44,32 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     console.log('[DataContext] Setting up Firebase real-time subscriptions...');
 
-    // Initialize default options if needed
-    initializeDefaultOptions().catch(console.error);
-
-    // Subscribe to jobs collection
-    const unsubscribeJobs = subscribeToJobs(
-      (newJobs) => {
-        console.log(`[DataContext] Received ${newJobs.length} jobs from Firebase`);
-        setJobs(newJobs);
+    // Subscribe to options collection
+    const unsubscribeOptions = subscribeToOptions(
+      (newOptions) => {
+        console.log('[DataContext] Received options from Firebase:', newOptions);
+        setOptions(newOptions);
+        const totalOptionCount = Object.values(newOptions).reduce((sum, items) => sum + items.length, 0);
+        if (totalOptionCount === 0 && !seedAttemptedRef.current) {
+          seedAttemptedRef.current = true;
+          initializeDefaultOptions(true).catch(console.error);
+        }
         setLastUpdate(new Date());
         setLoading(false);
         setSyncing(false);
         setInitialSyncComplete(true);
       },
       (err) => {
-        console.error('[DataContext] Jobs subscription error:', err);
+        console.error('[DataContext] Options subscription error:', err);
         setError(err.message);
         setLoading(false);
         setSyncing(false);
       }
     );
 
-    // Subscribe to options collection
-    const unsubscribeOptions = subscribeToOptions(
-      (newOptions) => {
-        console.log('[DataContext] Received options from Firebase:', newOptions);
-        setOptions(newOptions);
-      },
-      (err) => {
-        console.error('[DataContext] Options subscription error:', err);
-      }
-    );
-
     // Cleanup subscriptions on unmount
     return () => {
       console.log('[DataContext] Cleaning up Firebase subscriptions...');
-      unsubscribeJobs();
       unsubscribeOptions();
     };
   }, []);

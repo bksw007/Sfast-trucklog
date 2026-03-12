@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
-import { AppData, JobEntry } from '../types';
+import React, { useEffect, useMemo, useState } from 'react';
+import { JobEntry } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import { Truck, MapPin, Calendar, CheckCircle2, Filter, X, ChevronDown } from 'lucide-react';
-import { useData } from '../contexts/DataContext';
+import { subscribeToJobsByMonth } from '../services/firebaseService';
 
 const MONTHS = [
   { value: 1, label: 'มกราคม' },
@@ -47,25 +47,46 @@ const createDefaultFilters = (): Filters => {
 };
 
 const Dashboard: React.FC = () => {
-  const { data } = useData();
   const isDark = false;
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Filters>(() => createDefaultFilters());
+  const [jobs, setJobs] = useState<JobEntry[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Extract unique years from data
   const availableYears = useMemo(() => {
     const currentYear = new Date().getFullYear();
-    if (!data) return [currentYear];
-    const years = new Set(data.jobs.map(job => new Date(job.date).getFullYear()));
-    years.add(currentYear);
-    return Array.from(years).sort((a, b) => b - a);
-  }, [data]);
+    return Array.from({ length: 6 }, (_, index) => currentYear - index);
+  }, []);
+
+  useEffect(() => {
+    if (!filters.month || !filters.year) {
+      setJobs([]);
+      setLoading(false);
+      return undefined;
+    }
+
+    setLoading(true);
+    const unsubscribe = subscribeToJobsByMonth(
+      filters.year,
+      filters.month,
+      (rows) => {
+        setJobs(rows);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Dashboard jobs subscribe failed:', error);
+        setJobs([]);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [filters.month, filters.year]);
 
   // Filter jobs based on selected filters
   const filteredJobs = useMemo(() => {
-    if (!data) return [];
-    
-    return data.jobs.filter(job => {
+    return jobs.filter(job => {
       const jobDate = new Date(job.date);
       const jobMonth = jobDate.getMonth() + 1;
       const jobYear = jobDate.getFullYear();
@@ -78,7 +99,7 @@ const Dashboard: React.FC = () => {
 
       return true;
     });
-  }, [data, filters]);
+  }, [filters, jobs]);
 
   const clearFilters = () => {
     setFilters(createDefaultFilters());
@@ -86,7 +107,7 @@ const Dashboard: React.FC = () => {
 
   const hasActiveFilters = filters.month || filters.year || filters.driver || filters.vehicleType || filters.licensePlate;
 
-  if (!data) return (
+  if (loading) return (
     <div className={`p-10 text-center animate-pulse ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
       กำลังโหลดข้อมูล...
     </div>

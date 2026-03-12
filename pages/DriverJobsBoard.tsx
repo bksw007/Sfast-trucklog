@@ -3,7 +3,7 @@ import { FirebaseError } from 'firebase/app';
 import { CalendarClock, CheckCircle2, Circle, CircleDashed, Clock3, MapPin, Package2, Search, Truck, UserRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { subscribeToTodayJobsByAssignee, triggerTodayJobNotification, updateTodayJob } from '../services/firebaseService';
+import { getLineNotificationWarningMessage, subscribeToTodayJobsByAssigneeAndPickupDateRange, triggerTodayJobNotification, updateTodayJob } from '../services/firebaseService';
 import { TodayJobEntry } from '../types';
 
 export type DriverView = 'today' | 'active' | 'ready-to-close' | 'history';
@@ -22,6 +22,34 @@ const getLocalDate = () => {
   const now = new Date();
   const offset = now.getTimezoneOffset() * 60000;
   return new Date(now.getTime() - offset).toISOString().split('T')[0];
+};
+
+const getMonthKey = (dateStr = getLocalDate()) => asDateOnly(dateStr).slice(0, 7);
+
+const shiftMonthKey = (monthKey: string, offset: number) => {
+  const [yearPart, monthPart] = monthKey.split('-');
+  const year = Number(yearPart);
+  const month = Number(monthPart);
+  if (!Number.isInteger(year) || !Number.isInteger(month)) return getMonthKey();
+
+  const shifted = new Date(year, month - 1 + offset, 1);
+  return `${shifted.getFullYear()}-${String(shifted.getMonth() + 1).padStart(2, '0')}`;
+};
+
+const getMonthRange = (monthKey: string) => ({
+  startDate: `${monthKey}-01`,
+  endDateExclusive: `${shiftMonthKey(monthKey, 1)}-01`,
+});
+
+const buildMonthOptions = (monthsBack: number, monthsForward = 0) => {
+  const currentMonthKey = getMonthKey();
+  const options: string[] = [];
+
+  for (let offset = monthsForward; offset >= -monthsBack; offset -= 1) {
+    options.push(shiftMonthKey(currentMonthKey, offset));
+  }
+
+  return options;
 };
 
 const normalizeText = (value: string) => value.trim().toLowerCase();
@@ -112,9 +140,10 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [searchText, setSearchText] = useState('');
-  const [historyMonth, setHistoryMonth] = useState('');
+  const [historyMonth, setHistoryMonth] = useState(() => getMonthKey());
   const [compactHistoryCards, setCompactHistoryCards] = useState(true);
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
+  const historyMonthOptions = useMemo(() => buildMonthOptions(11, 0), []);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -124,8 +153,18 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
     }
 
     setLoading(true);
-    const unsubscribe = subscribeToTodayJobsByAssignee(
+    const range =
+      view === 'history'
+        ? getMonthRange(historyMonth)
+        : {
+            startDate: `${shiftMonthKey(getMonthKey(), -1)}-01`,
+            endDateExclusive: `${shiftMonthKey(getMonthKey(), 2)}-01`,
+          };
+
+    const unsubscribe = subscribeToTodayJobsByAssigneeAndPickupDateRange(
       user.uid,
+      range.startDate,
+      range.endDateExclusive,
       (rows) => {
         setJobs(rows);
         setLoading(false);
@@ -138,7 +177,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
     );
 
     return () => unsubscribe();
-  }, [user?.uid]);
+  }, [historyMonth, user?.uid, view]);
 
   const todayDate = asDateOnly(getLocalDate());
 
@@ -165,21 +204,10 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
     [myJobs]
   );
 
-  const monthOptions = useMemo(() => {
-    const months = new Set(
-      historyJobs
-        .map((job) => getJobDate(job).slice(0, 7))
-        .filter(Boolean)
-    );
-
-    return Array.from(months).sort((a, b) => b.localeCompare(a));
-  }, [historyJobs]);
-
   const filteredHistoryJobs = useMemo(() => {
     const search = normalizeText(searchText);
 
     return historyJobs.filter((job) => {
-      if (historyMonth && !getJobDate(job).startsWith(historyMonth)) return false;
       if (!search) return true;
 
       const haystack = normalizeText(
@@ -263,7 +291,9 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
         updatedByUid: user.uid,
       });
       try {
-        await triggerTodayJobNotification('accept', job.id);
+        const notifyResult = await triggerTodayJobNotification('accept', job.id);
+        const notifyWarning = getLineNotificationWarningMessage(notifyResult);
+        if (notifyWarning) alert(notifyWarning);
       } catch (notifyError) {
         console.error('Notify accept event failed:', notifyError);
       }
@@ -294,7 +324,9 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
         updatedByUid: user.uid,
       });
       try {
-        await triggerTodayJobNotification('complete', job.id);
+        const notifyResult = await triggerTodayJobNotification('complete', job.id);
+        const notifyWarning = getLineNotificationWarningMessage(notifyResult);
+        if (notifyWarning) alert(notifyWarning);
       } catch (notifyError) {
         console.error('Notify complete event failed:', notifyError);
       }
@@ -390,8 +422,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                 onChange={(e) => setHistoryMonth(e.target.value)}
                 className={`flex-1 ${inputClass}`}
               >
-                <option value="">ทุกเดือน</option>
-                {monthOptions.map((month) => (
+                {historyMonthOptions.map((month) => (
                   <option key={month} value={month}>
                     {month}
                   </option>

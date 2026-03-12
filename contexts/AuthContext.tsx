@@ -89,6 +89,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const fetchProfile = async (currentUser: User) => {
     try {
+      await ensureUserProfileDocument(currentUser);
+      await currentUser.getIdToken(true);
+
       let profile = await getUserProfile(currentUser.uid);
       if (!profile) {
         try {

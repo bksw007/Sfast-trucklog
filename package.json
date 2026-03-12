@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "line:quota": "node scripts/check-line-quota.mjs",
     "backfill:today-jobs-assignee": "node scripts/backfill-today-jobs-assignee.mjs",
     "backfill:today-jobs-assignee:apply": "node scripts/backfill-today-jobs-assignee.mjs --apply"
   },

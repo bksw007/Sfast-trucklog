@@ -8,8 +8,8 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      return request.auth != null && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return request.auth != null &&
+             request.auth.token.role == 'admin';
     }
 
     function isAssignedDriver(data) {

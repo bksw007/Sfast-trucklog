@@ -1,4 +1,5 @@
 import {initializeApp} from "firebase-admin/app";
+import {getAuth} from "firebase-admin/auth";
 import {getFirestore} from "firebase-admin/firestore";
 import {getMessaging} from "firebase-admin/messaging";
 import {setGlobalOptions} from "firebase-functions/v2";
@@ -62,8 +63,15 @@ type TodayJobEntry = {
 
 type NotifyEventType = "create" | "update" | "accept" | "ready" | "complete";
 type UserRole = "admin" | "user";
+type LineNotificationResult = {
+  attempted: boolean;
+  ok: boolean;
+  status?: number;
+  reason?: string;
+};
 
 const db = getFirestore();
+const adminAuth = getAuth();
 const messaging = getMessaging();
 
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
@@ -96,6 +104,42 @@ const getAdminTokens = async (): Promise<string[]> => {
   const tokens = snapshot.docs
     .flatMap((doc) => normalizeTokens(doc.data()?.fcmTokens));
   return Array.from(new Set(tokens));
+};
+
+const isUserRole = (value: unknown): value is UserRole =>
+  value === "admin" || value === "user";
+
+const getRoleFromClaims = (authToken?: Record<string, unknown>): UserRole | null => {
+  const claimRole = authToken?.role;
+  return isUserRole(claimRole) ? claimRole : null;
+};
+
+const getUserRole = async (
+  uid: string,
+  authToken?: Record<string, unknown>
+): Promise<UserRole> => {
+  const roleFromClaims = getRoleFromClaims(authToken);
+  if (roleFromClaims) return roleFromClaims;
+
+  const userSnapshot = await db.collection("users").doc(uid).get();
+  return userSnapshot.data()?.role === "admin" ? "admin" : "user";
+};
+
+const syncUserRoleClaim = async (uid: string, role: UserRole): Promise<void> => {
+  const userRecord = await adminAuth.getUser(uid);
+  const existingClaims = userRecord.customClaims || {};
+  const nextClaims = {
+    ...existingClaims,
+    role,
+    admin: role === "admin",
+  };
+
+  const alreadySynced =
+    existingClaims.role === nextClaims.role &&
+    existingClaims.admin === nextClaims.admin;
+  if (alreadySynced) return;
+
+  await adminAuth.setCustomUserClaims(uid, nextClaims);
 };
 
 const asLineDate = (value?: string): string => {
@@ -190,10 +234,14 @@ const sendLineNotification = async (
   eventType: NotifyEventType,
   jobId: string,
   job: TodayJobEntry
-): Promise<void> => {
+): Promise<LineNotificationResult> => {
   if (!LINE_CHANNEL_ACCESS_TOKEN || !LINE_GROUP_ID) {
     logger.info("LINE skipped (missing env)", {eventType, jobId});
-    return;
+    return {
+      attempted: false,
+      ok: false,
+      reason: "missing-env",
+    };
   }
 
   const text = buildLineText(eventType, job);
@@ -223,12 +271,27 @@ const sendLineNotification = async (
         "LINE push failed",
         {eventType, jobId, status: resp.status, body}
       );
-      return;
+      return {
+        attempted: true,
+        ok: false,
+        status: resp.status,
+        reason: body || "request-failed",
+      };
     }
 
     logger.info("LINE push sent", {eventType, jobId});
+    return {
+      attempted: true,
+      ok: true,
+      status: resp.status,
+    };
   } catch (error) {
     logger.error("LINE push exception", {eventType, jobId, error});
+    return {
+      attempted: true,
+      ok: false,
+      reason: error instanceof Error ? error.message : "exception",
+    };
   }
 };
 
@@ -281,21 +344,33 @@ const notifyByEvent = async (
   eventType: NotifyEventType,
   jobId: string,
   job: TodayJobEntry
-): Promise<void> => {
+): Promise<{line: LineNotificationResult}> => {
+  let lineResult: LineNotificationResult = {
+    attempted: false,
+    ok: false,
+    reason: "not-attempted",
+  };
+
   // Skip all notifications if admin updates after job is already completed.
   if (eventType === "update" && job.status === "completed") {
     logger.info("Notification skipped for completed job update", {
       eventType,
       jobId,
     });
-    return;
+    return {
+      line: {
+        attempted: false,
+        ok: false,
+        reason: "completed-job-update",
+      },
+    };
   }
 
   const driverLabel = job.assignedToName || job.driverName || "พนักงาน";
   const jobLabel = `${getJobNo(job)} | WO ${getWorkOrderNo(job)}`;
 
   if (eventType !== "ready" && !isBackdatedJob(job)) {
-    await sendLineNotification(eventType, jobId, job);
+    lineResult = await sendLineNotification(eventType, jobId, job);
   } else if (isBackdatedJob(job)) {
     logger.info("LINE skipped for backdated job", {
       eventType,
@@ -303,6 +378,17 @@ const notifyByEvent = async (
       pickupDate: asDateOnly(job.pickup?.date),
       today: getBangkokToday(),
     });
+    lineResult = {
+      attempted: false,
+      ok: false,
+      reason: "backdated-job",
+    };
+  } else {
+    lineResult = {
+      attempted: false,
+      ok: false,
+      reason: "ready-event",
+    };
   }
 
   if (eventType === "create") {
@@ -320,7 +406,7 @@ const notifyByEvent = async (
       },
       "/#/driver/today"
     );
-    return;
+    return {line: lineResult};
   }
 
   if (eventType === "update") {
@@ -354,7 +440,7 @@ const notifyByEvent = async (
         "/#/driver/today"
       ),
     ]);
-    return;
+    return {line: lineResult};
   }
 
   if (eventType === "accept") {
@@ -371,7 +457,7 @@ const notifyByEvent = async (
       },
       "/#/today"
     );
-    return;
+    return {line: lineResult};
   }
 
   if (eventType === "ready") {
@@ -388,7 +474,7 @@ const notifyByEvent = async (
       },
       "/#/today"
     );
-    return;
+    return {line: lineResult};
   }
 
   if (eventType === "complete") {
@@ -422,16 +508,19 @@ const notifyByEvent = async (
         "/#/driver/history"
       ),
     ]);
+    return {line: lineResult};
   }
+
+  return {line: lineResult};
 };
 
 const ensureCanNotify = async (
   uid: string,
+  authToken: Record<string, unknown> | undefined,
   eventType: NotifyEventType,
   job: TodayJobEntry
 ): Promise<void> => {
-  const userSnapshot = await db.collection("users").doc(uid).get();
-  const role = (userSnapshot.data()?.role || "user") as string;
+  const role = await getUserRole(uid, authToken);
   const isAdmin = role === "admin";
   const isAssignee = job.assignedToUid === uid;
 
@@ -456,10 +545,10 @@ const ensureCanNotify = async (
 
 const ensureCanSyncToJobs = async (
   uid: string,
+  authToken: Record<string, unknown> | undefined,
   job: TodayJobEntry
 ): Promise<void> => {
-  const userSnapshot = await db.collection("users").doc(uid).get();
-  const role = (userSnapshot.data()?.role || "user") as string;
+  const role = await getUserRole(uid, authToken);
   const isAdmin = role === "admin";
   const isAssignee = job.assignedToUid === uid;
 
@@ -600,10 +689,13 @@ export const dispatchTodayJobNotification = onCall(async (request) => {
   }
 
   const job = jobSnapshot.data() as TodayJobEntry;
-  await ensureCanNotify(request.auth.uid, eventType, job);
-  await notifyByEvent(eventType, jobId, job);
+  await ensureCanNotify(request.auth.uid, request.auth.token, eventType, job);
+  const notificationResult = await notifyByEvent(eventType, jobId, job);
 
-  return {ok: true};
+  return {
+    ok: true,
+    ...notificationResult,
+  };
 });
 
 export const ensureUserProfile = onCall(async (request) => {
@@ -658,6 +750,7 @@ export const ensureUserProfile = onCall(async (request) => {
   }
 
   await userRef.set(payload, {merge: true});
+  await syncUserRoleClaim(uid, role);
 
   return {
     ok: true,
@@ -682,7 +775,7 @@ export const syncTodayJobToJobs = onCall(async (request) => {
   }
 
   const job = todaySnapshot.data() as TodayJobEntry;
-  await ensureCanSyncToJobs(request.auth.uid, job);
+  await ensureCanSyncToJobs(request.auth.uid, request.auth.token, job);
 
   const now = Date.now();
   const targetJobId = `today_${todayJobId}`;
@@ -693,5 +786,34 @@ export const syncTodayJobToJobs = onCall(async (request) => {
   return {
     ok: true,
     jobId: targetJobId,
+  };
+});
+
+export const setUserRole = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Authentication required");
+  }
+
+  const requesterRole = await getUserRole(request.auth.uid, request.auth.token);
+  if (requesterRole !== "admin") {
+    throw new HttpsError("permission-denied", "Only admin can update roles");
+  }
+
+  const targetUid = (request.data?.uid || "").toString().trim();
+  const nextRole = request.data?.role;
+  if (!targetUid || !isUserRole(nextRole)) {
+    throw new HttpsError("invalid-argument", "uid and valid role are required");
+  }
+
+  await db.collection("users").doc(targetUid).set({
+    role: nextRole,
+    profileUpdatedAt: Date.now(),
+  }, {merge: true});
+  await syncUserRoleClaim(targetUid, nextRole);
+
+  return {
+    ok: true,
+    uid: targetUid,
+    role: nextRole,
   };
 });

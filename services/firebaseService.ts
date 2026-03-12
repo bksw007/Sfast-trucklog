@@ -33,6 +33,34 @@ const TODAY_JOBS_COLLECTION = 'today_jobs';
 const NOTIFY_CALLABLE_NAME = 'dispatchTodayJobNotification';
 const SYNC_TODAY_JOB_CALLABLE_NAME = 'syncTodayJobToJobs';
 
+export type TriggerTodayJobNotificationResult = {
+  ok: boolean;
+  line?: {
+    attempted: boolean;
+    ok: boolean;
+    status?: number;
+    reason?: string;
+  };
+};
+
+export const getLineNotificationWarningMessage = (
+  result?: TriggerTodayJobNotificationResult | null
+): string => {
+  if (!result?.line || result.line.ok || !result.line.attempted) return '';
+
+  if (result.line.status === 429) {
+    return 'LINE ส่งไม่สำเร็จ: โควต้ารายเดือนของ LINE หมดแล้ว';
+  }
+
+  if (result.line.reason?.includes('monthly limit')) {
+    return 'LINE ส่งไม่สำเร็จ: โควต้ารายเดือนของ LINE หมดแล้ว';
+  }
+
+  return result.line.status
+    ? `LINE ส่งไม่สำเร็จ (HTTP ${result.line.status})`
+    : 'LINE ส่งไม่สำเร็จ กรุณาตรวจสอบการตั้งค่า/โควต้า LINE';
+};
+
 export class RevisionConflictError extends Error {
   code = 'revision-conflict' as const;
   currentRevision: number;
@@ -158,6 +186,45 @@ export const subscribeToJobs = (
     },
     (error) => {
       console.error('[Firebase] Jobs subscription error:', error);
+      onError?.(error);
+    }
+  );
+
+  return unsubscribe;
+};
+
+export const subscribeToJobsByMonth = (
+  year: number,
+  month: number,
+  callback: (jobs: JobEntry[]) => void,
+  onError?: (error: Error) => void
+): (() => void) => {
+  const safeMonth = Math.min(Math.max(month, 1), 12);
+  const startDate = `${year}-${String(safeMonth).padStart(2, '0')}-01`;
+  const nextYear = safeMonth === 12 ? year + 1 : year;
+  const nextMonth = safeMonth === 12 ? 1 : safeMonth + 1;
+  const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+
+  const jobsQuery = query(
+    collection(db, JOBS_COLLECTION),
+    where('date', '>=', startDate),
+    where('date', '<', endDate),
+    orderBy('date', 'desc')
+  );
+
+  const unsubscribe = onSnapshot(
+    jobsQuery,
+    (snapshot) => {
+      const jobs: JobEntry[] = snapshot.docs.map((jobDoc) => ({
+        id: jobDoc.id,
+        ...jobDoc.data(),
+      })) as JobEntry[];
+
+      jobs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      callback(jobs);
+    },
+    (error) => {
+      console.error('[Firebase] Jobs by month subscription error:', error);
       onError?.(error);
     }
   );
@@ -367,6 +434,39 @@ export const subscribeToTodayJobs = (
   return unsubscribe;
 };
 
+export const subscribeToTodayJobsByPickupDateRange = (
+  startDate: string,
+  endDateExclusive: string,
+  callback: (jobs: TodayJobEntry[]) => void,
+  onError?: (error: Error) => void
+): (() => void) => {
+  const jobsQuery = query(
+    collection(db, TODAY_JOBS_COLLECTION),
+    where('pickup.date', '>=', startDate),
+    where('pickup.date', '<', endDateExclusive),
+    orderBy('pickup.date', 'desc')
+  );
+
+  const unsubscribe = onSnapshot(
+    jobsQuery,
+    (snapshot) => {
+      const jobs: TodayJobEntry[] = snapshot.docs.map((jobDoc) => ({
+        id: jobDoc.id,
+        ...jobDoc.data(),
+      })) as TodayJobEntry[];
+
+      jobs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      callback(jobs);
+    },
+    (error) => {
+      console.error('[Firebase] Today jobs by pickup date range subscription error:', error);
+      onError?.(error);
+    }
+  );
+
+  return unsubscribe;
+};
+
 /**
  * Subscribe to today_jobs by assigned user (driver view)
  */
@@ -394,6 +494,41 @@ export const subscribeToTodayJobsByAssignee = (
     },
     (error) => {
       console.error('[Firebase] Today jobs by assignee subscription error:', error);
+      onError?.(error);
+    }
+  );
+
+  return unsubscribe;
+};
+
+export const subscribeToTodayJobsByAssigneeAndPickupDateRange = (
+  assignedToUid: string,
+  startDate: string,
+  endDateExclusive: string,
+  callback: (jobs: TodayJobEntry[]) => void,
+  onError?: (error: Error) => void
+): (() => void) => {
+  const jobsQuery = query(
+    collection(db, TODAY_JOBS_COLLECTION),
+    where('assignedToUid', '==', assignedToUid),
+    where('pickup.date', '>=', startDate),
+    where('pickup.date', '<', endDateExclusive),
+    orderBy('pickup.date', 'desc')
+  );
+
+  const unsubscribe = onSnapshot(
+    jobsQuery,
+    (snapshot) => {
+      const jobs: TodayJobEntry[] = snapshot.docs.map((jobDoc) => ({
+        id: jobDoc.id,
+        ...jobDoc.data(),
+      })) as TodayJobEntry[];
+
+      jobs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      callback(jobs);
+    },
+    (error) => {
+      console.error('[Firebase] Today jobs by assignee + pickup date range subscription error:', error);
       onError?.(error);
     }
   );
@@ -455,12 +590,16 @@ export const getTodayJobById = async (id: string): Promise<TodayJobEntry | null>
 export const triggerTodayJobNotification = async (
   eventType: 'create' | 'update' | 'accept' | 'ready' | 'complete',
   jobId: string
-): Promise<void> => {
+): Promise<TriggerTodayJobNotificationResult> => {
   const callable = httpsCallable(cloudFunctions, NOTIFY_CALLABLE_NAME);
-  await callable({
+  const result = await callable<{
+    eventType: 'create' | 'update' | 'accept' | 'ready' | 'complete';
+    jobId: string;
+  }, TriggerTodayJobNotificationResult>({
     eventType,
     jobId,
   });
+  return result.data;
 };
 
 export const syncTodayJobToJobs = async (todayJobId: string): Promise<void> => {
@@ -713,42 +852,45 @@ export const renameOptionAndSyncJobs = async (
 /**
  * Initialize default options (run once if options collection is empty)
  */
-export const initializeDefaultOptions = async (): Promise<void> => {
-  const optionsSnapshot = await getDocs(collection(db, OPTIONS_COLLECTION));
-  
-  if (optionsSnapshot.empty) {
-    console.log('[Firebase] Initializing default options...');
-    
-    const defaultOptions = [
-      { category: 'locations', value: 'คลังสินค้า A' },
-      { category: 'locations', value: 'ท่าเรือ B' },
-      { category: 'locations', value: 'โรงงาน C' },
-      { category: 'locations', value: 'ลูกค้า A' },
-      { category: 'locations', value: 'ศูนย์กระจายสินค้า' },
-      { category: 'vehicleTypes', value: '4 ล้อ' },
-      { category: 'vehicleTypes', value: '6 ล้อ' },
-      { category: 'vehicleTypes', value: '10 ล้อ' },
-      { category: 'vehicleTypes', value: 'หัวลาก' },
-      { category: 'drivers', value: 'พนักงานขับรถ 1' },
-      { category: 'drivers', value: 'พนักงานขับรถ 2' },
-      { category: 'drivers', value: 'พนักงานขับรถ 3' },
-      { category: 'licensePlates', value: '70-1234' },
-      { category: 'licensePlates', value: '12-5678' },
-      { category: 'licensePlates', value: '99-8888' },
-      { category: 'employerCompanies', value: 'MLT' },
-      { category: 'employerCompanies', value: 'S Fast Transport' },
-      { category: 'productTypes', value: 'Inverter' },
-      { category: 'productTypes', value: 'พาเลท' },
-      { category: 'contacts', value: 'คุณเอ' },
-      { category: 'contacts', value: 'คุณบี' },
-    ];
+const DEFAULT_OPTIONS = [
+  { category: 'locations', value: 'คลังสินค้า A' },
+  { category: 'locations', value: 'ท่าเรือ B' },
+  { category: 'locations', value: 'โรงงาน C' },
+  { category: 'locations', value: 'ลูกค้า A' },
+  { category: 'locations', value: 'ศูนย์กระจายสินค้า' },
+  { category: 'vehicleTypes', value: '4 ล้อ' },
+  { category: 'vehicleTypes', value: '6 ล้อ' },
+  { category: 'vehicleTypes', value: '10 ล้อ' },
+  { category: 'vehicleTypes', value: 'หัวลาก' },
+  { category: 'drivers', value: 'พนักงานขับรถ 1' },
+  { category: 'drivers', value: 'พนักงานขับรถ 2' },
+  { category: 'drivers', value: 'พนักงานขับรถ 3' },
+  { category: 'licensePlates', value: '70-1234' },
+  { category: 'licensePlates', value: '12-5678' },
+  { category: 'licensePlates', value: '99-8888' },
+  { category: 'employerCompanies', value: 'MLT' },
+  { category: 'employerCompanies', value: 'S Fast Transport' },
+  { category: 'productTypes', value: 'Inverter' },
+  { category: 'productTypes', value: 'พาเลท' },
+  { category: 'contacts', value: 'คุณเอ' },
+  { category: 'contacts', value: 'คุณบี' },
+];
 
-    for (const option of defaultOptions) {
-      await addDoc(collection(db, OPTIONS_COLLECTION), option);
+export const initializeDefaultOptions = async (skipExistingCheck = false): Promise<void> => {
+  if (!skipExistingCheck) {
+    const optionsSnapshot = await getDocs(collection(db, OPTIONS_COLLECTION));
+    if (!optionsSnapshot.empty) {
+      return;
     }
-    
-    console.log('[Firebase] Default options initialized');
   }
+
+  console.log('[Firebase] Initializing default options...');
+
+  for (const option of DEFAULT_OPTIONS) {
+    await addDoc(collection(db, OPTIONS_COLLECTION), option);
+  }
+
+  console.log('[Firebase] Default options initialized');
 };
 
 // Export service object for compatibility

@@ -25,20 +25,22 @@ import {
   UserCheck,
   UserRound,
 } from 'lucide-react';
+import { useAdminUsers } from '../contexts/AdminUsersContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import {
   addTodayJob,
   addOption,
   deleteTodayJob,
+  getLineNotificationWarningMessage,
   getTodayJobById,
   RevisionConflictError,
-  subscribeToTodayJobs,
+  subscribeToTodayJobsByPickupDateRange,
   triggerTodayJobNotification,
   uploadImages,
   updateTodayJob
 } from '../services/firebaseService';
-import { getAllUsers, getUserProfile } from '../services/userService';
+import { getUserProfile } from '../services/userService';
 import { DispatchPoint, OptionCategory, TodayJobEntry, UserProfile } from '../types';
 import { NotoSansThaiBase64 } from '../fonts/NotoSansThai';
 import ConfirmModal from '../components/ConfirmModal';
@@ -105,6 +107,39 @@ const parseDate = (dateStr: string) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 type DatePickerEvent = React.MouseEvent<HTMLInputElement> | React.FocusEvent<HTMLInputElement>;
+
+const getMonthKey = (dateStr = getLocalDate()) => asDateOnly(dateStr).slice(0, 7);
+
+const shiftMonthKey = (monthKey: string, offset: number) => {
+  const [yearPart, monthPart] = monthKey.split('-');
+  const year = Number(yearPart);
+  const month = Number(monthPart);
+  if (!Number.isInteger(year) || !Number.isInteger(month)) return getMonthKey();
+
+  const shifted = new Date(year, month - 1 + offset, 1);
+  const nextYear = shifted.getFullYear();
+  const nextMonth = String(shifted.getMonth() + 1).padStart(2, '0');
+  return `${nextYear}-${nextMonth}`;
+};
+
+const getMonthRange = (monthKey: string) => {
+  const normalized = monthKey || getMonthKey();
+  return {
+    startDate: `${normalized}-01`,
+    endDateExclusive: `${shiftMonthKey(normalized, 1)}-01`,
+  };
+};
+
+const buildMonthOptions = (monthsBack: number, monthsForward = 0) => {
+  const currentMonthKey = getMonthKey();
+  const options: string[] = [];
+
+  for (let offset = monthsForward; offset >= -monthsBack; offset -= 1) {
+    options.push(shiftMonthKey(currentMonthKey, offset));
+  }
+
+  return options;
+};
 
 const hasValue = (value?: string) => !!value && value.trim().length > 0;
 const isDeliveryBeforePickup = (pickupDate?: string, deliveryDate?: string) =>
@@ -275,12 +310,12 @@ const buildSummaryText = (data: TodayJobForm) => {
 const TodayJobs: React.FC = () => {
   const location = useLocation();
   const { user, userProfile } = useAuth();
+  const { users: adminUsers } = useAdminUsers();
   const { data: appData } = useData();
   const isDark = false;
   const isAdmin = userProfile?.role === 'admin';
 
   const [formData, setFormData] = useState<TodayJobForm>(initialFormData());
-  const [assignableUsers, setAssignableUsers] = useState<UserProfile[]>([]);
   const [jobs, setJobs] = useState<TodayJobEntry[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isCopySuccess, setIsCopySuccess] = useState(false);
@@ -290,6 +325,7 @@ const TodayJobs: React.FC = () => {
 
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | JobStatus>('all');
+  const [tableMonth, setTableMonth] = useState<string>(() => getMonthKey());
   const [activeMainTab, setActiveMainTab] = useState<MainSectionTab>(
     () => resolveMainTabFromSearch(location.search) ?? 'form'
   );
@@ -386,25 +422,33 @@ const TodayJobs: React.FC = () => {
   const productTypeOptions = useMemo(() => sortUniqueOptions(options?.productTypes ?? []), [options?.productTypes]);
   const contactOptions = useMemo(() => sortUniqueOptions(options?.contacts ?? []), [options?.contacts]);
 
+  const tableMonthOptions = useMemo(() => buildMonthOptions(11, 1), []);
+
   useEffect(() => {
-    const unsubscribe = subscribeToTodayJobs((rows) => setJobs(rows), (error) => {
-      console.error('Today jobs subscribe failed:', error);
-    });
+    const range =
+      activeMainTab === 'table'
+        ? getMonthRange(tableMonth)
+        : {
+            startDate: `${shiftMonthKey(getMonthKey(), -1)}-01`,
+            endDateExclusive: `${shiftMonthKey(getMonthKey(), 2)}-01`,
+          };
+
+    const unsubscribe = subscribeToTodayJobsByPickupDateRange(
+      range.startDate,
+      range.endDateExclusive,
+      (rows) => setJobs(rows),
+      (error) => {
+        console.error('Today jobs subscribe failed:', error);
+      }
+    );
 
     return () => unsubscribe();
-  }, []);
+  }, [activeMainTab, tableMonth]);
 
-  useEffect(() => {
-    if (!isAdmin) return;
-
-    getAllUsers()
-      .then((users) => {
-        setAssignableUsers(users);
-      })
-      .catch((error) => {
-        console.error('Load assignable users failed:', error);
-      });
-  }, [isAdmin]);
+  const assignableUsers = useMemo(
+    () => (isAdmin ? adminUsers : []),
+    [adminUsers, isAdmin]
+  );
 
   useEffect(() => {
     const fromSearch = resolveMainTabFromSearch(location.search);
@@ -850,7 +894,9 @@ const TodayJobs: React.FC = () => {
         createdCount += 1;
 
         try {
-          await triggerTodayJobNotification('create', createdJob.id);
+          const notifyResult = await triggerTodayJobNotification('create', createdJob.id);
+          const notifyWarning = getLineNotificationWarningMessage(notifyResult);
+          if (notifyWarning) alert(notifyWarning);
         } catch (notifyError) {
           console.error('Notify create event failed:', notifyError);
         }
@@ -897,7 +943,9 @@ const TodayJobs: React.FC = () => {
       });
       if (status === 'completed') {
         try {
-          await triggerTodayJobNotification('complete', jobId);
+          const notifyResult = await triggerTodayJobNotification('complete', jobId);
+          const notifyWarning = getLineNotificationWarningMessage(notifyResult);
+          if (notifyWarning) alert(notifyWarning);
         } catch (notifyError) {
           console.error('Notify complete event failed:', notifyError);
         }
@@ -1169,7 +1217,9 @@ const TodayJobs: React.FC = () => {
         updatedByUid: user?.uid || '',
       }, editBaseRevision ?? undefined);
       try {
-        await triggerTodayJobNotification('update', editingJobId);
+        const notifyResult = await triggerTodayJobNotification('update', editingJobId);
+        const notifyWarning = getLineNotificationWarningMessage(notifyResult);
+        if (notifyWarning) alert(notifyWarning);
       } catch (notifyError) {
         console.error('Notify update event failed:', notifyError);
       }
@@ -2004,6 +2054,13 @@ const TodayJobs: React.FC = () => {
           </div>
           <div className="flex flex-wrap gap-2">
             <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="ค้นหา Job No./คนขับ/ทะเบียน" className={isDark ? 'min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/50 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none' : 'min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none'} />
+            <select value={tableMonth} onChange={(e) => setTableMonth(e.target.value)} className={isDark ? 'min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/50 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none' : 'min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none'}>
+              {tableMonthOptions.map((month) => (
+                <option key={month} value={month}>
+                  {month}
+                </option>
+              ))}
+            </select>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | JobStatus)} className={isDark ? 'min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/50 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none' : 'min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none'}>
               <option value="all">ทุกสถานะ</option>
               <option value="pending">รอดำเนินการ</option>
