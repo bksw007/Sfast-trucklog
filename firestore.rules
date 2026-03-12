@@ -28,6 +28,11 @@ service cloud.firestore {
     match /jobs/{jobId} {
       allow read, write: if isAdmin();
     }
+
+    // 2.1 dashboard_metrics
+    match /dashboard_metrics/{metricId} {
+      allow read, write: if isAdmin();
+    }
     
     // 3. options
     match /options/{optionId} {

@@ -2,6 +2,7 @@ import {initializeApp} from "firebase-admin/app";
 import {getAuth} from "firebase-admin/auth";
 import {getFirestore} from "firebase-admin/firestore";
 import {getMessaging} from "firebase-admin/messaging";
+import {onDocumentWritten} from "firebase-functions/v2/firestore";
 import {setGlobalOptions} from "firebase-functions/v2";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
@@ -69,6 +70,10 @@ type LineNotificationResult = {
   status?: number;
   reason?: string;
 };
+type DashboardMetricEntry = {
+  name: string;
+  count: number;
+};
 
 const db = getFirestore();
 const adminAuth = getAuth();
@@ -77,6 +82,7 @@ const messaging = getMessaging();
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN || "";
 const LINE_GROUP_ID = process.env.LINE_GROUP_ID || "";
+const DASHBOARD_METRICS_COLLECTION = "dashboard_metrics";
 
 const normalizeTokens = (tokens: unknown): string[] => {
   if (!Array.isArray(tokens)) return [];
@@ -140,6 +146,100 @@ const syncUserRoleClaim = async (uid: string, role: UserRole): Promise<void> => 
   if (alreadySynced) return;
 
   await adminAuth.setCustomUserClaims(uid, nextClaims);
+};
+
+const getMonthKey = (value?: string): string => asDateOnly(value).slice(0, 7);
+
+const getMonthDateRange = (
+  monthKey: string
+): {startDate: string; endDateExclusive: string} => {
+  const [yearPart, monthPart] = monthKey.split("-");
+  const year = Number(yearPart);
+  const month = Number(monthPart);
+  if (!Number.isInteger(year) || !Number.isInteger(month)) {
+    throw new HttpsError("invalid-argument", "Invalid monthKey");
+  }
+
+  const next = new Date(year, month, 1);
+  return {
+    startDate: `${yearPart}-${monthPart.padStart(2, "0")}-01`,
+    endDateExclusive:
+      `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}-01`,
+  };
+};
+
+const toPositiveNumber = (value: unknown): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
+
+const buildDashboardMetricSummary = (
+  monthKey: string,
+  jobs: Array<Record<string, unknown>>
+): Record<string, unknown> => {
+  const driverCounts = new Map<string, number>();
+  const vehicleTypeCounts = new Map<string, number>();
+  const uniqueDrivers = new Set<string>();
+  const uniqueVehicles = new Set<string>();
+
+  let totalRounds = 0;
+
+  jobs.forEach((job) => {
+    const driverName =
+      (typeof job.driverName === "string" ? job.driverName.trim() : "") ||
+      "ไม่ระบุคนขับ";
+    const vehicleType =
+      (typeof job.vehicleType === "string" ? job.vehicleType.trim() : "") ||
+      "ไม่ระบุประเภทรถ";
+    const licensePlate =
+      (typeof job.licensePlate === "string" ? job.licensePlate.trim() : "") ||
+      "";
+
+    driverCounts.set(driverName, (driverCounts.get(driverName) || 0) + 1);
+    vehicleTypeCounts.set(
+      vehicleType,
+      (vehicleTypeCounts.get(vehicleType) || 0) + 1
+    );
+    uniqueDrivers.add(driverName);
+    if (licensePlate) uniqueVehicles.add(licensePlate);
+
+    totalRounds += toPositiveNumber(job.rounds);
+  });
+
+  const toEntries = (source: Map<string, number>): DashboardMetricEntry[] =>
+    Array.from(source.entries())
+      .map(([name, count]) => ({name, count}))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "th"));
+
+  return {
+    month: monthKey,
+    totalJobs: jobs.length,
+    totalRounds,
+    uniqueDrivers: uniqueDrivers.size,
+    uniqueVehicles: uniqueVehicles.size,
+    jobsPerDriver: toEntries(driverCounts),
+    vehicleTypeCounts: toEntries(vehicleTypeCounts),
+    updatedAt: Date.now(),
+  };
+};
+
+const rebuildDashboardMetricsForMonth = async (monthKey: string): Promise<void> => {
+  const normalizedMonthKey = monthKey.trim();
+  if (!normalizedMonthKey) {
+    throw new HttpsError("invalid-argument", "monthKey is required");
+  }
+
+  const {startDate, endDateExclusive} = getMonthDateRange(normalizedMonthKey);
+  const snapshot = await db.collection("jobs")
+    .where("date", ">=", startDate)
+    .where("date", "<", endDateExclusive)
+    .get();
+  const jobs = snapshot.docs.map((doc) => doc.data() as Record<string, unknown>);
+  const payload = buildDashboardMetricSummary(normalizedMonthKey, jobs);
+
+  await db.collection(DASHBOARD_METRICS_COLLECTION)
+    .doc(normalizedMonthKey)
+    .set(payload, {merge: true});
 };
 
 const asLineDate = (value?: string): string => {
@@ -788,6 +888,45 @@ export const syncTodayJobToJobs = onCall(async (request) => {
     jobId: targetJobId,
   };
 });
+
+export const rebuildDashboardMetrics = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Authentication required");
+  }
+
+  const requesterRole = await getUserRole(request.auth.uid, request.auth.token);
+  if (requesterRole !== "admin") {
+    throw new HttpsError("permission-denied", "Only admin can rebuild metrics");
+  }
+
+  const monthKey = (request.data?.monthKey || "").toString().trim();
+  if (!monthKey) {
+    throw new HttpsError("invalid-argument", "monthKey is required");
+  }
+
+  await rebuildDashboardMetricsForMonth(monthKey);
+  return {
+    ok: true,
+    monthKey,
+  };
+});
+
+export const syncDashboardMetricsOnJobsWrite = onDocumentWritten(
+  "jobs/{jobId}",
+  async (event) => {
+    const before = event.data?.before?.data() as Record<string, unknown> | undefined;
+    const after = event.data?.after?.data() as Record<string, unknown> | undefined;
+    const monthKeys = Array.from(
+      new Set([getMonthKey(before?.date as string), getMonthKey(after?.date as string)]
+        .map((value) => value.trim())
+        .filter(Boolean))
+    );
+
+    for (const monthKey of monthKeys) {
+      await rebuildDashboardMetricsForMonth(monthKey);
+    }
+  }
+);
 
 export const setUserRole = onCall(async (request) => {
   if (!request.auth?.uid) {

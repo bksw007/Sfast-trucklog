@@ -30,8 +30,10 @@ import { JobEntry, AppData, OptionCategory, TodayJobEntry } from '../types';
 const JOBS_COLLECTION = 'jobs';
 const OPTIONS_COLLECTION = 'options';
 const TODAY_JOBS_COLLECTION = 'today_jobs';
+const DASHBOARD_METRICS_COLLECTION = 'dashboard_metrics';
 const NOTIFY_CALLABLE_NAME = 'dispatchTodayJobNotification';
 const SYNC_TODAY_JOB_CALLABLE_NAME = 'syncTodayJobToJobs';
+const REBUILD_DASHBOARD_METRICS_CALLABLE_NAME = 'rebuildDashboardMetrics';
 
 export type TriggerTodayJobNotificationResult = {
   ok: boolean;
@@ -41,6 +43,17 @@ export type TriggerTodayJobNotificationResult = {
     status?: number;
     reason?: string;
   };
+};
+
+export type DashboardMetricSummary = {
+  month: string;
+  totalJobs: number;
+  totalRounds: number;
+  uniqueDrivers: number;
+  uniqueVehicles: number;
+  jobsPerDriver: Array<{ name: string; count: number }>;
+  vehicleTypeCounts: Array<{ name: string; count: number }>;
+  updatedAt?: number;
 };
 
 export const getLineNotificationWarningMessage = (
@@ -225,6 +238,31 @@ export const subscribeToJobsByMonth = (
     },
     (error) => {
       console.error('[Firebase] Jobs by month subscription error:', error);
+      onError?.(error);
+    }
+  );
+
+  return unsubscribe;
+};
+
+export const subscribeToDashboardMetricsByMonth = (
+  monthKey: string,
+  callback: (summary: DashboardMetricSummary | null) => void,
+  onError?: (error: Error) => void
+): (() => void) => {
+  const metricRef = doc(db, DASHBOARD_METRICS_COLLECTION, monthKey);
+  const unsubscribe = onSnapshot(
+    metricRef,
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        callback(null);
+        return;
+      }
+
+      callback(snapshot.data() as DashboardMetricSummary);
+    },
+    (error) => {
+      console.error('[Firebase] Dashboard metrics subscription error:', error);
       onError?.(error);
     }
   );
@@ -607,6 +645,11 @@ export const syncTodayJobToJobs = async (todayJobId: string): Promise<void> => {
   await callable({
     todayJobId,
   });
+};
+
+export const rebuildDashboardMetricsMonth = async (monthKey: string): Promise<void> => {
+  const callable = httpsCallable(cloudFunctions, REBUILD_DASHBOARD_METRICS_CALLABLE_NAME);
+  await callable({ monthKey });
 };
 
 /**

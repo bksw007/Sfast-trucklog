@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { JobEntry } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import { Truck, MapPin, Calendar, CheckCircle2, Filter, X, ChevronDown } from 'lucide-react';
-import { subscribeToJobsByMonth } from '../services/firebaseService';
+import { useData } from '../contexts/DataContext';
+import { rebuildDashboardMetricsMonth, subscribeToDashboardMetricsByMonth, subscribeToJobsByMonth, type DashboardMetricSummary } from '../services/firebaseService';
 
 const MONTHS = [
   { value: 1, label: 'มกราคม' },
@@ -46,12 +47,19 @@ const createDefaultFilters = (): Filters => {
   };
 };
 
+const toMonthKey = (year: number, month: number) => `${year}-${String(month).padStart(2, '0')}`;
+
 const Dashboard: React.FC = () => {
+  const { data: appData } = useData();
   const isDark = false;
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Filters>(() => createDefaultFilters());
   const [jobs, setJobs] = useState<JobEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [metricSummary, setMetricSummary] = useState<DashboardMetricSummary | null>(null);
+  const [metricsLoading, setMetricsLoading] = useState(false);
+  const [rebuildingMetrics, setRebuildingMetrics] = useState(false);
+  const [rebuildRequestedMonth, setRebuildRequestedMonth] = useState('');
 
   // Extract unique years from data
   const availableYears = useMemo(() => {
@@ -59,30 +67,76 @@ const Dashboard: React.FC = () => {
     return Array.from({ length: 6 }, (_, index) => currentYear - index);
   }, []);
 
+  const hasDimensionFilters = Boolean(filters.driver || filters.vehicleType || filters.licensePlate);
+  const monthKey =
+    filters.month && filters.year
+      ? toMonthKey(filters.year, filters.month)
+      : '';
+
   useEffect(() => {
-    if (!filters.month || !filters.year) {
-      setJobs([]);
-      setLoading(false);
+    if (!monthKey || hasDimensionFilters) {
+      setMetricSummary(null);
+      setMetricsLoading(false);
       return undefined;
     }
 
-    setLoading(true);
+    setMetricsLoading(true);
+    const unsubscribe = subscribeToDashboardMetricsByMonth(
+      monthKey,
+      (summary) => {
+        setMetricSummary(summary);
+        setMetricsLoading(false);
+      },
+      (error) => {
+        console.error('Dashboard metrics subscribe failed:', error);
+        setMetricSummary(null);
+        setMetricsLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [hasDimensionFilters, monthKey]);
+
+  useEffect(() => {
+    if (!monthKey || !hasDimensionFilters) {
+      setJobs([]);
+      setJobsLoading(false);
+      return undefined;
+    }
+
+    setJobsLoading(true);
     const unsubscribe = subscribeToJobsByMonth(
       filters.year,
       filters.month,
       (rows) => {
         setJobs(rows);
-        setLoading(false);
+        setJobsLoading(false);
       },
       (error) => {
         console.error('Dashboard jobs subscribe failed:', error);
         setJobs([]);
-        setLoading(false);
+        setJobsLoading(false);
       }
     );
 
     return () => unsubscribe();
-  }, [filters.month, filters.year]);
+  }, [filters.month, filters.year, hasDimensionFilters, monthKey]);
+
+  useEffect(() => {
+    if (!monthKey || hasDimensionFilters || metricsLoading || metricSummary || rebuildRequestedMonth === monthKey) {
+      return;
+    }
+
+    setRebuildRequestedMonth(monthKey);
+    setRebuildingMetrics(true);
+    rebuildDashboardMetricsMonth(monthKey)
+      .catch((error) => {
+        console.error('Rebuild dashboard metrics failed:', error);
+      })
+      .finally(() => {
+        setRebuildingMetrics(false);
+      });
+  }, [hasDimensionFilters, metricSummary, metricsLoading, monthKey, rebuildRequestedMonth]);
 
   // Filter jobs based on selected filters
   const filteredJobs = useMemo(() => {
@@ -106,6 +160,7 @@ const Dashboard: React.FC = () => {
   };
 
   const hasActiveFilters = filters.month || filters.year || filters.driver || filters.vehicleType || filters.licensePlate;
+  const loading = hasDimensionFilters ? jobsLoading : (metricsLoading || rebuildingMetrics);
 
   if (loading) return (
     <div className={`p-10 text-center animate-pulse ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
@@ -113,29 +168,44 @@ const Dashboard: React.FC = () => {
     </div>
   );
 
-  const totalJobs = filteredJobs.length;
-  const totalRounds = filteredJobs.reduce((acc, job) => acc + job.rounds, 0);
-  const uniqueDrivers = new Set(filteredJobs.map(j => j.driverName)).size;
-  const uniqueVehicles = new Set(filteredJobs.map(j => j.licensePlate)).size;
+  const totalJobs = hasDimensionFilters
+    ? filteredJobs.length
+    : (metricSummary?.totalJobs || 0);
+  const totalRounds = hasDimensionFilters
+    ? filteredJobs.reduce((acc, job) => acc + job.rounds, 0)
+    : (metricSummary?.totalRounds || 0);
+  const uniqueDrivers = hasDimensionFilters
+    ? new Set(filteredJobs.map((job) => job.driverName)).size
+    : (metricSummary?.uniqueDrivers || 0);
+  const uniqueVehicles = hasDimensionFilters
+    ? new Set(filteredJobs.map((job) => job.licensePlate)).size
+    : (metricSummary?.uniqueVehicles || 0);
 
   // Prepare Chart Data: Jobs per Driver
-  const jobsPerDriver = filteredJobs.reduce((acc, job) => {
-    acc[job.driverName] = (acc[job.driverName] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-  
-  const driverChartData = Object.entries(jobsPerDriver).map(([name, count]) => ({
-    name,
-    jobs: count
-  }));
+  const driverChartData = hasDimensionFilters
+    ? Object.entries(
+        filteredJobs.reduce((acc, job) => {
+          acc[job.driverName] = (acc[job.driverName] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      ).map(([name, count]) => ({
+        name,
+        jobs: count,
+      }))
+    : (metricSummary?.jobsPerDriver || []).map(({ name, count }) => ({
+        name,
+        jobs: count,
+      }));
 
   // Prepare Chart Data: Job types (Vehicle type)
-  const vehicleTypeData = filteredJobs.reduce((acc, job) => {
-    acc[job.vehicleType] = (acc[job.vehicleType] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const pieData = Object.entries(vehicleTypeData).map(([name, value]) => ({ name, value }));
+  const pieData = hasDimensionFilters
+    ? Object.entries(
+        filteredJobs.reduce((acc, job) => {
+          acc[job.vehicleType] = (acc[job.vehicleType] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      ).map(([name, value]) => ({ name, value }))
+    : (metricSummary?.vehicleTypeCounts || []).map(({ name, count }) => ({ name, value: count }));
   const CHART_COLORS = ['#7c3aed', '#0ea5e9', '#22c55e', '#f59e0b', '#ef4444', '#ec4899'];
 
   const chartTextColor = isDark ? '#9aa5ce' : '#64748b';
@@ -239,7 +309,7 @@ const Dashboard: React.FC = () => {
                 }`}
               >
                 <option value="">ทั้งหมด</option>
-                {data.options.drivers.map(d => (
+                {(appData?.options.drivers || []).map(d => (
                   <option key={d} value={d}>{d}</option>
                 ))}
               </select>
@@ -260,7 +330,7 @@ const Dashboard: React.FC = () => {
                 }`}
               >
                 <option value="">ทั้งหมด</option>
-                {data.options.vehicleTypes.map(v => (
+                {(appData?.options.vehicleTypes || []).map(v => (
                   <option key={v} value={v}>{v}</option>
                 ))}
               </select>
@@ -281,7 +351,7 @@ const Dashboard: React.FC = () => {
                 }`}
               >
                 <option value="">ทั้งหมด</option>
-                {data.options.licensePlates.map(p => (
+                {(appData?.options.licensePlates || []).map(p => (
                   <option key={p} value={p}>{p}</option>
                 ))}
               </select>
