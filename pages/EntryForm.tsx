@@ -846,6 +846,7 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
             <DisplayRow label="ประเภทรถ (Type)" value={formData.vehicleType || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
             <DisplayRow label="ป้ายทะเบียน (Plate)" value={formData.licensePlate || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
             <DisplayRow label="พนักงานขับรถ (Driver)" value={formData.driverName || '-'} isDark={isDark} isDriverStyle={isDriverEntryMode} />
+            <DisplayRow label="จำนวนรอบ (Rounds)" value={String(formData.rounds || '-')} isDark={isDark} isDriverStyle={isDriverEntryMode} />
           </div>
         ) : (
           <>
@@ -944,17 +945,6 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
         {isDriverEntryMode && (
           <div className={driverSectionClass}>
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <FormGroup label="จำนวนรอบ (Rounds)" isDark={isDark} isDriverStyle={isDriverEntryMode}>
-                <input
-                  type="number"
-                  name="rounds"
-                  min="1"
-                  required
-                  value={formData.rounds}
-                  onChange={handleInputChange}
-                  className={inputClass}
-                />
-              </FormGroup>
               <FormGroup label="Job No." isDark={isDark} isDriverStyle={isDriverEntryMode}>
                 <input
                   type="text"
