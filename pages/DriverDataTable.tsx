@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
-import { subscribeToJobsByDriverNames } from '../services/firebaseService';
+import { subscribeToDriverJobs } from '../services/firebaseService';
 import { JobEntry } from '../types';
 import { formatDate } from '../utils/formatters';
 
@@ -71,9 +71,10 @@ const DriverDataTable: React.FC = () => {
       ),
     [user?.email, userProfile?.displayName, userProfile?.fullName, userProfile?.nickname]
   );
+  const canLookupJobs = Boolean(user?.uid) || driverNameCandidates.length > 0;
 
   useEffect(() => {
-    if (driverNameCandidates.length === 0) {
+    if (!canLookupJobs) {
       setJobs([]);
       setLoading(false);
       return undefined;
@@ -82,7 +83,8 @@ const DriverDataTable: React.FC = () => {
     setLoading(true);
     setErrorMessage('');
 
-    const unsubscribe = subscribeToJobsByDriverNames(
+    const unsubscribe = subscribeToDriverJobs(
+      user?.uid,
       driverNameCandidates,
       (rows) => {
         setJobs(rows);
@@ -96,7 +98,7 @@ const DriverDataTable: React.FC = () => {
     );
 
     return () => unsubscribe();
-  }, [driverNameCandidates]);
+  }, [canLookupJobs, driverNameCandidates, user?.uid]);
 
   const yearOptions = useMemo(() => {
     const years = new Set(
@@ -163,7 +165,7 @@ const DriverDataTable: React.FC = () => {
     );
   };
 
-  if (driverNameCandidates.length === 0) {
+  if (!canLookupJobs) {
     return (
       <section className="driver-clay-card p-5 sm:p-6">
         <h2 className="text-2xl font-black text-slate-700">ข้อมูลงานวิ่งของฉัน</h2>
@@ -181,7 +183,9 @@ const DriverDataTable: React.FC = () => {
           <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">My Records</p>
           <h2 className="mt-1 text-2xl font-black text-slate-700">ข้อมูลงานวิ่งของฉัน</h2>
           <p className="mt-1 text-sm text-slate-500">
-            ค้นหาด้วยชื่อที่เกี่ยวข้องกับบัญชีนี้ {driverNameCandidates.join(' / ')}
+            {driverNameCandidates.length > 0
+              ? `ค้นหาด้วยบัญชีนี้และชื่อที่เกี่ยวข้อง ${driverNameCandidates.join(' / ')}`
+              : 'ค้นหาจากบัญชีผู้ใช้ที่กำลังเข้าสู่ระบบ'}
           </p>
 
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">

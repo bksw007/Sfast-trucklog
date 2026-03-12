@@ -16,6 +16,26 @@ service cloud.firestore {
       return request.auth != null && data.assignedToUid == request.auth.uid;
     }
 
+    function getCurrentUserData() {
+      return request.auth == null
+        ? null
+        : get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isDriverNameMatch(data) {
+      let currentUser = getCurrentUserData();
+      let emailPrefix = request.auth != null && request.auth.token.email != null
+        ? request.auth.token.email.split('@')[0]
+        : null;
+
+      return request.auth != null && (
+        (currentUser != null && currentUser.fullName != null && data.driverName == currentUser.fullName) ||
+        (currentUser != null && currentUser.displayName != null && data.driverName == currentUser.displayName) ||
+        (currentUser != null && currentUser.nickname != null && data.driverName == currentUser.nickname) ||
+        (emailPrefix != null && data.driverName == emailPrefix)
+      );
+    }
+
     // 1. users
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
@@ -26,7 +46,8 @@ service cloud.firestore {
 
     // 2. jobs
     match /jobs/{jobId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin() || isAssignedDriver(resource.data) || isDriverNameMatch(resource.data);
+      allow write: if isAdmin();
     }
 
     // 2.1 dashboard_metrics

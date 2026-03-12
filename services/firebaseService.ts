@@ -14,6 +14,8 @@ import {
   where,
   writeBatch,
   runTransaction,
+  Query,
+  DocumentData,
 } from 'firebase/firestore';
 import {
   ref,
@@ -280,10 +282,19 @@ export const subscribeToJobsByDriverName = (
   callback: (jobs: JobEntry[]) => void,
   onError?: (error: Error) => void
 ): (() => void) => {
-  return subscribeToJobsByDriverNames([driverName], callback, onError);
+  return subscribeToDriverJobs(undefined, [driverName], callback, onError);
 };
 
 export const subscribeToJobsByDriverNames = (
+  driverNames: string[],
+  callback: (jobs: JobEntry[]) => void,
+  onError?: (error: Error) => void
+): (() => void) => {
+  return subscribeToDriverJobs(undefined, driverNames, callback, onError);
+};
+
+export const subscribeToDriverJobs = (
+  assignedToUid: string | undefined,
   driverNames: string[],
   callback: (jobs: JobEntry[]) => void,
   onError?: (error: Error) => void
@@ -296,20 +307,38 @@ export const subscribeToJobsByDriverNames = (
     )
   );
 
-  if (normalizedNames.length === 0) {
+  if (!assignedToUid && normalizedNames.length === 0) {
     callback([]);
     return () => {};
   }
 
-  const chunks: string[][] = [];
-  for (let index = 0; index < normalizedNames.length; index += 10) {
-    chunks.push(normalizedNames.slice(index, index + 10));
+  const latestQueryRows = new Map<string, JobEntry[]>();
+  const queryEntries: Array<{ key: string; queryRef: Query<DocumentData> }> = [];
+
+  if (assignedToUid) {
+    queryEntries.push({
+      key: `uid:${assignedToUid}`,
+      queryRef: query(
+        collection(db, JOBS_COLLECTION),
+        where('assignedToUid', '==', assignedToUid)
+      ),
+    });
   }
 
-  const latestChunkRows = new Map<number, JobEntry[]>();
+  for (let index = 0; index < normalizedNames.length; index += 10) {
+    const chunk = normalizedNames.slice(index, index + 10);
+    queryEntries.push({
+      key: `names:${index}`,
+      queryRef: query(
+        collection(db, JOBS_COLLECTION),
+        where('driverName', 'in', chunk)
+      ),
+    });
+  }
+
   const emitMergedJobs = () => {
     const merged = new Map<string, JobEntry>();
-    latestChunkRows.forEach((rows) => {
+    latestQueryRows.forEach((rows) => {
       rows.forEach((job) => {
         merged.set(job.id, job);
       });
@@ -320,25 +349,20 @@ export const subscribeToJobsByDriverNames = (
     callback(jobs);
   };
 
-  const unsubscribes = chunks.map((chunk, chunkIndex) => {
-    const jobsQuery = query(
-      collection(db, JOBS_COLLECTION),
-      where('driverName', 'in', chunk)
-    );
-
+  const unsubscribes = queryEntries.map(({ key, queryRef }) => {
     return onSnapshot(
-      jobsQuery,
+      queryRef,
       (snapshot) => {
         const jobs: JobEntry[] = snapshot.docs.map((jobDoc) => ({
           id: jobDoc.id,
           ...jobDoc.data(),
         })) as JobEntry[];
 
-        latestChunkRows.set(chunkIndex, jobs);
+        latestQueryRows.set(key, jobs);
         emitMergedJobs();
       },
       (error) => {
-        console.error('[Firebase] Jobs by driver names subscription error:', error);
+        console.error('[Firebase] Driver jobs subscription error:', error);
         onError?.(error);
       }
     );
@@ -996,6 +1020,7 @@ export const firebaseService = {
   subscribeToJobs,
   subscribeToJobsByDriverName,
   subscribeToJobsByDriverNames,
+  subscribeToDriverJobs,
   subscribeToOptions,
   subscribeToTodayJobs,
   subscribeToTodayJobsByAssignee,

@@ -780,6 +780,8 @@ const buildJobPayloadFromToday = (
     employerCompany: job.employerCompany || "",
     productName: (job.productName || "Inverter").trim() || "Inverter",
     todayQuantity: job.quantity || "",
+    assignedToUid: job.assignedToUid || "",
+    assignedToName: job.assignedToName || job.driverName || "",
     updatedAt: now,
     timestamp: typeof job.timestamp === "number" ? job.timestamp : now,
   };

@@ -23,6 +23,11 @@ export interface JobEntry {
   imageUrl?: string; // Legacy single-image field (old schema)
   customerPrice?: number; // Admin only: ราคาเก็บลูกค้า
   jointPrice?: number; // Admin only: ราคาจ่ายรถร่วม
+  assignedToUid?: string;
+  assignedToName?: string;
+  employerCompany?: string;
+  todayQuantity?: string;
+  linkedTodayJobId?: string;
   timestamp: number;
 }
 
