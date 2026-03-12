@@ -796,7 +796,7 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
           : 'bg-light-bg border-light-muted/30 text-light-text placeholder-light-muted/50'
       }`;
 
-  const pageClass = isDriverEntryMode ? 'driver-clay rounded-[30px] p-2.5 sm:p-3' : '';
+  const pageClass = isDriverEntryMode ? 'p-0 sm:driver-clay sm:rounded-[30px] sm:p-3' : '';
   const headerTitleClass = isDriverEntryMode ? 'text-3xl font-black text-slate-700 sm:text-4xl' : `text-3xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`;
   const headerTextClass = isDriverEntryMode ? 'driver-clay-muted text-base sm:text-lg' : isDark ? 'text-dark-muted' : 'text-light-muted';
   const mutedTextClass = isDriverEntryMode ? 'driver-clay-muted' : isDark ? 'text-dark-muted' : 'text-light-muted';
@@ -811,7 +811,7 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
     ? 'driver-clay-btn driver-clay-btn-primary rounded-2xl px-8 py-3 font-bold'
     : 'flex items-center gap-2 bg-gradient-to-r from-accent-primary to-accent-secondary hover:brightness-110 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg shadow-accent-primary/25 disabled:opacity-50 disabled:cursor-not-allowed';
   const formClass = isDriverEntryMode
-    ? 'driver-clay-card space-y-5 rounded-[2rem] p-5 sm:p-6'
+    ? 'space-y-5 border-0 bg-transparent p-0 shadow-none sm:driver-clay-card sm:rounded-[2rem] sm:p-6'
     : `space-y-6 rounded-3xl border p-8 shadow-2xl ${
         isDark ? 'bg-dark-card border-dark-muted/10' : 'bg-light-card border-light-muted/10'
       }`;
