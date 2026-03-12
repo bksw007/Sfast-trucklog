@@ -2237,7 +2237,7 @@ const TodayJobs: React.FC = () => {
       />
 
       <Modal isOpen={showCardModal} onClose={() => setShowCardModal(false)} title={cardModalTitle}>
-        <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+        <div className="hide-scrollbar space-y-2 max-h-[60vh] overflow-y-auto">
           {cardModalJobs.length === 0 ? (
             <p className="driver-clay-muted text-sm">ไม่พบรายการ</p>
           ) : (
@@ -2420,7 +2420,7 @@ const TodayJobs: React.FC = () => {
               <p className="driver-clay-muted text-xs">แก้ไขข้อมูลให้ครบเหมือนฟอร์มบันทึกหน้างาน แล้วกดบันทึกการแก้ไข</p>
             </div>
 
-            <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
+            <div className="hide-scrollbar max-h-[70vh] space-y-4 overflow-y-auto pr-1">
               <div className="driver-clay-soft space-y-3 p-3">
                 <p className="text-sm font-semibold text-slate-700">ข้อมูลหลัก</p>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

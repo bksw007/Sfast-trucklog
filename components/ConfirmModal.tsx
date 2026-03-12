@@ -54,7 +54,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto px-4 pb-[max(6.5rem,calc(env(safe-area-inset-bottom)+5.5rem))] pt-[max(5.5rem,calc(env(safe-area-inset-top)+4.5rem))] sm:items-center sm:py-8">
+    <div className="hide-scrollbar fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto px-4 pb-[max(6.5rem,calc(env(safe-area-inset-bottom)+5.5rem))] pt-[max(5.5rem,calc(env(safe-area-inset-top)+4.5rem))] sm:items-center sm:py-8">
       {/* Backdrop */}
       <div 
         className="modal-clay-backdrop absolute inset-0" 
@@ -62,7 +62,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
       />
       
       {/* Modal Content */}
-      <div className="modal-clay-panel relative my-auto w-full max-w-md max-h-[calc(100dvh-12rem)] overflow-y-auto p-6 shadow-2xl animate-fade-in sm:max-h-[calc(100dvh-4rem)]">
+      <div className="modal-clay-panel hide-scrollbar relative my-auto w-full max-w-md max-h-[calc(100dvh-12rem)] overflow-y-auto p-6 shadow-2xl animate-fade-in sm:max-h-[calc(100dvh-4rem)]">
         {/* Close Button */}
         <button 
           onClick={onClose}

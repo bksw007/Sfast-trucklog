@@ -350,7 +350,7 @@ const Settings: React.FC = () => {
         </div>
 
         {/* List */}
-        <div className="max-h-96 overflow-y-auto">
+        <div className="hide-scrollbar max-h-96 overflow-y-auto">
           {getCurrentOptions().length === 0 ? (
             <div className={`p-8 text-center ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
               ไม่มีข้อมูล

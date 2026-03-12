@@ -26,7 +26,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, panelCl
 
   if (!isOpen) return null;
 
-  const resolvedBodyClassName = bodyClassName || 'max-h-[calc(100dvh-8rem)] overflow-y-auto pr-1';
+  const resolvedBodyClassName = bodyClassName || 'hide-scrollbar max-h-[calc(100dvh-8rem)] overflow-y-auto pr-1';
 
   return (
     <div className="fixed inset-0 z-[85] flex items-start justify-center overflow-hidden px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:items-center sm:py-8">

@@ -796,10 +796,10 @@ const DataTable: React.FC = () => {
     if (!selectedJob || !editData) return null;
 
     return (
-      <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:items-center sm:py-6">
+      <div className="hide-scrollbar fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:items-center sm:py-6">
         <div className="modal-clay-backdrop absolute inset-0" onClick={() => setIsDetailModalOpen(false)} />
         
-        <div className="modal-clay-panel relative w-full max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl shadow-2xl animate-fade-in sm:max-h-[90dvh]">
+        <div className="modal-clay-panel hide-scrollbar relative w-full max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl shadow-2xl animate-fade-in sm:max-h-[90dvh]">
           <div className="modal-clay-header rounded-t-3xl p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -1366,7 +1366,7 @@ const DataTable: React.FC = () => {
       <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-hidden px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:items-center sm:py-6">
         <div className="modal-clay-backdrop absolute inset-0" onClick={() => setShowAddJobModal(false)} />
 
-        <div className="modal-clay-panel relative w-full max-w-5xl max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl shadow-2xl animate-fade-in sm:max-h-[90dvh]">
+        <div className="modal-clay-panel hide-scrollbar relative w-full max-w-5xl max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl shadow-2xl animate-fade-in sm:max-h-[90dvh]">
           <div className="modal-clay-header rounded-t-3xl p-5 sm:p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">

@@ -773,7 +773,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
         onClose={() => setSelectedJob(null)}
         title={selectedJob?.workOrderNo || selectedJob?.ticketNo || 'รายละเอียดงาน'}
         panelClassName="max-w-2xl"
-        bodyClassName="max-h-[calc(100dvh-8rem)] space-y-4 overflow-y-auto pr-1"
+        bodyClassName="hide-scrollbar max-h-[calc(100dvh-8rem)] space-y-4 overflow-y-auto pr-1"
       >
         {selectedJob && (
           <div className="space-y-4 text-sm text-slate-700">
