@@ -57,6 +57,8 @@ const mergeImageUrls = (existing: string[], incoming: string[]): string[] => {
   return Array.from(new Set(normalized));
 };
 
+const createPreviewUrls = (files: File[]) => files.map((file) => URL.createObjectURL(file));
+
 type EntryFormData = Omit<JobEntry, 'id' | 'timestamp' | 'originImageUrl' | 'destinationImageUrl'>;
 
 const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
@@ -78,6 +80,7 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const sourceJobId = fromTodayJob?.id || queryJobId;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const dirtyFieldsRef = useRef<Set<keyof EntryFormData>>(new Set());
+  const previewUrlsRef = useRef<Set<string>>(new Set());
   
   // Origin Image State (รูปภาพต้นทาง)
   const [originImages, setOriginImages] = useState<File[]>([]);
@@ -210,12 +213,30 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
 
     if (!sourceJobId) return;
 
+    setOriginImages([]);
+    setDestinationImages([]);
+    setDocumentImages([]);
+    setOriginPreviews((prev) => {
+      revokePreviewUrls(prev);
+      return [];
+    });
+    setDestinationPreviews((prev) => {
+      revokePreviewUrls(prev);
+      return [];
+    });
+    setDocumentPreviews((prev) => {
+      revokePreviewUrls(prev);
+      return [];
+    });
     setExistingOriginImageUrls([]);
     setExistingDestinationImageUrls([]);
     setExistingDocumentImageUrls([]);
     setOriginImagesTouched(false);
     setDestinationImagesTouched(false);
     setDocumentImagesTouched(false);
+    if (originFileInputRef.current) originFileInputRef.current.value = '';
+    if (destinationFileInputRef.current) destinationFileInputRef.current.value = '';
+    if (documentFileInputRef.current) documentFileInputRef.current.value = '';
 
     let cancelled = false;
     const loadTodayJob = async () => {
@@ -279,6 +300,27 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
     }));
   };
 
+  const rememberPreviewUrls = (urls: string[]) => {
+    urls.forEach((url) => previewUrlsRef.current.add(url));
+  };
+
+  const revokePreviewUrl = (url?: string) => {
+    if (!url || !previewUrlsRef.current.has(url)) return;
+    URL.revokeObjectURL(url);
+    previewUrlsRef.current.delete(url);
+  };
+
+  const revokePreviewUrls = (urls: string[]) => {
+    urls.forEach((url) => revokePreviewUrl(url));
+  };
+
+  useEffect(() => {
+    return () => {
+      previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+      previewUrlsRef.current.clear();
+    };
+  }, []);
+
   // Origin Image handling (รูปภาพต้นทาง)
   const handleOriginImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []) as File[];
@@ -288,26 +330,30 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
       alert('กรุณาเลือกไฟล์รูปภาพเท่านั้น');
       return;
     }
-    
+
+    const previewUrls = createPreviewUrls(imageFiles);
+    rememberPreviewUrls(previewUrls);
     setOriginImages(prev => [...prev, ...imageFiles]);
-    
-    imageFiles.forEach(file => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setOriginPreviews(prev => [...prev, reader.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
+    setOriginPreviews(prev => [...prev, ...previewUrls]);
+    e.target.value = '';
   };
 
   const handleRemoveOriginImage = (index: number) => {
     setOriginImages(prev => prev.filter((_, i) => i !== index));
-    setOriginPreviews(prev => prev.filter((_, i) => i !== index));
+    setOriginPreviews(prev => {
+      const next = [...prev];
+      const [removed] = next.splice(index, 1);
+      revokePreviewUrl(removed);
+      return next;
+    });
   };
 
   const handleRemoveAllOriginImages = () => {
     setOriginImages([]);
-    setOriginPreviews([]);
+    setOriginPreviews(prev => {
+      revokePreviewUrls(prev);
+      return [];
+    });
     if (originFileInputRef.current) {
       originFileInputRef.current.value = '';
     }
@@ -322,26 +368,30 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
       alert('กรุณาเลือกไฟล์รูปภาพเท่านั้น');
       return;
     }
-    
+
+    const previewUrls = createPreviewUrls(imageFiles);
+    rememberPreviewUrls(previewUrls);
     setDestinationImages(prev => [...prev, ...imageFiles]);
-    
-    imageFiles.forEach(file => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setDestinationPreviews(prev => [...prev, reader.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
+    setDestinationPreviews(prev => [...prev, ...previewUrls]);
+    e.target.value = '';
   };
 
   const handleRemoveDestinationImage = (index: number) => {
     setDestinationImages(prev => prev.filter((_, i) => i !== index));
-    setDestinationPreviews(prev => prev.filter((_, i) => i !== index));
+    setDestinationPreviews(prev => {
+      const next = [...prev];
+      const [removed] = next.splice(index, 1);
+      revokePreviewUrl(removed);
+      return next;
+    });
   };
 
   const handleRemoveAllDestinationImages = () => {
     setDestinationImages([]);
-    setDestinationPreviews([]);
+    setDestinationPreviews(prev => {
+      revokePreviewUrls(prev);
+      return [];
+    });
     if (destinationFileInputRef.current) {
       destinationFileInputRef.current.value = '';
     }
@@ -356,21 +406,22 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
       alert('กรุณาเลือกไฟล์รูปภาพเท่านั้น');
       return;
     }
-    
+
+    const previewUrls = createPreviewUrls(imageFiles);
+    rememberPreviewUrls(previewUrls);
     setDocumentImages(prev => [...prev, ...imageFiles]);
-    
-    imageFiles.forEach(file => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setDocumentPreviews(prev => [...prev, reader.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
+    setDocumentPreviews(prev => [...prev, ...previewUrls]);
+    e.target.value = '';
   };
 
   const handleRemoveDocumentImage = (index: number) => {
     setDocumentImages(prev => prev.filter((_, i) => i !== index));
-    setDocumentPreviews(prev => prev.filter((_, i) => i !== index));
+    setDocumentPreviews(prev => {
+      const next = [...prev];
+      const [removed] = next.splice(index, 1);
+      revokePreviewUrl(removed);
+      return next;
+    });
   };
 
   const handleRemoveExistingOriginImage = (index: number) => {
@@ -390,7 +441,10 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
 
   const handleRemoveAllDocumentImages = () => {
     setDocumentImages([]);
-    setDocumentPreviews([]);
+    setDocumentPreviews(prev => {
+      revokePreviewUrls(prev);
+      return [];
+    });
     if (documentFileInputRef.current) {
       documentFileInputRef.current.value = '';
     }
@@ -735,7 +789,7 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   );
 
   const inputClass = isDriverEntryMode
-    ? 'driver-clay-input w-full rounded-xl px-4 py-3 text-light-text transition-all focus:outline-none'
+    ? 'driver-clay-input w-full rounded-xl px-4 py-3 text-base text-light-text transition-all focus:outline-none sm:text-lg'
     : `w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-accent-primary transition-all ${
         isDark
           ? 'bg-dark-bg border-dark-muted/30 text-dark-text placeholder-dark-muted/50'
@@ -743,8 +797,8 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
       }`;
 
   const pageClass = isDriverEntryMode ? 'driver-clay rounded-[28px] p-2 sm:p-3' : '';
-  const headerTitleClass = isDriverEntryMode ? 'text-3xl font-black text-slate-700' : `text-3xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`;
-  const headerTextClass = isDriverEntryMode ? 'driver-clay-muted' : isDark ? 'text-dark-muted' : 'text-light-muted';
+  const headerTitleClass = isDriverEntryMode ? 'text-3xl font-black text-slate-700 sm:text-4xl' : `text-3xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`;
+  const headerTextClass = isDriverEntryMode ? 'driver-clay-muted text-base sm:text-lg' : isDark ? 'text-dark-muted' : 'text-light-muted';
   const mutedTextClass = isDriverEntryMode ? 'driver-clay-muted' : isDark ? 'text-dark-muted' : 'text-light-muted';
   const uploadButtonClass = isDriverEntryMode
     ? 'driver-clay-btn driver-clay-btn-info w-full'
@@ -1421,15 +1475,15 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
 // Helper Components
 const FormGroup: React.FC<{ label: string; children: React.ReactNode; isDark: boolean; isDriverStyle?: boolean }> = ({ label, children, isDark, isDriverStyle = false }) => (
   <div className="min-w-0 flex flex-col gap-2">
-    <label className={`text-sm font-medium ${isDriverStyle ? 'driver-clay-muted' : isDark ? 'text-dark-text' : 'text-light-text'}`}>{label}</label>
+    <label className={isDriverStyle ? 'text-base font-semibold driver-clay-muted sm:text-lg' : `text-sm font-medium ${isDark ? 'text-dark-text' : 'text-light-text'}`}>{label}</label>
     {children}
   </div>
 );
 
 const DisplayRow: React.FC<{ label: string; value: string; isDark: boolean; isDriverStyle?: boolean }> = ({ label, value, isDark, isDriverStyle = false }) => (
   <div className="space-y-1">
-    <p className={`text-xs font-medium ${isDriverStyle ? 'driver-clay-muted' : isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{label}</p>
-    <p className={`text-sm font-semibold ${isDriverStyle ? 'text-slate-700' : isDark ? 'text-dark-text' : 'text-slate-900'}`}>{value}</p>
+    <p className={isDriverStyle ? 'text-sm font-medium driver-clay-muted sm:text-base' : `text-xs font-medium ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{label}</p>
+    <p className={isDriverStyle ? 'text-base font-semibold text-slate-700 sm:text-lg' : `text-sm font-semibold ${isDark ? 'text-dark-text' : 'text-slate-900'}`}>{value}</p>
   </div>
 );
 
@@ -1444,7 +1498,7 @@ const SelectWithAdd: React.FC<{
   isDriverStyle?: boolean;
 }> = ({ label, name, value, options, onChange, onAdd, isDark, isDriverStyle = false }) => {
   const selectClass = isDriverStyle
-    ? 'driver-clay-input min-w-0 w-full appearance-none rounded-xl px-4 py-3 pr-10 text-light-text focus:outline-none'
+    ? 'driver-clay-input min-w-0 w-full appearance-none rounded-xl px-4 py-3 pr-10 text-base text-light-text focus:outline-none sm:text-lg'
     : `min-w-0 w-full appearance-none border rounded-xl px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-accent-primary transition-all ${
         isDark
           ? 'bg-dark-bg border-dark-muted/30 text-dark-text'

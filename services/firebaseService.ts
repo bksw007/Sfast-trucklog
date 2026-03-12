@@ -280,35 +280,73 @@ export const subscribeToJobsByDriverName = (
   callback: (jobs: JobEntry[]) => void,
   onError?: (error: Error) => void
 ): (() => void) => {
-  const trimmedDriverName = driverName.trim();
-  if (!trimmedDriverName) {
+  return subscribeToJobsByDriverNames([driverName], callback, onError);
+};
+
+export const subscribeToJobsByDriverNames = (
+  driverNames: string[],
+  callback: (jobs: JobEntry[]) => void,
+  onError?: (error: Error) => void
+): (() => void) => {
+  const normalizedNames = Array.from(
+    new Set(
+      driverNames
+        .map((name) => name.trim())
+        .filter(Boolean)
+    )
+  );
+
+  if (normalizedNames.length === 0) {
     callback([]);
     return () => {};
   }
 
-  const jobsQuery = query(
-    collection(db, JOBS_COLLECTION),
-    where('driverName', '==', trimmedDriverName)
-  );
+  const chunks: string[][] = [];
+  for (let index = 0; index < normalizedNames.length; index += 10) {
+    chunks.push(normalizedNames.slice(index, index + 10));
+  }
 
-  const unsubscribe = onSnapshot(
-    jobsQuery,
-    (snapshot) => {
-      const jobs: JobEntry[] = snapshot.docs.map((jobDoc) => ({
-        id: jobDoc.id,
-        ...jobDoc.data(),
-      })) as JobEntry[];
+  const latestChunkRows = new Map<number, JobEntry[]>();
+  const emitMergedJobs = () => {
+    const merged = new Map<string, JobEntry>();
+    latestChunkRows.forEach((rows) => {
+      rows.forEach((job) => {
+        merged.set(job.id, job);
+      });
+    });
 
-      jobs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-      callback(jobs);
-    },
-    (error) => {
-      console.error('[Firebase] Jobs by driver name subscription error:', error);
-      onError?.(error);
-    }
-  );
+    const jobs = Array.from(merged.values());
+    jobs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    callback(jobs);
+  };
 
-  return unsubscribe;
+  const unsubscribes = chunks.map((chunk, chunkIndex) => {
+    const jobsQuery = query(
+      collection(db, JOBS_COLLECTION),
+      where('driverName', 'in', chunk)
+    );
+
+    return onSnapshot(
+      jobsQuery,
+      (snapshot) => {
+        const jobs: JobEntry[] = snapshot.docs.map((jobDoc) => ({
+          id: jobDoc.id,
+          ...jobDoc.data(),
+        })) as JobEntry[];
+
+        latestChunkRows.set(chunkIndex, jobs);
+        emitMergedJobs();
+      },
+      (error) => {
+        console.error('[Firebase] Jobs by driver names subscription error:', error);
+        onError?.(error);
+      }
+    );
+  });
+
+  return () => {
+    unsubscribes.forEach((unsubscribe) => unsubscribe());
+  };
 };
 
 /**
@@ -957,6 +995,7 @@ export const initializeDefaultOptions = async (skipExistingCheck = false): Promi
 export const firebaseService = {
   subscribeToJobs,
   subscribeToJobsByDriverName,
+  subscribeToJobsByDriverNames,
   subscribeToOptions,
   subscribeToTodayJobs,
   subscribeToTodayJobsByAssignee,
