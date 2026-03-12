@@ -16,6 +16,12 @@ import {
   getUserProfile,
   updateUserProfile,
 } from '../services/userService';
+import {
+  ensureForegroundPushListener,
+  stopForegroundPushListener,
+  syncPushTokenForUser,
+  unregisterPushTokenForUser,
+} from '../services/pushService';
 
 interface AuthContextType {
   user: User | null;
@@ -127,6 +133,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       setUserProfile(profile || null);
+      if (currentUser.uid) {
+        void ensureForegroundPushListener();
+        void syncPushTokenForUser(currentUser.uid);
+      }
     } catch (error) {
       console.error('Error in fetchProfile:', error);
     }
@@ -139,6 +149,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         await fetchProfile(user);
       } else {
         setUserProfile(null);
+        stopForegroundPushListener();
       }
       setLoading(false);
     });
@@ -162,6 +173,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = async () => {
+    if (user?.uid) {
+      try {
+        await unregisterPushTokenForUser(user.uid);
+      } catch (error) {
+        console.warn('Push cleanup during logout failed:', error);
+      }
+    }
+
+    stopForegroundPushListener();
     await signOut(auth);
     setUserProfile(null);
   };

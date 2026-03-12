@@ -2,6 +2,31 @@ import app from '../firebase';
 import { addUserFcmToken, removeUserFcmToken } from './userService';
 
 const TOKEN_STORAGE_KEY = 'sfast_fcm_token';
+const FOREGROUND_NOTIFICATION_ICON = '/icons/web-app-manifest-192x192.png';
+const FOREGROUND_NOTIFICATION_BADGE = '/favicon-32x32.png';
+
+type StoredPushBinding = {
+  uid: string;
+  token: string;
+};
+
+type PushRegistrationResult = {
+  ok: boolean;
+  message: string;
+  token?: string;
+};
+
+type ForegroundPayload = {
+  notification?: {
+    title?: string;
+    body?: string;
+  };
+  fcmOptions?: {
+    link?: string;
+  };
+};
+
+let foregroundPushUnsubscribe: (() => void) | null = null;
 
 const buildMessagingServiceWorkerUrl = () => {
   const url = new URL('/firebase-messaging-sw.js', window.location.origin);
@@ -25,61 +50,174 @@ const buildMessagingServiceWorkerUrl = () => {
 const isPushEnvironmentSupported = () =>
   typeof window !== 'undefined' &&
   'Notification' in window &&
-  'serviceWorker' in navigator;
+  'serviceWorker' in navigator &&
+  'PushManager' in window;
 
-export const getStoredPushToken = (): string => {
-  if (typeof window === 'undefined') return '';
-  return localStorage.getItem(TOKEN_STORAGE_KEY) || '';
+const readStoredPushBinding = (): StoredPushBinding | null => {
+  if (typeof window === 'undefined') return null;
+
+  const raw = localStorage.getItem(TOKEN_STORAGE_KEY);
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<StoredPushBinding>;
+    const token = typeof parsed?.token === 'string' ? parsed.token.trim() : '';
+    const uid = typeof parsed?.uid === 'string' ? parsed.uid.trim() : '';
+    return token ? { uid, token } : null;
+  } catch {
+    const legacyToken = raw.trim();
+    return legacyToken ? { uid: '', token: legacyToken } : null;
+  }
 };
 
-export const registerPushTokenForUser = async (
-  uid: string
-): Promise<{ ok: boolean; message: string; token?: string }> => {
-  if (!uid) return { ok: false, message: 'ไม่พบผู้ใช้งาน' };
+const writeStoredPushBinding = (uid: string, token: string) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(
+    TOKEN_STORAGE_KEY,
+    JSON.stringify({
+      uid: uid.trim(),
+      token: token.trim(),
+    } satisfies StoredPushBinding)
+  );
+};
+
+const clearStoredPushBinding = () => {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+};
+
+export const getStoredPushToken = (): string => {
+  return readStoredPushBinding()?.token || '';
+};
+
+const resolveMessagingContext = async (requestPermission: boolean) => {
   if (!isPushEnvironmentSupported()) {
-    return { ok: false, message: 'อุปกรณ์นี้ไม่รองรับ Web Push' };
+    return { ok: false, message: 'อุปกรณ์นี้ไม่รองรับ Web Push' } as const;
   }
 
   const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY as string | undefined;
   if (!vapidKey?.trim()) {
-    return { ok: false, message: 'ยังไม่ได้ตั้งค่า VAPID key' };
+    return { ok: false, message: 'ยังไม่ได้ตั้งค่า VAPID key' } as const;
   }
 
   if (Notification.permission === 'denied') {
-    return { ok: false, message: 'เบราว์เซอร์บล็อกการแจ้งเตือนอยู่' };
+    return { ok: false, message: 'เบราว์เซอร์บล็อกการแจ้งเตือนอยู่' } as const;
   }
 
-  const permission = await Notification.requestPermission();
+  const permission = requestPermission ?
+    await Notification.requestPermission() :
+    Notification.permission;
   if (permission !== 'granted') {
-    return { ok: false, message: 'ยังไม่ได้อนุญาตการแจ้งเตือน' };
+    return { ok: false, message: 'ยังไม่ได้อนุญาตการแจ้งเตือน' } as const;
   }
 
   const messagingModule = await import('firebase/messaging');
   const supported = await messagingModule.isSupported();
   if (!supported) {
-    return { ok: false, message: 'เบราว์เซอร์นี้ไม่รองรับ Firebase Messaging' };
+    return { ok: false, message: 'เบราว์เซอร์นี้ไม่รองรับ Firebase Messaging' } as const;
   }
 
   const swRegistration = await navigator.serviceWorker.register(buildMessagingServiceWorkerUrl());
   const messaging = messagingModule.getMessaging(app);
-  const token = await messagingModule.getToken(messaging, {
+
+  return {
+    ok: true,
     vapidKey,
-    serviceWorkerRegistration: swRegistration,
+    messagingModule,
+    messaging,
+    swRegistration,
+  } as const;
+};
+
+const showForegroundNotification = (payload: ForegroundPayload) => {
+  if (typeof window === 'undefined' || Notification.permission !== 'granted') return;
+
+  const title = payload.notification?.title || 'SFast Trucklog';
+  const body = payload.notification?.body || 'มีการอัปเดตงานใหม่';
+  const targetLink = payload.fcmOptions?.link || '/';
+
+  const notification = new Notification(title, {
+    body,
+    icon: FOREGROUND_NOTIFICATION_ICON,
+    badge: FOREGROUND_NOTIFICATION_BADGE,
+  });
+
+  notification.onclick = () => {
+    window.focus();
+    window.location.assign(targetLink);
+    notification.close();
+  };
+};
+
+export const ensureForegroundPushListener = async (): Promise<void> => {
+  if (foregroundPushUnsubscribe || !isPushEnvironmentSupported()) return;
+
+  const context = await resolveMessagingContext(false);
+  if (!context.ok) return;
+
+  foregroundPushUnsubscribe = context.messagingModule.onMessage(
+    context.messaging,
+    (payload) => {
+      showForegroundNotification(payload as ForegroundPayload);
+    }
+  );
+};
+
+export const stopForegroundPushListener = () => {
+  foregroundPushUnsubscribe?.();
+  foregroundPushUnsubscribe = null;
+};
+
+const linkPushTokenToUser = async (
+  uid: string,
+  requestPermission: boolean
+): Promise<PushRegistrationResult> => {
+  if (!uid) return { ok: false, message: 'ไม่พบผู้ใช้งาน' };
+
+  const context = await resolveMessagingContext(requestPermission);
+  if (!context.ok) {
+    return { ok: false, message: context.message };
+  }
+
+  const token = await context.messagingModule.getToken(context.messaging, {
+    vapidKey: context.vapidKey,
+    serviceWorkerRegistration: context.swRegistration,
   });
 
   if (!token) {
     return { ok: false, message: 'ไม่สามารถออก Push token ได้' };
   }
 
-  const previousToken = getStoredPushToken();
-  if (previousToken && previousToken !== token) {
-    await removeUserFcmToken(uid, previousToken);
+  const previousBinding = readStoredPushBinding();
+  if (previousBinding?.token) {
+    const previousOwnerUid = previousBinding.uid || uid;
+    const shouldDetachPrevious =
+      previousBinding.token !== token || previousOwnerUid !== uid;
+
+    if (shouldDetachPrevious) {
+      await removeUserFcmToken(previousOwnerUid, previousBinding.token);
+    }
   }
 
   await addUserFcmToken(uid, token);
-  localStorage.setItem(TOKEN_STORAGE_KEY, token);
+  writeStoredPushBinding(uid, token);
+  await ensureForegroundPushListener();
 
   return { ok: true, message: 'เปิดรับแจ้งเตือน Push แล้ว', token };
+};
+
+export const registerPushTokenForUser = async (
+  uid: string
+): Promise<PushRegistrationResult> => linkPushTokenToUser(uid, true);
+
+export const syncPushTokenForUser = async (uid: string): Promise<void> => {
+  if (!uid || Notification.permission !== 'granted') return;
+
+  try {
+    await linkPushTokenToUser(uid, false);
+  } catch (error) {
+    console.warn('Silent push token sync failed:', error);
+  }
 };
 
 export const unregisterPushTokenForUser = async (
@@ -87,13 +225,25 @@ export const unregisterPushTokenForUser = async (
 ): Promise<{ ok: boolean; message: string }> => {
   if (!uid) return { ok: false, message: 'ไม่พบผู้ใช้งาน' };
 
-  const token = getStoredPushToken();
+  const binding = readStoredPushBinding();
+  const token = binding?.token || '';
   if (!token) {
     return { ok: true, message: 'อุปกรณ์นี้ยังไม่มี token ที่บันทึกไว้' };
   }
 
-  await removeUserFcmToken(uid, token);
-  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  await removeUserFcmToken(binding?.uid || uid, token);
+  clearStoredPushBinding();
+
+  try {
+    const context = await resolveMessagingContext(false);
+    if (context.ok) {
+      await context.messagingModule.deleteToken(context.messaging);
+    }
+  } catch (error) {
+    console.warn('Delete push token failed:', error);
+  }
+
+  stopForegroundPushListener();
 
   return { ok: true, message: 'ปิด Push ของอุปกรณ์นี้แล้ว' };
 };

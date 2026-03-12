@@ -1,6 +1,6 @@
 import {initializeApp} from "firebase-admin/app";
 import {getAuth} from "firebase-admin/auth";
-import {getFirestore} from "firebase-admin/firestore";
+import {FieldValue, getFirestore} from "firebase-admin/firestore";
 import {getMessaging} from "firebase-admin/messaging";
 import {setGlobalOptions} from "firebase-functions/v2";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
@@ -82,6 +82,10 @@ const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN || "";
 const LINE_GROUP_ID = process.env.LINE_GROUP_ID || "";
 const DASHBOARD_METRICS_COLLECTION = "dashboard_metrics";
+const INVALID_FCM_TOKEN_ERROR_CODES = new Set([
+  "messaging/invalid-registration-token",
+  "messaging/registration-token-not-registered",
+]);
 
 const normalizeTokens = (tokens: unknown): string[] => {
   if (!Array.isArray(tokens)) return [];
@@ -411,6 +415,32 @@ const chunk = <T>(items: T[], size: number): T[][] => {
   return result;
 };
 
+const removeInvalidPushTokens = async (tokens: string[]): Promise<void> => {
+  const uniqueTokens = Array.from(new Set(tokens.filter(Boolean)));
+  if (uniqueTokens.length === 0) return;
+
+  for (const tokenChunk of chunk(uniqueTokens, 30)) {
+    const snapshot = await db.collection("users")
+      .where("fcmTokens", "array-contains-any", tokenChunk)
+      .get();
+
+    if (snapshot.empty) continue;
+
+    const batch = db.batch();
+    snapshot.docs.forEach((userDoc) => {
+      batch.update(userDoc.ref, {
+        fcmTokens: FieldValue.arrayRemove(...tokenChunk),
+        lastPushTokenUpdatedAt: Date.now(),
+      });
+    });
+    await batch.commit();
+  }
+
+  logger.info("Removed invalid push tokens", {
+    invalidTokenCount: uniqueTokens.length,
+  });
+};
+
 const sendPush = async (
   tokens: string[],
   title: string,
@@ -437,9 +467,22 @@ const sendPush = async (
       });
 
       if (response.failureCount > 0) {
+        const invalidTokens = response.responses.flatMap((result, index) => {
+          const errorCode = result.error?.code;
+          if (!errorCode || !INVALID_FCM_TOKEN_ERROR_CODES.has(errorCode)) {
+            return [];
+          }
+          return tokenChunk[index] ? [tokenChunk[index]] : [];
+        });
+
+        if (invalidTokens.length > 0) {
+          await removeInvalidPushTokens(invalidTokens);
+        }
+
         logger.warn("Push sent with failures", {
           failureCount: response.failureCount,
           successCount: response.successCount,
+          invalidTokenCount: invalidTokens.length,
         });
       }
     } catch (error) {
