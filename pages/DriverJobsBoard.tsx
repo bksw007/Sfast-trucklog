@@ -349,7 +349,8 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
   };
 
   const handleAcceptJob = async (job: TodayJobEntry) => {
-    if (!user?.uid || updatingJobId || getJobDate(job) !== todayDate) return;
+    const jobDate = getJobDate(job);
+    if (!user?.uid || updatingJobId || !jobDate || jobDate > todayDate) return;
     setUpdatingJobId(job.id);
 
     try {
@@ -511,7 +512,11 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
             const isFutureScheduled = view === 'today' && futureOffset > 0;
             const isTodayScheduled = view === 'today' && jobDate === todayDate;
             const isOverdueScheduled = view === 'today' && !!jobDate && jobDate < todayDate;
-            const canAcceptToday = job.status === 'pending' && jobDate === todayDate;
+            const canAcceptNow =
+              job.status === 'pending' &&
+              !!jobDate &&
+              jobDate <= todayDate;
+            const isFutureLockedPending = job.status === 'pending' && !!jobDate && jobDate > todayDate;
             const canUpdateJob =
               job.status === 'in_progress' &&
               (view === 'active' || view === 'ready-to-close');
@@ -733,15 +738,17 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                         event.stopPropagation();
                         void handleAcceptJob(job);
                       }}
-                      disabled={!canAcceptToday || updatingJobId === job.id}
-                      className={`driver-clay-btn driver-clay-btn-success min-h-[2.85rem] justify-center text-sm ${!canAcceptToday ? 'opacity-70' : ''}`}
+                      disabled={!canAcceptNow || updatingJobId === job.id}
+                      className={`driver-clay-btn driver-clay-btn-success min-h-[2.85rem] justify-center text-sm ${!canAcceptNow ? 'opacity-70' : ''}`}
                     >
                       <Truck size={15} />
-                      {canAcceptToday
+                      {canAcceptNow
                         ? updatingJobId === job.id
                           ? 'กำลังรับงาน...'
                           : 'รับงาน'
-                        : 'รับงานได้ในวันนัด'}
+                        : isFutureLockedPending
+                          ? 'รับงานได้ในวันนัด'
+                          : 'ยังไม่พร้อมรับงาน'}
                     </button>
                   )}
 

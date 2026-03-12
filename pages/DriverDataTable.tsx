@@ -267,22 +267,16 @@ const DriverDataTable: React.FC = () => {
                   }}
                   className="driver-clay-card cursor-pointer p-4 transition hover:-translate-y-[1px] sm:p-5"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="break-words text-base font-black text-slate-700">{job.workOrderNo || '-'}</p>
-                      <p className="mt-1 break-words text-sm font-semibold text-slate-600">{job.productName || '-'}</p>
-                      <p className="mt-1 break-words text-xs text-slate-500">Job No.: {job.jobNo || '-'}</p>
-                    </div>
-                    <span className="driver-clay-chip whitespace-nowrap bg-slate-100/85 text-slate-700">
-                      {job.rounds || 0} รอบ
-                    </span>
+                  <div className="min-w-0">
+                    <p className="break-words text-base font-black text-slate-700">
+                      {formatDate(job.date)}
+                    </p>
+                    <p className="mt-1 break-words text-sm font-semibold text-slate-600">
+                      {job.workOrderNo || '-'}
+                    </p>
                   </div>
 
                   <div className="mt-4 space-y-2 text-sm text-slate-700">
-                    <DetailRow
-                      icon={<CalendarClock size={14} className="driver-clay-muted" />}
-                      value={`วันที่งาน: ${formatDate(job.date)}`}
-                    />
                     <DetailRow
                       icon={<MapPin size={14} className="driver-clay-muted mt-0.5" />}
                       value={`รับ: ${job.pickupLocation || '-'}`}
@@ -291,17 +285,33 @@ const DriverDataTable: React.FC = () => {
                       icon={<MapPin size={14} className="driver-clay-muted mt-0.5" />}
                       value={`ส่ง: ${job.dropoffLocation || '-'}`}
                     />
+                    <DetailRow
+                      icon={<Truck size={14} className="driver-clay-muted" />}
+                      value={`รถ: ${job.vehicleType || '-'} | ทะเบียน: ${job.licensePlate || '-'}`}
+                    />
                   </div>
 
                   {expanded && (
                     <div className="mt-4 space-y-2 border-t border-white/70 pt-4 text-sm text-slate-700">
                       <DetailRow
-                        icon={<Truck size={14} className="driver-clay-muted" />}
-                        value={`รถ: ${job.vehicleType || '-'} | ทะเบียน: ${job.licensePlate || '-'}`}
-                      />
-                      <DetailRow
                         icon={<UserRound size={14} className="driver-clay-muted" />}
                         value={`พนักงานขับรถ: ${job.driverName || '-'}`}
+                      />
+                      <DetailRow
+                        icon={<Package2 size={14} className="driver-clay-muted" />}
+                        value={`ประเภทสินค้า: ${job.productName || '-'}`}
+                      />
+                      <DetailRow
+                        icon={<CalendarClock size={14} className="driver-clay-muted" />}
+                        value={`วันที่งาน: ${formatDate(job.date)}`}
+                      />
+                      <DetailRow
+                        icon={<FileText size={14} className="driver-clay-muted" />}
+                        value={`เลขที่ใบแจ้งงาน: ${job.workOrderNo || '-'}`}
+                      />
+                      <DetailRow
+                        icon={<FileText size={14} className="driver-clay-muted" />}
+                        value={`Job No.: ${job.jobNo || '-'}`}
                       />
                       <DetailRow
                         icon={<FileText size={14} className="driver-clay-muted" />}
@@ -361,22 +371,24 @@ const DriverDataTable: React.FC = () => {
       <Modal
         isOpen={!!selectedJob}
         onClose={() => setSelectedJob(null)}
-        title={selectedJob?.workOrderNo || 'รายละเอียดงานวิ่ง'}
+        title="รายละเอียดงาน"
         panelClassName="max-w-2xl"
         bodyClassName="hide-scrollbar max-h-[calc(100dvh-8rem)] space-y-4 overflow-y-auto pr-1"
       >
         {selectedJob && (
           <div className="space-y-4 text-sm text-slate-700">
-            <div className="driver-clay-soft rounded-2xl p-4">
-              <p className="break-words text-base font-black text-slate-700">{selectedJob.workOrderNo || '-'}</p>
-              <p className="mt-1 break-words text-sm font-semibold text-slate-600">{selectedJob.productName || '-'}</p>
-              <p className="mt-1 break-words text-xs text-slate-500">Job No.: {selectedJob.jobNo || '-'}</p>
-            </div>
-
             <div className="space-y-3">
+              <DetailRow
+                icon={<FileText size={15} className="driver-clay-muted" />}
+                value={`เลขที่ใบแจ้งงาน: ${selectedJob.workOrderNo || '-'}`}
+              />
               <DetailRow
                 icon={<CalendarClock size={15} className="driver-clay-muted" />}
                 value={`วันที่งาน: ${formatDate(selectedJob.date)}`}
+              />
+              <DetailRow
+                icon={<Package2 size={15} className="driver-clay-muted" />}
+                value={`ประเภทสินค้า: ${selectedJob.productName || '-'}`}
               />
               <DetailRow
                 icon={<MapPin size={15} className="driver-clay-muted mt-0.5" />}
@@ -400,7 +412,15 @@ const DriverDataTable: React.FC = () => {
               />
               <DetailRow
                 icon={<FileText size={15} className="driver-clay-muted" />}
+                value={`Job No.: ${selectedJob.jobNo || '-'}`}
+              />
+              <DetailRow
+                icon={<FileText size={15} className="driver-clay-muted" />}
                 value={`Invoice No.: ${selectedJob.invNo || '-'}`}
+              />
+              <DetailRow
+                icon={<FileText size={15} className="driver-clay-muted" />}
+                value={`เลขที่ใบขนส่ง: ${selectedJob.transportDocNo || '-'}`}
               />
               <DetailRow
                 icon={<Fuel size={15} className="driver-clay-muted" />}
@@ -412,21 +432,12 @@ const DriverDataTable: React.FC = () => {
               />
             </div>
 
-            {selectedJob.remarks && (
-              <div className="driver-clay-soft rounded-2xl p-4">
-                <p className="mb-2 text-sm font-semibold text-slate-700">หมายเหตุ</p>
-                <p className="break-words text-sm leading-relaxed text-slate-600">{selectedJob.remarks}</p>
-              </div>
-            )}
-
             {getJobImageSections(selectedJob).map((section) => (
-              <div key={section.title} className="driver-clay-soft rounded-2xl p-4">
-                <div className="mb-3 flex items-center gap-2">
-                  <ImageIcon size={16} className="driver-clay-muted" />
-                  <p className="text-sm font-semibold text-slate-700">
-                    {section.title} ({section.urls.length})
-                  </p>
-                </div>
+              <div key={section.title} className="space-y-3">
+                <DetailRow
+                  icon={<ImageIcon size={16} className="driver-clay-muted" />}
+                  value={`${section.title} (${section.urls.length})`}
+                />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {section.urls.map((url, index) => (
                     <button
