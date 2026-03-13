@@ -32,7 +32,6 @@ import {
   addTodayJob,
   addOption,
   deleteTodayJob,
-  getLineNotificationWarningMessage,
   getTodayJobById,
   RevisionConflictError,
   subscribeToTodayJobsByPickupDateRange,
@@ -894,9 +893,7 @@ const TodayJobs: React.FC = () => {
         createdCount += 1;
 
         try {
-          const notifyResult = await triggerTodayJobNotification('create', createdJob.id);
-          const notifyWarning = getLineNotificationWarningMessage(notifyResult);
-          if (notifyWarning) alert(notifyWarning);
+          await triggerTodayJobNotification('create', createdJob.id);
         } catch (notifyError) {
           console.error('Notify create event failed:', notifyError);
         }
@@ -943,9 +940,7 @@ const TodayJobs: React.FC = () => {
       });
       if (status === 'completed') {
         try {
-          const notifyResult = await triggerTodayJobNotification('complete', jobId);
-          const notifyWarning = getLineNotificationWarningMessage(notifyResult);
-          if (notifyWarning) alert(notifyWarning);
+          await triggerTodayJobNotification('complete', jobId);
         } catch (notifyError) {
           console.error('Notify complete event failed:', notifyError);
         }
@@ -1217,9 +1212,7 @@ const TodayJobs: React.FC = () => {
         updatedByUid: user?.uid || '',
       }, editBaseRevision ?? undefined);
       try {
-        const notifyResult = await triggerTodayJobNotification('update', editingJobId);
-        const notifyWarning = getLineNotificationWarningMessage(notifyResult);
-        if (notifyWarning) alert(notifyWarning);
+        await triggerTodayJobNotification('update', editingJobId);
       } catch (notifyError) {
         console.error('Notify update event failed:', notifyError);
       }

@@ -19,7 +19,6 @@ import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  getLineNotificationWarningMessage,
   subscribeToTodayJobsByAssigneeAndPickupDateRange,
   triggerTodayJobNotification,
   updateTodayJob,
@@ -366,9 +365,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
         updatedByUid: user.uid,
       });
       try {
-        const notifyResult = await triggerTodayJobNotification('accept', job.id);
-        const notifyWarning = getLineNotificationWarningMessage(notifyResult);
-        if (notifyWarning) alert(notifyWarning);
+        await triggerTodayJobNotification('accept', job.id);
       } catch (notifyError) {
         console.error('Notify accept event failed:', notifyError);
       }
@@ -399,9 +396,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
         updatedByUid: user.uid,
       });
       try {
-        const notifyResult = await triggerTodayJobNotification('complete', job.id);
-        const notifyWarning = getLineNotificationWarningMessage(notifyResult);
-        if (notifyWarning) alert(notifyWarning);
+        await triggerTodayJobNotification('complete', job.id);
       } catch (notifyError) {
         console.error('Notify complete event failed:', notifyError);
       }

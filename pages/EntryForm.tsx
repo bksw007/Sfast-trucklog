@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { JobEntry, OptionCategory } from '../types';
-import { addJob, addOption, getLineNotificationWarningMessage, getTodayJobById, RevisionConflictError, syncTodayJobToJobs, triggerTodayJobNotification, updateTodayJob, uploadImages } from '../services/firebaseService';
+import { addJob, addOption, getTodayJobById, RevisionConflictError, syncTodayJobToJobs, triggerTodayJobNotification, updateTodayJob, uploadImages } from '../services/firebaseService';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Plus, Save, Loader2, Camera, X, Image as ImageIcon, FileText } from 'lucide-react';
@@ -600,9 +600,7 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
         if (shouldNotifyReady) {
           try {
             // Notify admin only when job becomes "ready to close" for the first time.
-            const notifyResult = await triggerTodayJobNotification('ready', sourceJobId);
-            const notifyWarning = getLineNotificationWarningMessage(notifyResult);
-            if (notifyWarning) alert(notifyWarning);
+            await triggerTodayJobNotification('ready', sourceJobId);
           } catch (notifyError) {
             console.error('Notify ready event failed:', notifyError);
           }

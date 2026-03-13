@@ -60,24 +60,6 @@ export type DashboardMetricSummary = {
 
 const getMonthKeyFromDate = (dateStr?: string) => (dateStr || '').split('T')[0].slice(0, 7);
 
-export const getLineNotificationWarningMessage = (
-  result?: TriggerTodayJobNotificationResult | null
-): string => {
-  if (!result?.line || result.line.ok || !result.line.attempted) return '';
-
-  if (result.line.status === 429) {
-    return 'LINE ส่งไม่สำเร็จ: โควต้ารายเดือนของ LINE หมดแล้ว';
-  }
-
-  if (result.line.reason?.includes('monthly limit')) {
-    return 'LINE ส่งไม่สำเร็จ: โควต้ารายเดือนของ LINE หมดแล้ว';
-  }
-
-  return result.line.status
-    ? `LINE ส่งไม่สำเร็จ (HTTP ${result.line.status})`
-    : 'LINE ส่งไม่สำเร็จ กรุณาตรวจสอบการตั้งค่า/โควต้า LINE';
-};
-
 export class RevisionConflictError extends Error {
   code = 'revision-conflict' as const;
   currentRevision: number;
