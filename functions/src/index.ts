@@ -264,7 +264,6 @@ const asDisplayTime = (value?: string): string => value?.trim() || "-";
 const asDisplayContact = (value?: string): string => value?.trim() || "-";
 const getWorkOrderNo = (job: TodayJobEntry): string =>
   job.workOrderNo || job.ticketNo || "-";
-const getJobNo = (job: TodayJobEntry): string => job.jobNo || "-";
 const asDateOnly = (value?: string): string =>
   (value || "").split("T")[0] || "";
 const getBangkokToday = (): string =>
@@ -518,7 +517,12 @@ const notifyByEvent = async (
   }
 
   const driverLabel = job.assignedToName || job.driverName || "พนักงาน";
-  const jobLabel = `${getJobNo(job)} | WO ${getWorkOrderNo(job)}`;
+  const pickupLocation = job.pickup?.location || "-";
+  const deliveryLocation = job.delivery?.location || "-";
+  const routeLabel = `${pickupLocation} -> ${deliveryLocation}`;
+  const vehicleLabel = job.vehicleType || "-";
+  const plateLabel = job.plateNo || "-";
+  const workOrderLabel = getWorkOrderNo(job);
 
   if (eventType !== "ready" && !isBackdatedJob(job)) {
     lineResult = await sendLineNotification(eventType, jobId, job);
@@ -543,20 +547,36 @@ const notifyByEvent = async (
   }
 
   if (eventType === "create") {
-    const driverTokens = await getUserTokens(job.assignedToUid);
-    await sendPush(
-      driverTokens,
-      "มีงานใหม่มอบหมาย",
-      `${jobLabel} | ${job.pickup?.location || "-"} -> ` +
-        `${job.delivery?.location || "-"}`,
-      {
-        eventType,
-        jobId,
-        status: job.status || "",
-        jobNo: job.jobNo || "",
-      },
-      "/#/driver/today"
-    );
+    const [adminTokens, driverTokens] = await Promise.all([
+      getAdminTokens(),
+      getUserTokens(job.assignedToUid),
+    ]);
+    await Promise.all([
+      sendPush(
+        driverTokens,
+        "มีงานใหม่มอบหมาย",
+        `${routeLabel} | ${vehicleLabel} | ${plateLabel}`,
+        {
+          eventType,
+          jobId,
+          status: job.status || "",
+          jobNo: job.jobNo || "",
+        },
+        "/#/driver/today"
+      ),
+      sendPush(
+        adminTokens,
+        "มีงานใหม่มอบหมาย",
+        `${routeLabel} | ${vehicleLabel} | ${plateLabel} | ${driverLabel}`,
+        {
+          eventType,
+          jobId,
+          status: job.status || "",
+          jobNo: job.jobNo || "",
+        },
+        "/#/today"
+      ),
+    ]);
     return {line: lineResult};
   }
 
@@ -569,7 +589,7 @@ const notifyByEvent = async (
       sendPush(
         adminTokens,
         "มีการแก้ไขใบแจ้งงาน",
-        `แอดมินแก้ไขงาน ${jobLabel}`,
+        `แอดมินแก้ไขงาน ${routeLabel} | ${driverLabel}`,
         {
           eventType,
           jobId,
@@ -581,7 +601,7 @@ const notifyByEvent = async (
       sendPush(
         driverTokens,
         "มีการแก้ไขงานที่รับผิดชอบ",
-        `${jobLabel} มีการอัปเดตข้อมูลล่าสุด`,
+        `${routeLabel} มีการอัปเดตข้อมูลล่าสุด`,
         {
           eventType,
           jobId,
@@ -599,7 +619,7 @@ const notifyByEvent = async (
     await sendPush(
       adminTokens,
       "พนักงานรับงานแล้ว",
-      `${driverLabel} รับงาน ${jobLabel}`,
+      `${driverLabel} รับงาน ${routeLabel}`,
       {
         eventType,
         jobId,
@@ -612,19 +632,6 @@ const notifyByEvent = async (
   }
 
   if (eventType === "ready") {
-    const adminTokens = await getAdminTokens();
-    await sendPush(
-      adminTokens,
-      "งานพร้อมจบ",
-      `${driverLabel} กดพร้อมจบงาน ${jobLabel}`,
-      {
-        eventType,
-        jobId,
-        status: job.status || "",
-        jobNo: job.jobNo || "",
-      },
-      "/#/today"
-    );
     return {line: lineResult};
   }
 
@@ -637,7 +644,7 @@ const notifyByEvent = async (
       sendPush(
         adminTokens,
         "งานเสร็จแล้ว",
-        `${driverLabel} จบงาน ${jobLabel}`,
+        `${driverLabel} จบงาน ${routeLabel} | WO ${workOrderLabel}`,
         {
           eventType,
           jobId,
@@ -649,7 +656,7 @@ const notifyByEvent = async (
       sendPush(
         driverTokens,
         "บันทึกงานสำเร็จ",
-        `คุณจบงาน ${jobLabel} เรียบร้อยแล้ว`,
+        `คุณจบงาน ${routeLabel} เรียบร้อยแล้ว`,
         {
           eventType,
           jobId,
