@@ -70,11 +70,15 @@ const addDays = (dateStr: string, days: number) => {
 const normalizeText = (value: string) => value.trim().toLowerCase();
 const hasValue = (value?: string) => !!value && value.trim().length > 0;
 const parseRounds = (value?: string) => {
-  const match = (value || '').match(/\d+/);
+  const match = (value || '').match(/(\d+(\.\d+)?)/);
   if (!match) return 1;
-  const parsed = Number(match[0]);
+  const parsed = Number(match[1]);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 };
+const resolveRounds = (job: Pick<TodayJobEntry, 'rounds' | 'quantity'>) =>
+  typeof job.rounds === 'number' && Number.isFinite(job.rounds) && job.rounds > 0
+    ? job.rounds
+    : parseRounds(job.quantity);
 
 const parsePickupTimestamp = (job: TodayJobEntry): number => {
   const datePart = getJobDate(job).trim();
@@ -427,7 +431,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
           licensePlate: job.plateNo || '',
           driverName: job.driverName || '',
           workOrderNo: job.workOrderNo || job.ticketNo || '',
-          rounds: job.rounds || parseRounds(job.quantity),
+          rounds: resolveRounds(job),
           productName: job.productName || '',
         },
       },
@@ -649,7 +653,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                     )}
                     <DetailRow
                       icon={<Package2 size={14} className="driver-clay-muted" />}
-                      value={`จำนวนรอบ: ${job.rounds || parseRounds(job.quantity)}`}
+                      value={`จำนวนรอบ: ${resolveRounds(job)}`}
                     />
                     <DetailRow
                       icon={<Truck size={14} className="driver-clay-muted" />}
@@ -807,7 +811,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
               />
               <DetailRow
                 icon={<Package2 size={15} className="driver-clay-muted" />}
-                value={`จำนวนรอบ: ${selectedJob.rounds || parseRounds(selectedJob.quantity)}`}
+                value={`จำนวนรอบ: ${resolveRounds(selectedJob)}`}
               />
               <DetailRow
                 icon={<Truck size={15} className="driver-clay-muted" />}

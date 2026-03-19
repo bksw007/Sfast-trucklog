@@ -31,7 +31,7 @@ type DriverEntryRouteState = {
 const toPositiveRounds = (value: unknown): number => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed <= 0) return 1;
-  return Math.round(parsed);
+  return parsed;
 };
 
 const parseRoundsFromQuantity = (value?: string): number => {
@@ -39,6 +39,10 @@ const parseRoundsFromQuantity = (value?: string): number => {
   if (!match) return 1;
   return toPositiveRounds(match[1]);
 };
+const resolveRounds = (rounds?: number, quantity?: string): number =>
+  typeof rounds === 'number' && Number.isFinite(rounds) && rounds > 0
+    ? rounds
+    : parseRoundsFromQuantity(quantity);
 
 const toImageUrls = (urls?: string[], single?: string): string[] => {
   if (Array.isArray(urls) && urls.length > 0) {
@@ -258,7 +262,7 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
           vehicleType: row.vehicleType,
           licensePlate: row.plateNo,
           driverName: row.driverName,
-          rounds: row.rounds || parseRoundsFromQuantity(row.quantity),
+          rounds: resolveRounds(row.rounds, row.quantity),
           remarks: row.importantNote,
           fuelAndToll: row.fuelAndToll,
         });
@@ -296,7 +300,7 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
     dirtyFieldsRef.current.add(name as keyof EntryFormData);
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'rounds' ? parseInt(value) || 0 : value
+      [name]: name === 'rounds' ? Number(value) || 0 : value
     }));
   };
 
@@ -511,7 +515,7 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
           : (latestTodayJob.driverName || '');
         const mergedRounds = dirtyFields.has('rounds')
           ? toPositiveRounds(formData.rounds)
-          : (latestTodayJob.rounds || parseRoundsFromQuantity(latestTodayJob.quantity));
+          : resolveRounds(latestTodayJob.rounds, latestTodayJob.quantity);
         const currentDriverUpdateCount = Number.isFinite(Number(latestTodayJob.driverUpdateCount))
           ? Number(latestTodayJob.driverUpdateCount)
           : 0;
@@ -867,7 +871,8 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
                 <input 
                   type="number" 
                   name="rounds"
-                  min="1"
+                  min="0.5"
+                  step="0.5"
                   required
                   value={formData.rounds}
                   onChange={handleInputChange}

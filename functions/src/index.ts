@@ -737,12 +737,12 @@ const toRounds = (value?: string): number => {
   if (!match) return 1;
   const parsed = Number(match[1]);
   if (!Number.isFinite(parsed) || parsed <= 0) return 1;
-  return Math.max(1, Math.round(parsed));
+  return parsed;
 };
 
 const toRoundsFromToday = (job: TodayJobEntry): number => {
   if (typeof job.rounds === "number" && job.rounds > 0) {
-    return Math.round(job.rounds);
+    return job.rounds;
   }
   return toRounds(job.quantity);
 };

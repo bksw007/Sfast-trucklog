@@ -976,8 +976,10 @@ const DataTable: React.FC = () => {
                 {isEditing ? (
                   <input
                     type="number"
+                    min="0.5"
+                    step="0.5"
                     value={editData.rounds}
-                    onChange={(e) => handleEditChange('rounds', parseInt(e.target.value, 10))}
+                    onChange={(e) => handleEditChange('rounds', Number(e.target.value))}
                     className={modalInputClass}
                   />
                 ) : (

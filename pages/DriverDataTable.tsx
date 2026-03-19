@@ -19,6 +19,8 @@ import { formatDate } from '../utils/formatters';
 
 const normalizeText = (value: string) => value.trim().toLowerCase();
 const dateKey = (date: string) => (date || '').split('T')[0];
+const resolveRounds = (job: Pick<JobEntry, 'rounds'>) =>
+  typeof job.rounds === 'number' && Number.isFinite(job.rounds) ? job.rounds : 0;
 const getCurrentMonthYear = () => {
   const now = new Date();
   return {
@@ -326,7 +328,7 @@ const DriverDataTable: React.FC = () => {
               />
               <DetailRow
                 icon={<Package2 size={15} className="driver-clay-muted" />}
-                value={`จำนวนรอบ: ${selectedJob.rounds || 0}`}
+                value={`จำนวนรอบ: ${resolveRounds(selectedJob)}`}
               />
               <DetailRow
                 icon={<FileText size={15} className="driver-clay-muted" />}

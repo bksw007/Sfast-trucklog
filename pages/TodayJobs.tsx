@@ -152,9 +152,9 @@ const formatPhoneNumber = (value: string): string => {
   return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
 };
 const parseRounds = (value?: string) => {
-  const match = (value || '').match(/\d+/);
+  const match = (value || '').match(/(\d+(\.\d+)?)/);
   if (!match) return 1;
-  const parsed = Number(match[0]);
+  const parsed = Number(match[1]);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 };
 
@@ -225,9 +225,14 @@ const toRoundCount = (value: string): number | null => {
   if (!match) return null;
   const parsed = Number(match[1]);
   if (!Number.isFinite(parsed) || parsed <= 0) return null;
-  if (parsed < 1) return 1;
-  return Math.floor(parsed);
+  return parsed;
 };
+const resolveRounds = (job: Pick<TodayJobEntry, 'rounds' | 'quantity'>): number =>
+  typeof job.rounds === 'number' && Number.isFinite(job.rounds) && job.rounds > 0
+    ? job.rounds
+    : parseRounds(job.quantity);
+const formatAssignableUserLabel = (staff: Pick<UserProfile, 'displayName' | 'role'>) =>
+  `${staff.displayName} [${staff.role === 'admin' ? 'Admin' : 'User'}]`;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -860,13 +865,17 @@ const TodayJobs: React.FC = () => {
       const assignedName = selectedAssignedUser?.displayName || formData.driverName || '-';
       const baseWorkOrderNo = (formData.workOrderNo || generateWorkOrderNo()).trim();
 
-      for (let index = 0; index < totalRounds; index += 1) {
+      const shouldSplitRounds = Number.isInteger(totalRounds) && totalRounds > 1;
+      const roundValues = shouldSplitRounds ? Array.from({ length: totalRounds }, () => 1) : [totalRounds];
+
+      for (let index = 0; index < roundValues.length; index += 1) {
         const roundNumber = index + 1;
+        const roundValue = roundValues[index];
         const roundWorkOrderNo =
-          totalRounds > 1 ? `${baseWorkOrderNo}-R${roundNumber}` : baseWorkOrderNo;
+          shouldSplitRounds ? `${baseWorkOrderNo}-R${roundNumber}` : baseWorkOrderNo;
         const roundForm = {
           ...formData,
-          quantity: '1',
+          quantity: String(roundValue),
           workOrderNo: roundWorkOrderNo,
         };
         const roundSummaryText = buildSummaryText(roundForm);
@@ -874,7 +883,7 @@ const TodayJobs: React.FC = () => {
         const createdJob = await addTodayJob({
           ...roundForm,
           fuelAndToll: fuelAndTollValue,
-          rounds: 1,
+          rounds: roundValue,
           ticketNo: roundWorkOrderNo,
           assignedToName: assignedName,
           summaryText: roundSummaryText,
@@ -898,7 +907,7 @@ const TodayJobs: React.FC = () => {
           console.error('Notify create event failed:', notifyError);
         }
 
-        if (index < totalRounds - 1) {
+        if (index < roundValues.length - 1) {
           await sleep(3000);
         }
       }
@@ -1197,7 +1206,7 @@ const TodayJobs: React.FC = () => {
 
       await updateTodayJob(editingJobId, {
         ...editForm,
-        rounds: toRoundCount(editForm.quantity) || 1,
+        rounds: toRoundCount(editForm.quantity) ?? 1,
         fuelAndToll: fuelAndTollValue,
         originImageUrls: mergedOriginImageUrls,
         destinationImageUrls: mergedDestinationImageUrls,
@@ -1541,7 +1550,7 @@ const TodayJobs: React.FC = () => {
             </label>
             <label className="text-sm">
               <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>จำนวนรอบ</span>
-              <input className={inputClass} value={formData.quantity} onChange={(e) => updateField('quantity', e.target.value)} />
+              <input type="number" min="0.5" step="0.5" inputMode="decimal" className={inputClass} value={formData.quantity} onChange={(e) => updateField('quantity', e.target.value)} />
             </label>
           </div>
 
@@ -1851,7 +1860,7 @@ const TodayJobs: React.FC = () => {
                 <option value="">เลือกผู้รับงาน</option>
                 {assignableUsers.map((staff) => (
                   <option key={staff.uid} value={staff.uid}>
-                    {staff.displayName} ({staff.email}) {staff.role === 'admin' ? '[Admin]' : '[User]'}
+                    {formatAssignableUserLabel(staff)}
                   </option>
                 ))}
               </select>
@@ -2145,7 +2154,7 @@ const TodayJobs: React.FC = () => {
 
                   <div className="flex items-center gap-2">
                     <Package2 size={14} className="driver-clay-muted" />
-                    <span>จำนวนรอบ: {job.rounds || parseRounds(job.quantity)}</span>
+                    <span>จำนวนรอบ: {resolveRounds(job)}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Truck size={14} className="driver-clay-muted" />
@@ -2449,7 +2458,7 @@ const TodayJobs: React.FC = () => {
                   </label>
                   <label className="space-y-1">
                     <span className={modalLabelClass}>จำนวนรอบ</span>
-                    <input className={modalInputClass} value={editForm.quantity} onChange={(e) => handleEditField('quantity', e.target.value)} />
+                    <input type="number" min="0.5" step="0.5" inputMode="decimal" className={modalInputClass} value={editForm.quantity} onChange={(e) => handleEditField('quantity', e.target.value)} />
                   </label>
                   <label className="space-y-1">
                     <span className={modalLabelClass}>ประเภทรถ</span>
@@ -2479,7 +2488,7 @@ const TodayJobs: React.FC = () => {
                       <option value="">เลือกผู้รับงานแอพ</option>
                       {assignableUsers.map((staff) => (
                         <option key={staff.uid} value={staff.uid}>
-                          {staff.displayName} ({staff.email}) {staff.role === 'admin' ? '[Admin]' : '[User]'}
+                          {formatAssignableUserLabel(staff)}
                         </option>
                       ))}
                     </select>
