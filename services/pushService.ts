@@ -2,6 +2,7 @@ import app from '../firebase';
 import { addUserFcmToken, removeUserFcmToken } from './userService';
 
 const TOKEN_STORAGE_KEY = 'sfast_fcm_token';
+const PUSH_DISABLED_PREFIX = 'sfast_push_disabled:';
 const FOREGROUND_NOTIFICATION_ICON = '/icons/web-app-manifest-192x192.png';
 const FOREGROUND_NOTIFICATION_BADGE = '/favicon-32x32.png';
 
@@ -86,9 +87,30 @@ const clearStoredPushBinding = () => {
   localStorage.removeItem(TOKEN_STORAGE_KEY);
 };
 
+const getPushDisabledKey = (uid: string) => `${PUSH_DISABLED_PREFIX}${uid.trim()}`;
+
+const readPushDisabledState = (uid: string): boolean => {
+  if (typeof window === 'undefined' || !uid.trim()) return false;
+  return localStorage.getItem(getPushDisabledKey(uid)) === '1';
+};
+
+const writePushDisabledState = (uid: string, disabled: boolean) => {
+  if (typeof window === 'undefined' || !uid.trim()) return;
+
+  if (disabled) {
+    localStorage.setItem(getPushDisabledKey(uid), '1');
+    return;
+  }
+
+  localStorage.removeItem(getPushDisabledKey(uid));
+};
+
 export const getStoredPushToken = (): string => {
   return readStoredPushBinding()?.token || '';
 };
+
+export const isPushDisabledForUser = (uid: string): boolean =>
+  readPushDisabledState(uid);
 
 const resolveMessagingContext = async (requestPermission: boolean) => {
   if (!isPushEnvironmentSupported()) {
@@ -173,6 +195,9 @@ const linkPushTokenToUser = async (
   requestPermission: boolean
 ): Promise<PushRegistrationResult> => {
   if (!uid) return { ok: false, message: 'ไม่พบผู้ใช้งาน' };
+  if (!requestPermission && readPushDisabledState(uid)) {
+    return { ok: false, message: 'อุปกรณ์นี้ปิดรับ Push ไว้' };
+  }
 
   const context = await resolveMessagingContext(requestPermission);
   if (!context.ok) {
@@ -201,6 +226,7 @@ const linkPushTokenToUser = async (
 
   await addUserFcmToken(uid, token);
   writeStoredPushBinding(uid, token);
+  writePushDisabledState(uid, false);
   await ensureForegroundPushListener();
 
   return { ok: true, message: 'เปิดรับแจ้งเตือน Push แล้ว', token };
@@ -225,9 +251,11 @@ export const unregisterPushTokenForUser = async (
 ): Promise<{ ok: boolean; message: string }> => {
   if (!uid) return { ok: false, message: 'ไม่พบผู้ใช้งาน' };
 
+  writePushDisabledState(uid, true);
   const binding = readStoredPushBinding();
   const token = binding?.token || '';
   if (!token) {
+    stopForegroundPushListener();
     return { ok: true, message: 'อุปกรณ์นี้ยังไม่มี token ที่บันทึกไว้' };
   }
 

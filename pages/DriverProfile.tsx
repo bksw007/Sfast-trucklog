@@ -19,7 +19,7 @@ import {
 import { FirebaseError } from 'firebase/app';
 import { useAuth } from '../contexts/AuthContext';
 import { ensureUserProfileDocument, updateUserProfile, uploadUserProfileImage } from '../services/userService';
-import { getStoredPushToken, registerPushTokenForUser, unregisterPushTokenForUser } from '../services/pushService';
+import { getStoredPushToken, isPushDisabledForUser, registerPushTokenForUser, unregisterPushTokenForUser } from '../services/pushService';
 import ConfirmModal from '../components/ConfirmModal';
 
 type ProfileFormState = {
@@ -134,7 +134,8 @@ const DriverProfile: React.FC = () => {
 
     const storedToken = getStoredPushToken();
     const hasTokenOnProfile = !!storedToken && (userProfile.fcmTokens || []).includes(storedToken);
-    setIsPushEnabledOnDevice(hasTokenOnProfile);
+    const pushDisabled = !!userProfile.uid && isPushDisabledForUser(userProfile.uid);
+    setIsPushEnabledOnDevice(!pushDisabled && hasTokenOnProfile);
     setPushMessage('');
     setProfileError('');
   }, [userProfile]);

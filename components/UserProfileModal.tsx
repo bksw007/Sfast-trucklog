@@ -3,7 +3,7 @@ import { User, Mail, Shield, Save, Loader2, BellRing, BellOff, Phone, Contact } 
 import Modal from './Modal';
 import { useAuth } from '../contexts/AuthContext';
 import { updateUserProfile } from '../services/userService';
-import { getStoredPushToken, registerPushTokenForUser, unregisterPushTokenForUser } from '../services/pushService';
+import { getStoredPushToken, isPushDisabledForUser, registerPushTokenForUser, unregisterPushTokenForUser } from '../services/pushService';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -67,7 +67,8 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
 
       const storedToken = getStoredPushToken();
       const hasTokenOnProfile = !!storedToken && (userProfile.fcmTokens || []).includes(storedToken);
-      setIsPushEnabledOnDevice(hasTokenOnProfile);
+      const pushDisabled = !!userProfile.uid && isPushDisabledForUser(userProfile.uid);
+      setIsPushEnabledOnDevice(!pushDisabled && hasTokenOnProfile);
       setPushMessage('');
       setPhotoLoadFailed(false);
     }

@@ -18,6 +18,7 @@ import {
 } from '../services/userService';
 import {
   ensureForegroundPushListener,
+  isPushDisabledForUser,
   stopForegroundPushListener,
   syncPushTokenForUser,
   unregisterPushTokenForUser,
@@ -134,8 +135,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       setUserProfile(profile || null);
       if (currentUser.uid) {
-        void ensureForegroundPushListener();
-        void syncPushTokenForUser(currentUser.uid);
+        if (isPushDisabledForUser(currentUser.uid)) {
+          stopForegroundPushListener();
+        } else {
+          void ensureForegroundPushListener();
+          void syncPushTokenForUser(currentUser.uid);
+        }
       }
     } catch (error) {
       console.error('Error in fetchProfile:', error);
