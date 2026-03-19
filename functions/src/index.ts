@@ -125,6 +125,14 @@ const getRoleFromClaims = (
   return isUserRole(claimRole) ? claimRole : null;
 };
 
+const isGoogleHostedPhoto = (photoURL?: string): boolean => {
+  const normalized = (photoURL || "").trim().toLowerCase();
+  if (!normalized) return false;
+
+  return normalized.includes("googleusercontent.com") ||
+    normalized.includes("googleapis.com/a/");
+};
+
 const getUserRole = async (
   uid: string,
   authToken?: Record<string, unknown>
@@ -889,6 +897,8 @@ export const ensureUserProfile = onCall(async (request) => {
     email.includes("@") ? email.split("@")[0] : `user-${uid.slice(0, 6)}`;
   const displayName =
     displayNameFromExisting || displayNameInput || fallbackName;
+  const existingPhotoURL = typeof existing.photoURL === "string" ?
+    existing.photoURL.trim() : "";
 
   const payload: Record<string, unknown> = {
     uid,
@@ -900,13 +910,12 @@ export const ensureUserProfile = onCall(async (request) => {
     profileUpdatedAt: now,
   };
 
-  if (photoURLInput) {
+  if (existingPhotoURL && !isGoogleHostedPhoto(existingPhotoURL)) {
+    payload.photoURL = existingPhotoURL;
+  } else if (photoURLInput) {
     payload.photoURL = photoURLInput;
-  } else if (
-    typeof existing.photoURL === "string" &&
-    existing.photoURL.trim()
-  ) {
-    payload.photoURL = existing.photoURL.trim();
+  } else if (existingPhotoURL) {
+    payload.photoURL = existingPhotoURL;
   }
 
   await userRef.set(payload, {merge: true});
