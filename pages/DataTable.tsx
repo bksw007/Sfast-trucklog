@@ -208,6 +208,9 @@ const DataTable: React.FC = () => {
   const selectClass = isDark
     ? 'w-full min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/40 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none'
     : 'w-full min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none';
+  const modalInputClass = 'driver-clay-input w-full min-h-11 px-3 py-2.5 text-[16px] md:text-sm';
+  const modalFieldClass = 'driver-clay-soft p-3 sm:p-4';
+  const modalLabelClass = 'driver-clay-muted mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em]';
   const sortUniqueOptions = (items: string[]) =>
     Array.from(new Set(items.map((item) => item.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'th'));
   const locationOptions = useMemo(() => {
@@ -799,18 +802,18 @@ const DataTable: React.FC = () => {
       <div className="hide-scrollbar fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:items-center sm:py-6">
         <div className="modal-clay-backdrop absolute inset-0" onClick={() => setIsDetailModalOpen(false)} />
         
-        <div className="modal-clay-panel hide-scrollbar relative w-full max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl shadow-2xl animate-fade-in sm:max-h-[90dvh]">
-          <div className="modal-clay-header rounded-t-3xl p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+        <div className="modal-clay-panel hide-scrollbar relative w-full max-w-3xl max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl shadow-2xl animate-fade-in sm:max-h-[90dvh]">
+          <div className="modal-clay-header rounded-t-3xl p-4 sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 <div className="modal-clay-soft rounded-xl p-3">
                   {isEditing ? <Edit2 size={24} className="text-[#5d8aa8]" /> : <Eye size={24} className="text-[#5d8aa8]" />}
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h3 className="modal-clay-title text-xl">
                     {isEditing ? 'แก้ไขข้อมูล' : 'รายละเอียดงาน'}
                   </h3>
-                  <p className="modal-clay-muted text-sm">{selectedJob.jobNo || '-'}</p>
+                  <p className="modal-clay-muted break-all text-sm">{selectedJob.jobNo || '-'}</p>
                 </div>
               </div>
               <button 
@@ -822,9 +825,9 @@ const DataTable: React.FC = () => {
             </div>
           </div>
 
-          <div className="p-6 space-y-6">
+          <div className="space-y-5 p-4 sm:p-6">
             {/* Route Section */}
-            <div className="driver-clay-soft p-5">
+            <div className="driver-clay-soft p-4 sm:p-5">
               <div className="flex items-center gap-2 mb-4">
                 <div className="driver-clay-soft inline-flex h-8 w-8 items-center justify-center rounded-lg">
                   <Truck size={15} className="driver-clay-muted" />
@@ -861,24 +864,24 @@ const DataTable: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   <div className="driver-clay-soft flex-1 p-3">
                     <div className="driver-clay-muted text-xs">รับ</div>
-                    <div className="font-medium text-slate-700">{selectedJob.pickupLocation}</div>
+                    <div className="break-words font-medium text-slate-700">{selectedJob.pickupLocation}</div>
                   </div>
-                  <div className="driver-clay-muted text-xl">→</div>
+                  <div className="driver-clay-muted self-center text-xl">→</div>
                   <div className="driver-clay-soft flex-1 p-3">
                     <div className="driver-clay-muted text-xs">ส่ง</div>
-                    <div className="font-medium text-slate-700">{selectedJob.dropoffLocation}</div>
+                    <div className="break-words font-medium text-slate-700">{selectedJob.dropoffLocation}</div>
                   </div>
                 </div>
               )}
             </div>
 
             {/* Ordered Fields */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="driver-clay-soft p-4">
-                <div className="driver-clay-muted text-xs mb-1">วันที่</div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className={modalFieldClass}>
+                <div className={modalLabelClass}>วันที่</div>
                 {isEditing ? (
                   <div className="relative" onClick={(e) => {
                     const input = e.currentTarget.querySelector('input');
@@ -888,7 +891,7 @@ const DataTable: React.FC = () => {
                       type="date"
                       value={editData.date}
                       onChange={(e) => handleEditChange('date', e.target.value)}
-                      className="driver-clay-input w-full cursor-pointer px-3 py-2 text-sm dark:[color-scheme:dark]"
+                      className={`${modalInputClass} cursor-pointer dark:[color-scheme:dark]`}
                     />
                   </div>
                 ) : (
@@ -896,28 +899,28 @@ const DataTable: React.FC = () => {
                 )}
               </div>
 
-              <div className="driver-clay-soft p-4">
-                <div className="driver-clay-muted text-xs mb-1">เลขที่ใบสั่งงาน (Work Order)</div>
+              <div className={modalFieldClass}>
+                <div className={modalLabelClass}>เลขที่ใบสั่งงาน (Work Order)</div>
                 {isEditing ? (
                   <input
                     value={editData.workOrderNo || ''}
                     onChange={(e) => handleEditChange('workOrderNo', e.target.value)}
-                    className="driver-clay-input w-full px-3 py-2 text-sm"
+                    className={modalInputClass}
                   />
                 ) : (
-                  <div className="font-medium text-slate-700">
+                  <div className="break-words font-medium text-slate-700">
                     {selectedJob.workOrderNo || (selectedJob as JobEntry & { ticketNo?: string }).ticketNo || '-'}
                   </div>
                 )}
               </div>
 
-              <div className="driver-clay-soft p-4">
-                <div className="driver-clay-muted text-xs mb-1">ประเภทรถ</div>
+              <div className={modalFieldClass}>
+                <div className={modalLabelClass}>ประเภทรถ</div>
                 {isEditing ? (
                   <select
                     value={editData.vehicleType}
                     onChange={(e) => handleEditChange('vehicleType', e.target.value)}
-                    className="driver-clay-input w-full px-3 py-2 text-sm"
+                    className={modalInputClass}
                   >
                     <option value="">เลือกประเภทรถ</option>
                     {sortUniqueOptions(appData?.options.vehicleTypes || []).map((opt) => (
@@ -929,13 +932,13 @@ const DataTable: React.FC = () => {
                 )}
               </div>
 
-              <div className="driver-clay-soft p-4">
-                <div className="driver-clay-muted text-xs mb-1">ทะเบียน</div>
+              <div className={modalFieldClass}>
+                <div className={modalLabelClass}>ทะเบียน</div>
                 {isEditing ? (
                   <select
                     value={editData.licensePlate}
                     onChange={(e) => handleEditChange('licensePlate', e.target.value)}
-                    className="driver-clay-input w-full px-3 py-2 text-sm"
+                    className={modalInputClass}
                   >
                     <option value="">เลือกทะเบียน</option>
                     {sortUniqueOptions(appData?.options.licensePlates || []).map((opt) => (
@@ -947,13 +950,13 @@ const DataTable: React.FC = () => {
                 )}
               </div>
 
-              <div className="driver-clay-soft p-4">
-                <div className="driver-clay-muted text-xs mb-1">คนขับ</div>
+              <div className={modalFieldClass}>
+                <div className={modalLabelClass}>คนขับ</div>
                 {isEditing ? (
                   <select
                     value={editData.driverName}
                     onChange={(e) => handleEditChange('driverName', e.target.value)}
-                    className="driver-clay-input w-full px-3 py-2 text-sm"
+                    className={modalInputClass}
                   >
                     <option value="">เลือกคนขับ</option>
                     {editData.driverName && !appData?.options.drivers.some((opt) => opt === editData.driverName) && (
@@ -968,27 +971,27 @@ const DataTable: React.FC = () => {
                 )}
               </div>
 
-              <div className="driver-clay-soft p-4">
-                <div className="driver-clay-muted text-xs mb-1">จำนวนรอบ</div>
+              <div className={modalFieldClass}>
+                <div className={modalLabelClass}>จำนวนรอบ</div>
                 {isEditing ? (
                   <input
                     type="number"
                     value={editData.rounds}
                     onChange={(e) => handleEditChange('rounds', parseInt(e.target.value, 10))}
-                    className="driver-clay-input w-full px-3 py-2 text-sm"
+                    className={modalInputClass}
                   />
                 ) : (
                   <div className="font-medium text-slate-700">{selectedJob.rounds} รอบ</div>
                 )}
               </div>
 
-              <div className="driver-clay-soft p-4">
-                <div className="driver-clay-muted text-xs mb-1">ประเภทสินค้า</div>
+              <div className={modalFieldClass}>
+                <div className={modalLabelClass}>ประเภทสินค้า</div>
                 {isEditing ? (
                   <select
                     value={editData.productName || 'Inverter'}
                     onChange={(e) => handleEditChange('productName', e.target.value)}
-                    className="driver-clay-input w-full px-3 py-2 text-sm"
+                    className={modalInputClass}
                   >
                     <option value="Inverter">Inverter</option>
                     {sortUniqueOptions(appData?.options.productTypes || []).map((opt) => (
@@ -1000,47 +1003,47 @@ const DataTable: React.FC = () => {
                 )}
               </div>
 
-              <div className="driver-clay-soft p-4">
-                <div className="driver-clay-muted text-xs mb-1">Job No.</div>
+              <div className={modalFieldClass}>
+                <div className={modalLabelClass}>Job No.</div>
                 {isEditing ? (
                   <input
                     value={editData.jobNo}
                     onChange={(e) => handleEditChange('jobNo', e.target.value)}
-                    className="driver-clay-input w-full px-3 py-2 text-sm"
+                    className={modalInputClass}
                   />
                 ) : (
-                  <div className="font-medium text-slate-700">{selectedJob.jobNo || '-'}</div>
+                  <div className="break-words font-medium text-slate-700">{selectedJob.jobNo || '-'}</div>
                 )}
               </div>
 
-              <div className="driver-clay-soft p-4">
-                <div className="driver-clay-muted text-xs mb-1">Invoice No.</div>
+              <div className={modalFieldClass}>
+                <div className={modalLabelClass}>Invoice No.</div>
                 {isEditing ? (
                   <input
                     value={editData.invNo}
                     onChange={(e) => handleEditChange('invNo', e.target.value)}
-                    className="driver-clay-input w-full px-3 py-2 text-sm"
+                    className={modalInputClass}
                   />
                 ) : (
-                  <div className="font-medium text-slate-700">{resolveInvoiceNo(selectedJob) || '-'}</div>
+                  <div className="break-words font-medium text-slate-700">{resolveInvoiceNo(selectedJob) || '-'}</div>
                 )}
               </div>
 
-              <div className="driver-clay-soft p-4">
-                <div className="driver-clay-muted text-xs mb-1">เลขที่ใบขนส่ง (Transport Doc)</div>
+              <div className={modalFieldClass}>
+                <div className={modalLabelClass}>เลขที่ใบขนส่ง (Transport Doc)</div>
                 {isEditing ? (
                   <input
                     value={editData.transportDocNo || ''}
                     onChange={(e) => handleEditChange('transportDocNo', e.target.value)}
-                    className="driver-clay-input w-full px-3 py-2 text-sm"
+                    className={modalInputClass}
                   />
                 ) : (
-                  <div className="font-medium text-slate-700">{selectedJob.transportDocNo || '-'}</div>
+                  <div className="break-words font-medium text-slate-700">{selectedJob.transportDocNo || '-'}</div>
                 )}
               </div>
 
-              <div className="driver-clay-soft p-4">
-                <div className="driver-clay-muted text-xs mb-1">ค่าน้ำมัน/ทางด่วน</div>
+              <div className={modalFieldClass}>
+                <div className={modalLabelClass}>ค่าน้ำมัน/ทางด่วน</div>
                 {isEditing ? (
                   <input
                     type="number"
@@ -1049,7 +1052,7 @@ const DataTable: React.FC = () => {
                       const value = e.target.value;
                       handleEditChange('fuelAndToll', value === '' ? '' : parseFloat(value));
                     }}
-                    className="driver-clay-input w-full px-3 py-2 text-sm"
+                    className={modalInputClass}
                     placeholder="0.00"
                   />
                 ) : (
@@ -1062,14 +1065,14 @@ const DataTable: React.FC = () => {
               </div>
 
               {isAdmin && (
-                <div className="driver-clay-soft p-4">
-                  <div className="driver-clay-muted text-xs mb-1">ราคาเก็บลูกค้า</div>
+                <div className={modalFieldClass}>
+                  <div className={modalLabelClass}>ราคาเก็บลูกค้า</div>
                   {isEditing ? (
                     <input
                       type="number"
                       value={editData.customerPrice || ''}
                       onChange={(e) => handleEditChange('customerPrice', parseFloat(e.target.value))}
-                      className="driver-clay-input w-full px-3 py-2 text-sm"
+                      className={modalInputClass}
                       placeholder="0.00"
                     />
                   ) : (
@@ -1081,14 +1084,14 @@ const DataTable: React.FC = () => {
               )}
 
               {isAdmin && (
-                <div className="driver-clay-soft p-4">
-                  <div className="driver-clay-muted text-xs mb-1">ราคาจ่ายรถร่วม</div>
+                <div className={modalFieldClass}>
+                  <div className={modalLabelClass}>ราคาจ่ายรถร่วม</div>
                   {isEditing ? (
                     <input
                       type="number"
                       value={editData.jointPrice || ''}
                       onChange={(e) => handleEditChange('jointPrice', parseFloat(e.target.value))}
-                      className="driver-clay-input w-full px-3 py-2 text-sm"
+                      className={modalInputClass}
                       placeholder="0.00"
                     />
                   ) : (
@@ -1099,17 +1102,17 @@ const DataTable: React.FC = () => {
                 </div>
               )}
 
-              <div className="driver-clay-soft p-4 sm:col-span-2">
-                <div className="driver-clay-muted text-xs mb-1">หมายเหตุ</div>
+              <div className="driver-clay-soft p-3 sm:col-span-2 sm:p-4">
+                <div className={modalLabelClass}>หมายเหตุ</div>
                 {isEditing ? (
                   <textarea
                     value={editData.remarks}
                     onChange={(e) => handleEditChange('remarks', e.target.value)}
                     rows={2}
-                    className="driver-clay-input w-full resize-none px-3 py-2 text-sm"
+                    className={`${modalInputClass} resize-none`}
                   />
                 ) : (
-                  <div className="font-medium text-slate-700">{selectedJob.remarks || '-'}</div>
+                  <div className="break-words font-medium text-slate-700">{selectedJob.remarks || '-'}</div>
                 )}
               </div>
             </div>
@@ -1118,7 +1121,7 @@ const DataTable: React.FC = () => {
             <div className="space-y-4">
 
               {/* Origin Image Section (รูปภาพต้นทาง) */}
-              <div className="driver-clay-soft p-4">
+              <div className="driver-clay-soft p-3 sm:p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <ImageIcon size={16} className="driver-clay-muted" />
                   <span className="driver-clay-muted text-xs">รูปภาพต้นทาง</span>
@@ -1128,7 +1131,7 @@ const DataTable: React.FC = () => {
                   <div className="space-y-3">
                     {/* Existing Images */}
                     {editOriginImageUrls.length > 0 ? (
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div className="grid grid-cols-2 gap-2">
                         {editOriginImageUrls.map((url, index) => (
                            <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-white/70">
                             <img src={url} alt={`Origin ${index}`} className="w-full h-full object-cover" />
@@ -1141,7 +1144,7 @@ const DataTable: React.FC = () => {
                     {editOriginImageFiles.length > 0 && (
                       <div>
                         <p className="driver-clay-muted mb-1 text-xs">รูปใหม่ที่จะเพิ่ม ({editOriginImageFiles.length}):</p>
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div className="grid grid-cols-2 gap-2">
                           {editOriginImageFiles.map((file, index) => (
                             <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-white/70">
                               <img src={URL.createObjectURL(file)} alt={`New Origin ${index}`} className="w-full h-full object-cover" />
@@ -1167,7 +1170,7 @@ const DataTable: React.FC = () => {
                   </div>
                 ) : (
                   selectedOriginImageUrls.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="grid grid-cols-2 gap-2">
                       {selectedOriginImageUrls.map((url, index) => (
                         <div key={index} className="relative w-full h-32 cursor-pointer overflow-hidden rounded-xl border border-white/70" onClick={() => window.open(url, '_blank')}>
                           <img 
@@ -1185,7 +1188,7 @@ const DataTable: React.FC = () => {
               </div>
 
               {/* Destination Image Section (รูปภาพปลายทาง) */}
-              <div className="driver-clay-soft p-4">
+              <div className="driver-clay-soft p-3 sm:p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <ImageIcon size={16} className="driver-clay-muted" />
                   <span className="driver-clay-muted text-xs">รูปภาพปลายทาง</span>
@@ -1195,7 +1198,7 @@ const DataTable: React.FC = () => {
                   <div className="space-y-3">
                     {/* Existing Images */}
                     {editDestinationImageUrls.length > 0 ? (
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div className="grid grid-cols-2 gap-2">
                         {editDestinationImageUrls.map((url, index) => (
                            <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-white/70">
                             <img src={url} alt={`Destination ${index}`} className="w-full h-full object-cover" />
@@ -1208,7 +1211,7 @@ const DataTable: React.FC = () => {
                     {editDestinationImageFiles.length > 0 && (
                       <div>
                         <p className="driver-clay-muted mb-1 text-xs">รูปใหม่ที่จะเพิ่ม ({editDestinationImageFiles.length}):</p>
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div className="grid grid-cols-2 gap-2">
                           {editDestinationImageFiles.map((file, index) => (
                             <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-white/70">
                               <img src={URL.createObjectURL(file)} alt={`New Destination ${index}`} className="w-full h-full object-cover" />
@@ -1234,7 +1237,7 @@ const DataTable: React.FC = () => {
                   </div>
                 ) : (
                   selectedDestinationImageUrls.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="grid grid-cols-2 gap-2">
                       {selectedDestinationImageUrls.map((url, index) => (
                         <div key={index} className="relative w-full h-32 cursor-pointer overflow-hidden rounded-xl border border-white/70" onClick={() => window.open(url, '_blank')}>
                           <img 
@@ -1252,7 +1255,7 @@ const DataTable: React.FC = () => {
               </div>
 
                {/* Document Image Section (รูปภาพเอกสาร) */}
-              <div className="driver-clay-soft p-4">
+              <div className="driver-clay-soft p-3 sm:p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <ImageIcon size={16} className="driver-clay-muted" />
                   <span className="driver-clay-muted text-xs">รูปภาพเอกสาร</span>
@@ -1262,7 +1265,7 @@ const DataTable: React.FC = () => {
                   <div className="space-y-3">
                     {/* Existing Images */}
                     {editDocumentImageUrls.length > 0 ? (
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div className="grid grid-cols-2 gap-2">
                         {editDocumentImageUrls.map((url, index) => (
                            <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-white/70">
                             <img src={url} alt={`Document ${index}`} className="w-full h-full object-cover" />
@@ -1275,7 +1278,7 @@ const DataTable: React.FC = () => {
                     {editDocumentImageFiles.length > 0 && (
                       <div>
                         <p className="driver-clay-muted mb-1 text-xs">รูปใหม่ที่จะเพิ่ม ({editDocumentImageFiles.length}):</p>
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div className="grid grid-cols-2 gap-2">
                           {editDocumentImageFiles.map((file, index) => (
                             <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden border border-white/70">
                               <img src={URL.createObjectURL(file)} alt={`New Document ${index}`} className="w-full h-full object-cover" />
@@ -1301,7 +1304,7 @@ const DataTable: React.FC = () => {
                   </div>
                 ) : (
                   selectedDocumentImageUrls.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="grid grid-cols-2 gap-2">
                       {selectedDocumentImageUrls.map((url, index) => (
                         <div key={index} className="relative w-full h-32 cursor-pointer overflow-hidden rounded-xl border border-white/70" onClick={() => window.open(url, '_blank')}>
                           <img 
@@ -1320,7 +1323,7 @@ const DataTable: React.FC = () => {
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+            <div className="flex flex-col gap-2 pt-1 sm:flex-row">
               {isEditing ? (
                 <>
                   <button
@@ -1387,7 +1390,7 @@ const DataTable: React.FC = () => {
             </div>
           </div>
 
-          <div className="p-4 sm:p-6">
+          <div className="p-3 sm:p-6">
             <EntryForm embedded />
           </div>
         </div>
@@ -1412,7 +1415,7 @@ const DataTable: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 p-4 md:p-6">
-          <div className="grid w-full grid-cols-2 gap-2 md:hidden">
+          <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 md:hidden">
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`${pastelFilterButtonClass} justify-center text-xs`}
@@ -1451,7 +1454,7 @@ const DataTable: React.FC = () => {
             </button>
           </div>
 
-          <div className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:flex-wrap">
+          <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 md:flex md:w-auto md:flex-wrap">
             <button onClick={exportCSV} className="driver-clay-btn driver-clay-btn-ghost w-full justify-center text-xs md:w-auto md:text-sm">
               <Download size={15} />
               CSV
@@ -1474,8 +1477,8 @@ const DataTable: React.FC = () => {
       </section>
 
       {showFilters && (
-        <section className={`${cardClass} p-5 md:p-6`}>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <section className={`${cardClass} p-4 md:p-6`}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
             <label className="space-y-1.5">
               <span className="driver-clay-muted text-xs font-semibold">เดือน</span>
               <select
@@ -1537,7 +1540,7 @@ const DataTable: React.FC = () => {
             </label>
 
             {hasActiveFilters && (
-              <div className="flex items-end">
+              <div className="flex items-end sm:col-span-2 xl:col-span-1">
                 <button onClick={clearFilters} className="driver-clay-btn driver-clay-btn-ghost w-full text-xs sm:text-sm">
                   <X size={15} />
                   ล้างตัวกรอง
@@ -1548,7 +1551,7 @@ const DataTable: React.FC = () => {
         </section>
       )}
 
-      <div className="md:hidden space-y-3">
+      <div className="space-y-3 md:hidden">
         {loading ? (
           <article className="driver-clay-card p-4 sm:p-5">
             <p className="driver-clay-muted text-sm">กำลังโหลดข้อมูล...</p>
@@ -1562,13 +1565,13 @@ const DataTable: React.FC = () => {
             <button
               key={job.id}
               onClick={() => handleRowClick(job)}
-              className="driver-clay-card w-full p-4 text-left sm:p-5"
+              className="driver-clay-card w-full p-4 text-left"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate text-base font-black text-slate-700">งานวิ่ง {formatDate(job.date)}</p>
+                  <p className="truncate text-base font-black text-slate-700">{resolveProductName(job)}</p>
                   <p className="driver-clay-muted truncate text-xs">
-                    Job / Inv: {job.jobNo || '-'} / {resolveInvoiceNo(job) || '-'}
+                    {formatDate(job.date)} | {job.workOrderNo || '-'}
                   </p>
                 </div>
                 <span className="driver-clay-chip bg-slate-100/85 text-slate-700">
@@ -1576,7 +1579,7 @@ const DataTable: React.FC = () => {
                 </span>
               </div>
 
-              <div className="mt-4 space-y-2 text-sm text-slate-700">
+              <div className="mt-3 space-y-2 text-[13px] text-slate-700">
                 <div className="flex items-center gap-2">
                   <CalendarClock size={14} className="driver-clay-muted" />
                   <span>วันที่งาน: {formatDate(job.date)}</span>
@@ -1590,15 +1593,21 @@ const DataTable: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <Truck size={14} className="driver-clay-muted" />
-                  <span>รถ: {job.vehicleType || '-'} | ทะเบียน: {job.licensePlate || '-'}</span>
+                  <span className="break-words">รถ: {job.vehicleType || '-'} | ทะเบียน: {job.licensePlate || '-'}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
+                  <div className="driver-clay-soft px-3 py-2">
+                    <span className="driver-clay-muted block">คนขับ</span>
+                    <span className="block break-words text-slate-700">{job.driverName || '-'}</span>
+                  </div>
+                  <div className="driver-clay-soft px-3 py-2">
+                    <span className="driver-clay-muted block">Job / Inv</span>
+                    <span className="block break-words text-slate-700">{job.jobNo || '-'} / {resolveInvoiceNo(job) || '-'}</span>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Package2 size={14} className="driver-clay-muted" />
                   <span>สินค้า: {resolveProductName(job)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <UserRound size={14} className="driver-clay-muted" />
-                  <span>คนขับ: {job.driverName || '-'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CalendarClock size={14} className="driver-clay-muted" />

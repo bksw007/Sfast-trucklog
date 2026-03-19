@@ -100,13 +100,13 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen, onClo
             filteredUsers.map((u) => (
               <div 
                 key={u.uid}
-                className={`p-3 rounded-xl border flex items-center justify-between ${
+                className={`flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between ${
                   isDark 
                     ? 'bg-dark-bg/50 border-dark-muted/20' 
                     : 'bg-light-bg/50 border-light-muted/20'
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                   {/* Avatar */}
                   {u.photoURL && !brokenPhotoUids.has(u.uid) ? (
                     <img 
@@ -128,23 +128,23 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen, onClo
                     </div>
                   )}
                   
-                  <div>
+                  <div className="min-w-0">
                     <div className={`font-medium ${isDark ? 'text-dark-text' : 'text-light-text'}`}>
                       {u.displayName}
                     </div>
-                    <div className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+                    <div className={`break-all text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
                       {u.email}
                     </div>
                   </div>
                 </div>
 
                 {/* Role Switcher */}
-                <div className="flex items-center gap-2">
+                <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
                   <select
                     value={u.role}
                     onChange={(e) => handleRoleChange(u.uid, u.role, e.target.value as UserRole)}
                     disabled={updatingUser === u.uid || u.uid === currentUser?.uid}
-                    className={`text-sm rounded-lg px-2 py-1 border outline-none cursor-pointer ${
+                    className={`min-h-10 w-full rounded-lg border px-2 py-1 text-sm outline-none cursor-pointer sm:w-auto ${
                       u.role === 'admin'
                         ? 'bg-accent-primary/20 text-accent-primary border-accent-primary/20' 
                         : isDark ? 'bg-dark-card text-dark-text border-dark-muted/20' : 'bg-white text-slate-700 border-slate-200'

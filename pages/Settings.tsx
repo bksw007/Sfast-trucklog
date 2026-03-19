@@ -263,8 +263,8 @@ const Settings: React.FC = () => {
         </div>
 
         {/* Manual Sync Button */}
-        <div className="flex w-full items-center gap-4 sm:w-auto">
-          <div className="text-right hidden sm:block">
+        <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center">
+          <div className="text-left sm:text-right">
             <div className={`text-xs ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
               อัปเดตล่าสุด
             </div>
@@ -275,7 +275,7 @@ const Settings: React.FC = () => {
           <button
           onClick={handleManualSync}
           disabled={manualSyncing}
-          className={`hidden items-center gap-2 rounded-xl px-4 py-2 font-medium transition-all md:flex ${
+          className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 font-medium transition-all ${
             syncResult === 'success' 
               ? 'bg-green-500 text-white' 
               : syncResult === 'error'
@@ -298,7 +298,7 @@ const Settings: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className={`grid w-full grid-cols-2 gap-1 rounded-xl p-1 sm:grid-cols-4 xl:grid-cols-7 ${isDark ? 'bg-dark-card' : 'bg-light-card shadow-lg'}`}>
+      <div className={`grid w-full grid-cols-2 gap-1 rounded-xl p-1 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 ${isDark ? 'bg-dark-card' : 'bg-light-card shadow-lg'}`}>
         {tabs.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -306,7 +306,7 @@ const Settings: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex flex-col items-center justify-center gap-1.5 rounded-lg px-2 py-2.5 text-center font-medium transition-all sm:flex-row sm:gap-2 sm:px-3 sm:py-3 ${
+              className={`flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-lg px-2 py-2.5 text-center font-medium transition-all sm:flex-row sm:gap-2 sm:px-3 sm:py-3 ${
                 isActive
                   ? 'bg-gradient-to-r from-accent-primary to-accent-secondary text-white shadow-lg'
                   : isDark
@@ -326,14 +326,14 @@ const Settings: React.FC = () => {
         isDark ? 'bg-dark-card border-dark-muted/20' : 'bg-light-card border-light-muted/20 shadow-lg'
       }`}>
         {/* Add New */}
-        <div className={`p-4 border-b flex flex-wrap gap-3 ${isDark ? 'border-dark-muted/20' : 'border-light-muted/20'}`}>
+        <div className={`flex flex-col gap-3 border-b p-4 sm:flex-row sm:flex-wrap ${isDark ? 'border-dark-muted/20' : 'border-light-muted/20'}`}>
           <input
             type="text"
             value={newValue}
             onChange={(e) => setNewValue(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleAdd()}
             placeholder={`เพิ่ม${tabs.find(t => t.id === activeTab)?.label}ใหม่...`}
-            className={`min-w-0 flex-1 px-4 py-2 rounded-xl border ${
+            className={`min-w-0 flex-1 rounded-xl border px-4 py-2.5 text-[16px] md:text-sm ${
               isDark 
                 ? 'bg-dark-bg border-dark-muted/30 text-dark-text placeholder-dark-muted' 
                 : 'bg-light-bg border-light-muted/30 text-light-text placeholder-light-muted'
@@ -342,7 +342,7 @@ const Settings: React.FC = () => {
           <button
             onClick={handleAdd}
             disabled={adding || !newValue.trim()}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent-success text-white font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent-success px-4 py-2.5 font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
             {adding ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
             เพิ่ม
@@ -362,7 +362,7 @@ const Settings: React.FC = () => {
                 onClick={() => {
                   if (editingItem !== item) startRename(item);
                 }}
-                className={`flex items-center justify-between gap-2 px-4 py-3 border-b last:border-b-0 cursor-pointer ${
+                className={`flex flex-col gap-3 border-b px-4 py-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between cursor-pointer ${
                   isDark ? 'border-dark-muted/10 hover:bg-white/5' : 'border-light-muted/10 hover:bg-black/5'
                 }`}
               >
@@ -421,14 +421,14 @@ const Settings: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
                       {activeTab === OptionCategory.LOCATION && pinnedLocations.includes(item) && (
                         <Star size={14} className="shrink-0 text-amber-500" fill="currentColor" />
                       )}
                       <span className={isDark ? 'text-dark-text truncate' : 'text-light-text truncate'}>{item}</span>
                       <Pencil size={14} className={isDark ? 'text-dark-muted shrink-0' : 'text-light-muted shrink-0'} />
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex w-full items-center justify-end gap-1 sm:w-auto">
                       {activeTab === OptionCategory.LOCATION && (
                         <button
                           onClick={(e) => {

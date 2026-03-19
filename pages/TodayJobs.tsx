@@ -1300,9 +1300,9 @@ const TodayJobs: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in overflow-x-hidden">
-      <section className={`${cardClass} p-3 md:p-4`}>
+      <section className={`${cardClass} p-2.5 sm:p-3 md:p-4`}>
         <div className={`rounded-2xl border p-2 ${isDark ? 'border-dark-muted/30 bg-dark-bg/45' : 'border-white/80 bg-[#e8ecf1]'}`}>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="tablist" aria-label="งานวันนี้แท็บหลัก">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-3" role="tablist" aria-label="งานวันนี้แท็บหลัก">
             {mainTabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeMainTab === tab.id;
@@ -1348,7 +1348,7 @@ const TodayJobs: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid gap-4 p-5 md:grid-cols-2 md:p-7 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 p-4 sm:gap-4 md:grid-cols-2 md:p-7 xl:grid-cols-4">
           <button type="button" onClick={() => openBadgeModal('งานวันนี้ทั้งหมด', todayJobs)} className={`rounded-xl p-4 text-left transition hover:-translate-y-0.5 ${isDark ? 'bg-dark-bg/60 hover:bg-dark-bg/80' : 'bg-cyan-50 hover:bg-cyan-100'}`}>
             <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-slate-600'}`}>งานวันนี้ทั้งหมด</p>
             <div className="mt-2 flex items-center justify-between">
@@ -1381,7 +1381,7 @@ const TodayJobs: React.FC = () => {
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2">
+      <section className="grid gap-4 xl:grid-cols-2">
         <div className={`${cardClass} p-5`}>
           <h2 className="text-base font-semibold">จำนวนงานที่พนักงานได้รับ (รายสัปดาห์)</h2>
           <div className="mt-3 space-y-2">
@@ -2040,21 +2040,21 @@ const TodayJobs: React.FC = () => {
           </div>
         </div>
 
-        <div className={`flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 md:px-7 ${isDark ? 'border-dark-muted/25 bg-dark-bg/40' : 'border-light-muted/20 bg-slate-50'}`}>
+        <div className={`flex flex-col gap-3 border-b px-4 py-3 md:flex-row md:items-center md:justify-between md:px-7 ${isDark ? 'border-dark-muted/25 bg-dark-bg/40' : 'border-light-muted/20 bg-slate-50'}`}>
           <div>
             <h3 className="text-base font-semibold">ค้นหาและกรองข้อมูล</h3>
             <p className={`mt-1 text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>เลือกสถานะหรือพิมพ์คำค้นเพื่อดูรายการที่ต้องการ</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="ค้นหา Job No./คนขับ/ทะเบียน" className={isDark ? 'min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/50 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none' : 'min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none'} />
-            <select value={tableMonth} onChange={(e) => setTableMonth(e.target.value)} className={isDark ? 'min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/50 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none' : 'min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none'}>
+          <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 xl:flex xl:w-auto xl:flex-wrap">
+            <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="ค้นหา Job No./คนขับ/ทะเบียน" className={isDark ? 'min-h-11 w-full rounded-xl border border-dark-muted/35 bg-dark-bg/50 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none xl:min-w-[18rem]' : 'min-h-11 w-full rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none xl:min-w-[18rem]'} />
+            <select value={tableMonth} onChange={(e) => setTableMonth(e.target.value)} className={isDark ? 'min-h-11 w-full rounded-xl border border-dark-muted/35 bg-dark-bg/50 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none' : 'min-h-11 w-full rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none'}>
               {tableMonthOptions.map((month) => (
                 <option key={month} value={month}>
                   {month}
                 </option>
               ))}
             </select>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | JobStatus)} className={isDark ? 'min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/50 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none' : 'min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none'}>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | JobStatus)} className={isDark ? 'min-h-11 w-full rounded-xl border border-dark-muted/35 bg-dark-bg/50 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none' : 'min-h-11 w-full rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none'}>
               <option value="all">ทุกสถานะ</option>
               <option value="pending">รอดำเนินการ</option>
               <option value="in_progress">กำลังทำงาน</option>

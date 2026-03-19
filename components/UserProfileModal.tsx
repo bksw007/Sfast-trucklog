@@ -183,8 +183,8 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
             <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${
               isDark ? 'border-dark-muted/20 bg-dark-bg/50 text-dark-text' : 'border-light-muted/20 bg-light-bg/50 text-light-text'
             }`}>
-              <Mail size={18} className="opacity-50" />
-              <span>{userProfile.email}</span>
+              <Mail size={18} className="shrink-0 opacity-50" />
+              <span className="min-w-0 break-all">{userProfile.email}</span>
             </div>
           </div>
 

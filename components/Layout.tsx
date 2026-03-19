@@ -47,7 +47,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="admin-clay min-h-screen font-sans text-slate-700">
-      <header className="md:hidden sticky top-0 z-50 px-3 pb-1 pt-3">
+      <header className="sticky top-0 z-50 px-3 pb-1 pt-3 md:hidden">
         <div className="driver-top-shell mx-auto flex w-full items-center justify-between gap-3 rounded-[24px] border border-white/80 px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
             <div className="h-11 w-11 overflow-hidden rounded-2xl bg-[#272727] shadow-[6px_6px_12px_rgba(166,180,200,0.35),-6px_-6px_12px_rgba(255,255,255,0.9)]">
@@ -73,7 +73,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {showMobileTopMenu && (
               <div
                 id="admin-mobile-top-menu"
-                className="absolute right-0 top-[calc(100%+0.55rem)] z-50 min-w-[190px] rounded-2xl border border-white/80 bg-[rgba(240,244,248,0.97)] p-2 shadow-[10px_10px_22px_rgba(166,180,200,0.36),-8px_-8px_18px_rgba(255,255,255,0.9)]"
+                className="absolute right-0 top-[calc(100%+0.55rem)] z-50 w-[min(84vw,16rem)] rounded-2xl border border-white/80 bg-[rgba(240,244,248,0.97)] p-2 shadow-[10px_10px_22px_rgba(166,180,200,0.36),-8px_-8px_18px_rgba(255,255,255,0.9)]"
               >
                 <button
                   type="button"
@@ -214,14 +214,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <main className={`flex-1 min-h-screen transition-all duration-300 ${
           sidebarOpen ? 'md:ml-64' : 'md:ml-20'
         }`}>
-          <div className="p-4 pb-[calc(5.2rem+env(safe-area-inset-bottom))] md:p-8 max-w-7xl mx-auto space-y-6">
+          <div className="mx-auto max-w-7xl space-y-5 p-3 pb-[calc(5.2rem+env(safe-area-inset-bottom))] sm:p-4 md:space-y-6 md:p-8">
             {children}
           </div>
         </main>
       </div>
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 px-2 pb-[calc(0.45rem+env(safe-area-inset-bottom))] pt-2 md:hidden">
-        <div className="driver-mobile-nav-surface mx-auto grid w-full max-w-6xl grid-cols-4 gap-2 rounded-[22px] border border-white/85 p-2">
+        <div className="driver-mobile-nav-surface mx-auto grid w-full max-w-6xl grid-cols-4 gap-1.5 rounded-[22px] border border-white/85 p-1.5">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -229,7 +229,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-semibold transition ${
+                className={`flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 py-2 text-[9px] font-semibold transition sm:text-[10px] ${
                   isActive
                     ? 'driver-mobile-nav-item-active'
                     : 'text-slate-500 hover:bg-[#d9e6f2] hover:text-[#272727] active:bg-[#d9e6f2] active:text-[#272727]'

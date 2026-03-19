@@ -216,7 +216,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className={`text-3xl font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
             ภาพรวมงานวิ่ง
@@ -227,7 +227,7 @@ const Dashboard: React.FC = () => {
         </div>
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+          className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 transition-all sm:w-auto ${
             hasActiveFilters 
               ? 'bg-accent-primary text-white' 
               : isDark 
@@ -248,10 +248,10 @@ const Dashboard: React.FC = () => {
 
       {/* Filter Panel */}
       {showFilters && (
-        <div className={`p-6 rounded-2xl border animate-fade-in ${
+        <div className={`animate-fade-in rounded-2xl border p-4 sm:p-6 ${
           isDark ? 'bg-dark-card border-dark-muted/20' : 'bg-light-card border-light-muted/20 shadow-lg'
         }`}>
-          <div className="flex flex-wrap gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
             {/* Month Filter */}
             <div className="w-full sm:flex-1 sm:min-w-[140px]">
               <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
@@ -260,7 +260,7 @@ const Dashboard: React.FC = () => {
               <select
                 value={filters.month || ''}
                 onChange={(e) => setFilters(prev => ({ ...prev, month: e.target.value ? parseInt(e.target.value) : null }))}
-                className={`w-full px-3 py-2 rounded-lg border transition-colors ${
+                className={`min-h-11 w-full rounded-lg border px-3 py-2.5 text-[16px] transition-colors md:text-sm ${
                   isDark 
                     ? 'bg-dark-bg border-dark-muted/30 text-dark-text' 
                     : 'bg-light-bg border-light-muted/30 text-light-text'
@@ -281,7 +281,7 @@ const Dashboard: React.FC = () => {
               <select
                 value={filters.year || ''}
                 onChange={(e) => setFilters(prev => ({ ...prev, year: e.target.value ? parseInt(e.target.value) : null }))}
-                className={`w-full px-3 py-2 rounded-lg border transition-colors ${
+                className={`min-h-11 w-full rounded-lg border px-3 py-2.5 text-[16px] transition-colors md:text-sm ${
                   isDark 
                     ? 'bg-dark-bg border-dark-muted/30 text-dark-text' 
                     : 'bg-light-bg border-light-muted/30 text-light-text'
@@ -302,7 +302,7 @@ const Dashboard: React.FC = () => {
               <select
                 value={filters.driver}
                 onChange={(e) => setFilters(prev => ({ ...prev, driver: e.target.value }))}
-                className={`w-full px-3 py-2 rounded-lg border transition-colors ${
+                className={`min-h-11 w-full rounded-lg border px-3 py-2.5 text-[16px] transition-colors md:text-sm ${
                   isDark 
                     ? 'bg-dark-bg border-dark-muted/30 text-dark-text' 
                     : 'bg-light-bg border-light-muted/30 text-light-text'
@@ -323,7 +323,7 @@ const Dashboard: React.FC = () => {
               <select
                 value={filters.vehicleType}
                 onChange={(e) => setFilters(prev => ({ ...prev, vehicleType: e.target.value }))}
-                className={`w-full px-3 py-2 rounded-lg border transition-colors ${
+                className={`min-h-11 w-full rounded-lg border px-3 py-2.5 text-[16px] transition-colors md:text-sm ${
                   isDark 
                     ? 'bg-dark-bg border-dark-muted/30 text-dark-text' 
                     : 'bg-light-bg border-light-muted/30 text-light-text'
@@ -344,7 +344,7 @@ const Dashboard: React.FC = () => {
               <select
                 value={filters.licensePlate}
                 onChange={(e) => setFilters(prev => ({ ...prev, licensePlate: e.target.value }))}
-                className={`w-full px-3 py-2 rounded-lg border transition-colors ${
+                className={`min-h-11 w-full rounded-lg border px-3 py-2.5 text-[16px] transition-colors md:text-sm ${
                   isDark 
                     ? 'bg-dark-bg border-dark-muted/30 text-dark-text' 
                     : 'bg-light-bg border-light-muted/30 text-light-text'
@@ -362,7 +362,7 @@ const Dashboard: React.FC = () => {
               <div className="flex items-end">
                 <button
                   onClick={clearFilters}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-danger/10 text-accent-danger hover:bg-accent-danger/20 transition-colors"
+                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-accent-danger/10 px-4 py-2 text-accent-danger transition-colors hover:bg-accent-danger/20"
                 >
                   <X size={16} />
                   ล้าง
@@ -374,7 +374,7 @@ const Dashboard: React.FC = () => {
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 lg:gap-6">
         <StatCard 
           title="งานทั้งหมด" 
           value={totalJobs} 
@@ -406,14 +406,14 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-        <div className={`p-6 rounded-2xl border shadow-xl ${
+      <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
+        <div className={`rounded-2xl border p-4 shadow-xl sm:p-6 ${
           isDark ? 'bg-dark-card border-dark-muted/10' : 'bg-light-card border-light-muted/10'
         }`}>
-          <h3 className={`text-xl font-semibold mb-6 ${isDark ? 'text-dark-text' : 'text-light-text'}`}>
+          <h3 className={`mb-4 text-lg font-semibold sm:mb-6 sm:text-xl ${isDark ? 'text-dark-text' : 'text-light-text'}`}>
             งานแยกตามคนขับ
           </h3>
-          <div className="h-80">
+          <div className="h-[18rem] sm:h-80">
             {driverChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={driverChartData} margin={{ top: 5, right: 30, left: 20, bottom: 60 }}>
@@ -449,13 +449,13 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className={`p-6 rounded-2xl border shadow-xl ${
+        <div className={`rounded-2xl border p-4 shadow-xl sm:p-6 ${
           isDark ? 'bg-dark-card border-dark-muted/10' : 'bg-light-card border-light-muted/10'
         }`}>
-          <h3 className={`text-xl font-semibold mb-6 ${isDark ? 'text-dark-text' : 'text-light-text'}`}>
+          <h3 className={`mb-4 text-lg font-semibold sm:mb-6 sm:text-xl ${isDark ? 'text-dark-text' : 'text-light-text'}`}>
             สัดส่วนประเภทรถ
           </h3>
-          <div className="h-80">
+          <div className="h-[18rem] sm:h-80">
             {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
