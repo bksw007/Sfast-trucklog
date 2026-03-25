@@ -81,7 +81,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({
 
     skipNextProfileSyncRef.current = true;
     setFontScaleState(userProfile.fontScale);
-  }, [fontScale, loading, user, userProfile?.fontScale]);
+  }, [loading, user, userProfile?.fontScale]);
 
   useEffect(() => {
     if (loading || !user) return;
