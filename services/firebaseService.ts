@@ -60,6 +60,86 @@ export type DashboardMetricSummary = {
 
 const getMonthKeyFromDate = (dateStr?: string) => (dateStr || '').split('T')[0].slice(0, 7);
 
+const buildTodayJobSummaryText = (job: Pick<
+  TodayJobEntry,
+  | 'workOrderNo'
+  | 'jobNo'
+  | 'invNo'
+  | 'orderDate'
+  | 'employerCompany'
+  | 'productName'
+  | 'quantity'
+  | 'vehicleType'
+  | 'plateNo'
+  | 'pickup'
+  | 'delivery'
+  | 'driverName'
+  | 'driverPhone'
+  | 'importantNote'
+>): string =>
+  [
+    `เลขที่ใบสั่งงาน: ${job.workOrderNo || '-'}`,
+    `Job No.: ${job.jobNo || '-'}`,
+    `Invoice No.: ${job.invNo || '-'}`,
+    `วันที่รับงานจากผู้ว่าจ้าง: ${job.orderDate || '-'}`,
+    `ผู้ว่าจ้าง: ${job.employerCompany || '-'}`,
+    `ประเภทสินค้า: ${job.productName || '-'}`,
+    `จำนวนรอบ: ${job.quantity || '-'}`,
+    `ประเภทรถ: ${job.vehicleType || '-'}`,
+    `ทะเบียนรถ: ${job.plateNo || '-'}`,
+    'จุดรับ:',
+    `- สถานที่: ${job.pickup?.location || '-'}`,
+    `- วันที่: ${job.pickup?.date || '-'}`,
+    `- เวลา: ${job.pickup?.time || '-'}`,
+    `- ผู้ติดต่อ: ${job.pickup?.contact || '-'}`,
+    'จุดส่ง:',
+    `- สถานที่: ${job.delivery?.location || '-'}`,
+    `- วันที่: ${job.delivery?.date || '-'}`,
+    `- เวลา: ${job.delivery?.time || '-'}`,
+    `- ผู้ติดต่อ: ${job.delivery?.contact || '-'}`,
+    `พนักงานขับรถ: ${job.driverName || '-'}`,
+    `เบอร์ติดต่อคนขับ: ${job.driverPhone || '-'}`,
+    `หมายเหตุ: ${job.importantNote || '-'}`,
+  ].join('\n');
+
+const mergeTodayJobPatch = (
+  current: Partial<TodayJobEntry>,
+  next: Partial<TodayJobEntry>
+): Partial<TodayJobEntry> => ({
+  ...current,
+  ...next,
+  pickup:
+    current.pickup || next.pickup
+      ? {
+          ...(current.pickup ?? {}),
+          ...(next.pickup ?? {}),
+        }
+      : undefined,
+  delivery:
+    current.delivery || next.delivery
+      ? {
+          ...(current.delivery ?? {}),
+          ...(next.delivery ?? {}),
+        }
+      : undefined,
+});
+
+const applyTodayJobPatch = (
+  source: TodayJobEntry,
+  patch: Partial<TodayJobEntry>
+): TodayJobEntry => ({
+  ...source,
+  ...patch,
+  pickup: {
+    ...source.pickup,
+    ...(patch.pickup ?? {}),
+  },
+  delivery: {
+    ...source.delivery,
+    ...(patch.delivery ?? {}),
+  },
+});
+
 export class RevisionConflictError extends Error {
   code = 'revision-conflict' as const;
   currentRevision: number;
@@ -891,7 +971,10 @@ export const renameOptionAndSyncJobs = async (
   }
 
   const jobsRef = collection(db, JOBS_COLLECTION);
+  const todayJobsRef = collection(db, TODAY_JOBS_COLLECTION);
   const jobsToUpdate = new Map<string, Partial<JobEntry>>();
+  const todayJobsToUpdate = new Map<string, Partial<TodayJobEntry>>();
+  const todayJobSources = new Map<string, TodayJobEntry>();
 
   const collectJobsForField = async (field: keyof JobEntry) => {
     const fieldQuery = query(jobsRef, where(field as string, '==', trimmedOld));
@@ -902,24 +985,74 @@ export const renameOptionAndSyncJobs = async (
     });
   };
 
+  const collectTodayJobsForField = async (
+    fieldPath: string,
+    buildPatch: (current: TodayJobEntry) => Partial<TodayJobEntry>
+  ) => {
+    const fieldQuery = query(todayJobsRef, where(fieldPath, '==', trimmedOld));
+    const snapshot = await getDocs(fieldQuery);
+    snapshot.docs.forEach((jobDoc) => {
+      const source = { id: jobDoc.id, ...(jobDoc.data() as TodayJobEntry) };
+      todayJobSources.set(jobDoc.id, source);
+      const currentPatch = todayJobsToUpdate.get(jobDoc.id) ?? {};
+      const currentState = applyTodayJobPatch(source, currentPatch);
+      const nextPatch = buildPatch(currentState);
+      todayJobsToUpdate.set(jobDoc.id, mergeTodayJobPatch(currentPatch, nextPatch));
+    });
+  };
+
   switch (category) {
     case OptionCategory.LOCATION:
       await Promise.all([
         collectJobsForField('pickupLocation'),
         collectJobsForField('dropoffLocation'),
+        collectTodayJobsForField('pickup.location', () => ({
+          pickup: { location: trimmedNew } as TodayJobEntry['pickup'],
+        })),
+        collectTodayJobsForField('delivery.location', () => ({
+          delivery: { location: trimmedNew } as TodayJobEntry['delivery'],
+        })),
       ]);
       break;
     case OptionCategory.VEHICLE:
-      await collectJobsForField('vehicleType');
+      await Promise.all([
+        collectJobsForField('vehicleType'),
+        collectTodayJobsForField('vehicleType', () => ({ vehicleType: trimmedNew })),
+      ]);
       break;
     case OptionCategory.DRIVER:
-      await collectJobsForField('driverName');
+      await Promise.all([
+        collectJobsForField('driverName'),
+        collectTodayJobsForField('driverName', () => ({ driverName: trimmedNew })),
+      ]);
       break;
     case OptionCategory.PLATE:
-      await collectJobsForField('licensePlate');
+      await Promise.all([
+        collectJobsForField('licensePlate'),
+        collectTodayJobsForField('plateNo', () => ({ plateNo: trimmedNew })),
+      ]);
+      break;
+    case OptionCategory.EMPLOYER_COMPANY:
+      await Promise.all([
+        collectJobsForField('employerCompany'),
+        collectTodayJobsForField('employerCompany', () => ({ employerCompany: trimmedNew })),
+      ]);
       break;
     case OptionCategory.PRODUCT_TYPE:
-      await collectJobsForField('productName');
+      await Promise.all([
+        collectJobsForField('productName'),
+        collectTodayJobsForField('productName', () => ({ productName: trimmedNew })),
+      ]);
+      break;
+    case OptionCategory.CONTACT:
+      await Promise.all([
+        collectTodayJobsForField('pickup.contact', () => ({
+          pickup: { contact: trimmedNew } as TodayJobEntry['pickup'],
+        })),
+        collectTodayJobsForField('delivery.contact', () => ({
+          delivery: { contact: trimmedNew } as TodayJobEntry['delivery'],
+        })),
+      ]);
       break;
     default:
       break;
@@ -939,6 +1072,19 @@ export const renameOptionAndSyncJobs = async (
     });
   });
 
+  todayJobsToUpdate.forEach((patch, jobId) => {
+    const source = todayJobSources.get(jobId);
+    if (!source) return;
+    const nextState = applyTodayJobPatch(source, patch);
+    allUpdates.push({
+      ref: doc(db, TODAY_JOBS_COLLECTION, jobId),
+      data: {
+        ...patch,
+        summaryText: buildTodayJobSummaryText(nextState),
+      } as Record<string, unknown>,
+    });
+  });
+
   for (let i = 0; i < allUpdates.length; i += 500) {
     const batch = writeBatch(db);
     const chunk = allUpdates.slice(i, i + 500);
@@ -949,7 +1095,7 @@ export const renameOptionAndSyncJobs = async (
   }
 
   console.log(
-    `[Firebase] Option renamed: ${category} "${trimmedOld}" -> "${trimmedNew}" (updated ${jobsToUpdate.size} jobs)`
+    `[Firebase] Option renamed: ${category} "${trimmedOld}" -> "${trimmedNew}" (updated ${jobsToUpdate.size} jobs, ${todayJobsToUpdate.size} today jobs)`
   );
 };
 

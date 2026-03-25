@@ -36,12 +36,17 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({
 
     // Apply theme class to document
     const root = document.documentElement;
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (theme === "dark") {
       root.classList.add("dark");
       root.classList.remove("light");
+      root.style.colorScheme = "dark";
+      metaThemeColor?.setAttribute("content", "#1a1b26");
     } else {
       root.classList.add("light");
       root.classList.remove("dark");
+      root.style.colorScheme = "light";
+      metaThemeColor?.setAttribute("content", "#f0f4f8");
     }
   }, [theme]);
 

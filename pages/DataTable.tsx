@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import ConfirmModal from '../components/ConfirmModal';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -70,8 +71,9 @@ const createDefaultFilters = (): Filters => {
 const DataTable: React.FC = () => {
   const { data: appData, refreshData } = useData();
   const { userProfile } = useAuth();
+  const { theme } = useTheme();
   const isAdmin = userProfile?.role === 'admin';
-  const isDark = false;
+  const isDark = theme === 'dark';
   const [jobs, setJobs] = useState<JobEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
@@ -210,7 +212,7 @@ const DataTable: React.FC = () => {
     : 'w-full min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none';
   const modalInputClass = 'driver-clay-input w-full min-h-11 px-3 py-2.5 text-[16px] md:text-sm';
   const modalFieldClass = 'driver-clay-soft p-3 sm:p-4';
-  const modalLabelClass = 'driver-clay-muted mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em]';
+  const modalLabelClass = 'admin-field-label mb-1 block text-[11px] uppercase tracking-[0.08em]';
   const sortUniqueOptions = (items: string[]) =>
     Array.from(new Set(items.map((item) => item.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'th'));
   const locationOptions = useMemo(() => {
@@ -1461,7 +1463,7 @@ const DataTable: React.FC = () => {
               <Download size={15} />
               CSV
             </button>
-            <button onClick={() => generatePDFReport(false)} className="driver-clay-btn driver-clay-btn-info w-full justify-center text-xs md:w-auto md:text-sm">
+            <button onClick={() => generatePDFReport(false)} className="driver-clay-btn driver-clay-btn-info driver-clay-btn-pdf w-full justify-center text-xs md:w-auto md:text-sm">
               <Download size={15} />
               PDF
             </button>
@@ -1567,37 +1569,42 @@ const DataTable: React.FC = () => {
             <button
               key={job.id}
               onClick={() => handleRowClick(job)}
-              className="driver-clay-card w-full p-4 text-left"
+              className="driver-clay-card w-full overflow-hidden p-3.5 text-left"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-base font-black text-slate-700">{resolveProductName(job)}</p>
-                  <p className="driver-clay-muted truncate text-xs">
+              <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 space-y-1">
+                  <p className="break-words text-[15px] font-black leading-tight text-slate-700 sm:text-base">{resolveProductName(job)}</p>
+                  <p className="driver-clay-muted break-words text-[11px] leading-relaxed sm:text-xs">
                     {formatDate(job.date)} | {job.workOrderNo || '-'}
                   </p>
                 </div>
-                <span className="driver-clay-chip bg-slate-100/85 text-slate-700">
+                <span className="driver-clay-chip self-start whitespace-nowrap bg-slate-100/85 text-slate-700 sm:self-auto">
                   {job.rounds} รอบ
                 </span>
               </div>
 
-              <div className="mt-3 space-y-2 text-[13px] text-slate-700">
-                <div className="flex items-center gap-2">
+              <div className="mt-3 space-y-2.5 text-[13px] text-slate-700">
+                <div className="driver-clay-soft flex items-center gap-2 rounded-xl px-3 py-2.5">
                   <CalendarClock size={14} className="driver-clay-muted" />
-                  <span>วันที่งาน: {formatDate(job.date)}</span>
+                  <span className="min-w-0 break-words">วันที่งาน: {formatDate(job.date)}</span>
                 </div>
-                <div className="flex items-start gap-2">
-                  <MapPin size={14} className="driver-clay-muted mt-0.5" />
-                  <div className="min-w-0 space-y-1">
-                    <p className="truncate">รับ: {job.pickupLocation || '-'}</p>
-                    <p className="truncate">ส่ง: {job.dropoffLocation || '-'}</p>
+                <div className="driver-clay-soft rounded-xl px-3 py-2.5">
+                  <div className="flex items-start gap-2">
+                    <MapPin size={14} className="driver-clay-muted mt-0.5 shrink-0" />
+                    <div className="min-w-0 space-y-1">
+                      <p className="break-words leading-relaxed">รับ: {job.pickupLocation || '-'}</p>
+                      <p className="break-words leading-relaxed">ส่ง: {job.dropoffLocation || '-'}</p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Truck size={14} className="driver-clay-muted" />
-                  <span className="break-words">รถ: {job.vehicleType || '-'} | ทะเบียน: {job.licensePlate || '-'}</span>
+                <div className="driver-clay-soft flex items-start gap-2 rounded-xl px-3 py-2.5">
+                  <Truck size={14} className="driver-clay-muted mt-0.5 shrink-0" />
+                  <div className="min-w-0 space-y-1">
+                    <p className="break-words leading-relaxed">รถ: {job.vehicleType || '-'}</p>
+                    <p className="break-words leading-relaxed">ทะเบียน: {job.licensePlate || '-'}</p>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
+                <div className="grid grid-cols-1 gap-2 pt-1 text-xs sm:grid-cols-2">
                   <div className="driver-clay-soft px-3 py-2">
                     <span className="driver-clay-muted block">คนขับ</span>
                     <span className="block break-words text-slate-700">{job.driverName || '-'}</span>
@@ -1607,12 +1614,12 @@ const DataTable: React.FC = () => {
                     <span className="block break-words text-slate-700">{job.jobNo || '-'} / {resolveInvoiceNo(job) || '-'}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Package2 size={14} className="driver-clay-muted" />
-                  <span>สินค้า: {resolveProductName(job)}</span>
+                <div className="driver-clay-soft flex items-center gap-2 rounded-xl px-3 py-2.5">
+                  <Package2 size={14} className="driver-clay-muted shrink-0" />
+                  <span className="min-w-0 break-words">สินค้า: {resolveProductName(job)}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <CalendarClock size={14} className="driver-clay-muted" />
+                <div className="driver-clay-soft flex items-center gap-2 rounded-xl px-3 py-2.5">
+                  <CalendarClock size={14} className="driver-clay-muted shrink-0" />
                   <span>
                     ค่าน้ำมัน/ทางด่วน:{' '}
                     {job.fuelAndToll !== null && job.fuelAndToll !== undefined && job.fuelAndToll !== ''

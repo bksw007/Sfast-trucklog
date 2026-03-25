@@ -3,6 +3,7 @@ import { JobEntry } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import { Truck, MapPin, Calendar, CheckCircle2, Filter, X, ChevronDown } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { rebuildDashboardMetricsMonth, subscribeToDashboardMetricsByMonth, subscribeToJobsByMonth, type DashboardMetricSummary } from '../services/firebaseService';
 
 const MONTHS = [
@@ -51,7 +52,8 @@ const toMonthKey = (year: number, month: number) => `${year}-${String(month).pad
 
 const Dashboard: React.FC = () => {
   const { data: appData } = useData();
-  const isDark = false;
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Filters>(() => createDefaultFilters());
   const [jobs, setJobs] = useState<JobEntry[]>([]);

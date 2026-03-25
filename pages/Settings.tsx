@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { addOption, renameOptionAndSyncJobs } from '../services/firebaseService';
 import { updateUserProfile } from '../services/userService';
 import { OptionCategory } from '../types';
@@ -29,7 +30,8 @@ import { collection, query, where, getDocs, deleteDoc } from 'firebase/firestore
 const Settings: React.FC = () => {
   const { data, refreshData, syncing, lastUpdate } = useData();
   const { user, userProfile, refreshProfile } = useAuth();
-  const isDark = false;
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
 
   const formatLastUpdate = (date: Date | null) => {
     if (!date) return 'ไม่ทราบ';
@@ -310,7 +312,7 @@ const Settings: React.FC = () => {
                 isActive
                   ? 'bg-gradient-to-r from-accent-primary to-accent-secondary text-white shadow-lg'
                   : isDark
-                  ? 'text-dark-muted hover:bg-white/5'
+                  ? 'text-white hover:bg-white/5'
                   : 'text-light-muted hover:bg-black/5'
               }`}
             >

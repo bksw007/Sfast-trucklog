@@ -458,6 +458,7 @@ const DriverProfile: React.FC = () => {
   const cardClass = 'driver-clay-card';
   const inputClass = 'driver-clay-input px-3 py-2.5 text-sm';
   const iconClass = 'driver-clay-muted';
+  const fieldLabelClass = 'driver-field-label';
 
   if (!userProfile) {
     return (
@@ -560,21 +561,21 @@ const DriverProfile: React.FC = () => {
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="driver-clay-soft space-y-1 p-3 text-sm">
-              <span className="driver-clay-muted">อีเมล</span>
+              <span className={fieldLabelClass}>อีเมล</span>
               <div className="flex items-center gap-2 px-1">
                 <Mail size={15} className={iconClass} />
                 <span className="break-all font-semibold text-slate-700">{userProfile.email}</span>
               </div>
             </div>
             <div className="driver-clay-soft space-y-1 p-3 text-sm">
-              <span className="driver-clay-muted">สิทธิ์</span>
+              <span className={fieldLabelClass}>สิทธิ์</span>
               <div className="flex items-center gap-2 px-1">
                 <Shield size={15} className={iconClass} />
                 <span className="font-semibold text-slate-700">{userProfile.role === 'admin' ? 'แอดมิน' : 'พนักงาน'}</span>
               </div>
             </div>
             <div className="driver-clay-soft space-y-1 p-3 text-sm sm:col-span-2">
-              <span className="driver-clay-muted">รหัสพนักงาน</span>
+              <span className={fieldLabelClass}>รหัสพนักงาน</span>
               <div className="flex items-center gap-2 px-1">
                 <Shield size={14} className={iconClass} />
                 <span className="font-semibold text-slate-700">{userProfile.employeeCode || '-'}</span>
@@ -584,7 +585,7 @@ const DriverProfile: React.FC = () => {
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="space-y-1 text-sm sm:col-span-2">
-              <span className="driver-clay-muted">ชื่อ-นามสกุลจริง</span>
+              <span className={fieldLabelClass}>ชื่อ-นามสกุลจริง</span>
               <div className="relative">
                 <User size={14} className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${iconClass}`} />
                 <input className={`${inputClass} pl-8`} value={form.fullName} onChange={(e) => handleField('fullName', e.target.value)} />
@@ -592,7 +593,7 @@ const DriverProfile: React.FC = () => {
             </label>
 
             <label className="space-y-1 text-sm">
-              <span className="driver-clay-muted">ชื่อเล่น</span>
+              <span className={fieldLabelClass}>ชื่อเล่น</span>
               <div className="relative">
                 <UserCircle2 size={14} className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${iconClass}`} />
                 <input className={`${inputClass} pl-8`} value={form.nickname} onChange={(e) => handleField('nickname', e.target.value)} />
@@ -600,7 +601,7 @@ const DriverProfile: React.FC = () => {
             </label>
 
             <label className="space-y-1 text-sm">
-              <span className="driver-clay-muted">LINE ID</span>
+              <span className={fieldLabelClass}>LINE ID</span>
               <div className="relative">
                 <AtSign size={14} className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${iconClass}`} />
                 <input className={`${inputClass} pl-8`} value={form.lineUserId} onChange={(e) => handleField('lineUserId', e.target.value)} />
@@ -608,7 +609,7 @@ const DriverProfile: React.FC = () => {
             </label>
 
             <label className="space-y-1 text-sm">
-              <span className="driver-clay-muted">เบอร์โทรศัพท์</span>
+              <span className={fieldLabelClass}>เบอร์โทรศัพท์</span>
               <div className="relative">
                 <Phone size={14} className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${iconClass}`} />
                 <input
@@ -624,7 +625,7 @@ const DriverProfile: React.FC = () => {
             </label>
 
             <label className="space-y-1 text-sm">
-              <span className="driver-clay-muted">ผู้ติดต่อฉุกเฉิน</span>
+              <span className={fieldLabelClass}>ผู้ติดต่อฉุกเฉิน</span>
               <div className="relative">
                 <Contact size={14} className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${iconClass}`} />
                 <input
@@ -636,7 +637,7 @@ const DriverProfile: React.FC = () => {
             </label>
 
             <label className="space-y-1 text-sm sm:col-span-2">
-              <span className="driver-clay-muted">เบอร์ฉุกเฉิน</span>
+              <span className={fieldLabelClass}>เบอร์ฉุกเฉิน</span>
               <div className="relative">
                 <Phone size={14} className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${iconClass}`} />
                 <input
@@ -653,7 +654,7 @@ const DriverProfile: React.FC = () => {
           </div>
 
           <label className="space-y-1 text-sm">
-            <span className="driver-clay-muted">ที่อยู่</span>
+            <span className={fieldLabelClass}>ที่อยู่</span>
             <div className="relative">
               <MapPin size={14} className={`pointer-events-none absolute left-3 top-3 ${iconClass}`} />
               <textarea rows={2} className={`${inputClass} pl-8`} value={form.address} onChange={(e) => handleField('address', e.target.value)} />
@@ -661,7 +662,7 @@ const DriverProfile: React.FC = () => {
           </label>
 
           <label className="space-y-1 text-sm">
-            <span className="driver-clay-muted">ข้อมูลเพิ่มเติม / ประวัติย่อ</span>
+            <span className={fieldLabelClass}>ข้อมูลเพิ่มเติม / ประวัติย่อ</span>
             <div className="relative">
               <FileText size={14} className={`pointer-events-none absolute left-3 top-3 ${iconClass}`} />
               <textarea rows={3} className={`${inputClass} pl-8`} value={form.personalNote} onChange={(e) => handleField('personalNote', e.target.value)} />

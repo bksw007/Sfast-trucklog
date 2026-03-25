@@ -6,7 +6,9 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  Moon,
   Settings,
+  SunMedium,
   User,
   Users,
   ClipboardList,
@@ -14,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import UserProfileModal from './UserProfileModal';
 import UserManagementModal from './UserManagementModal';
 
@@ -24,10 +27,12 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const { user, userProfile, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showUserManagementModal, setShowUserManagementModal] = useState(false);
   const [showMobileTopMenu, setShowMobileTopMenu] = useState(false);
+  const isDark = theme === 'dark';
 
   const navItems = [
     { path: '/', label: 'แดชบอร์ด', icon: LayoutDashboard },
@@ -37,6 +42,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   ];
 
   const appLogo = '/icons/truck-logo.png';
+  const mobileHeaderTitleClass = isDark ? 'truncate text-lg font-black tracking-tight text-[#eef3ff]' : 'truncate text-lg font-black tracking-tight text-[#34495e]';
+  const mobileHeaderSubtitleClass = isDark ? 'truncate text-sm font-semibold text-[#95a1c8]' : 'truncate text-sm font-semibold text-slate-500';
+  const mobileMenuIconClass = isDark ? 'text-[#cbd5f5]' : 'text-slate-600';
+  const mobileTopMenuPanelClass = isDark
+    ? 'absolute right-0 top-[calc(100%+0.55rem)] z-50 w-[min(84vw,16rem)] rounded-2xl border border-[rgba(91,104,146,0.45)] bg-[rgba(29,34,51,0.96)] p-2 shadow-[16px_16px_28px_rgba(7,10,18,0.52),-10px_-10px_22px_rgba(57,67,99,0.18)]'
+    : 'absolute right-0 top-[calc(100%+0.55rem)] z-50 w-[min(84vw,16rem)] rounded-2xl border border-white/80 bg-[rgba(240,244,248,0.97)] p-2 shadow-[10px_10px_22px_rgba(166,180,200,0.36),-8px_-8px_18px_rgba(255,255,255,0.9)]';
+  const mobileTopMenuItemClass = isDark
+    ? 'flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-semibold text-[#eef3ff] transition hover:bg-white/10 hover:text-white active:bg-white/10 active:text-white'
+    : 'flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-600 transition hover:bg-[#d9e6f2] hover:text-[#272727] active:bg-[#d9e6f2] active:text-[#272727]';
+  const mobileTopMenuDangerItemClass = isDark
+    ? 'mt-1 flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-semibold text-rose-300 transition hover:bg-rose-500/15 hover:text-rose-200'
+    : 'mt-1 flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-semibold text-rose-500 transition hover:bg-rose-100/70';
   const desktopActionClass = (isDanger = false) => `driver-desktop-nav-item w-full whitespace-nowrap transition-all duration-200 ${
     sidebarOpen ? 'justify-start gap-3 px-4 py-3' : 'driver-desktop-nav-item-collapsed py-3'
   } ${isDanger ? 'text-rose-500 hover:text-rose-600' : 'text-slate-500 hover:text-[#2f4658]'}`;
@@ -46,7 +63,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   }, [location.pathname]);
 
   return (
-    <div className="admin-clay min-h-screen font-sans text-slate-700">
+    <div className={`admin-clay min-h-screen font-sans ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>
       <header className="sticky top-0 z-50 px-3 pb-1 pt-3 md:hidden">
         <div className="driver-top-shell mx-auto flex w-full items-center justify-between gap-3 rounded-[24px] border border-white/80 px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
@@ -54,8 +71,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <img src={appLogo} alt="SFast Logo" className="h-full w-full object-cover" />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-lg font-black tracking-tight text-[#34495e]">S Fast Trucklog</p>
-              <p className="truncate text-sm font-semibold text-slate-500">Admin Workspace</p>
+              <p className={mobileHeaderTitleClass}>S Fast Trucklog</p>
+              <p className={mobileHeaderSubtitleClass}>Admin Workspace</p>
             </div>
           </div>
           <div className="relative">
@@ -67,13 +84,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               aria-expanded={showMobileTopMenu}
               aria-controls="admin-mobile-top-menu"
             >
-              {showMobileTopMenu ? <X size={18} className="text-slate-600" /> : <Menu size={18} className="text-slate-600" />}
+              {showMobileTopMenu ? <X size={18} className={mobileMenuIconClass} /> : <Menu size={18} className={mobileMenuIconClass} />}
             </button>
 
             {showMobileTopMenu && (
               <div
                 id="admin-mobile-top-menu"
-                className="absolute right-0 top-[calc(100%+0.55rem)] z-50 w-[min(84vw,16rem)] rounded-2xl border border-white/80 bg-[rgba(240,244,248,0.97)] p-2 shadow-[10px_10px_22px_rgba(166,180,200,0.36),-8px_-8px_18px_rgba(255,255,255,0.9)]"
+                className={mobileTopMenuPanelClass}
               >
                 <button
                   type="button"
@@ -81,7 +98,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     setShowMobileTopMenu(false);
                     setShowProfileModal(true);
                   }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-600 transition hover:bg-[#d9e6f2] hover:text-[#272727] active:bg-[#d9e6f2] active:text-[#272727]"
+                  className={mobileTopMenuItemClass}
                 >
                   <User size={16} />
                   <span>โปรไฟล์</span>
@@ -94,7 +111,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       setShowMobileTopMenu(false);
                       setShowUserManagementModal(true);
                     }}
-                    className="mt-1 flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-600 transition hover:bg-[#d9e6f2] hover:text-[#272727] active:bg-[#d9e6f2] active:text-[#272727]"
+                    className={`mt-1 ${mobileTopMenuItemClass}`}
                   >
                     <Users size={16} />
                     <span>จัดการผู้ใช้</span>
@@ -104,10 +121,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <button
                   type="button"
                   onClick={() => {
+                    toggleTheme();
+                    setShowMobileTopMenu(false);
+                  }}
+                  className={`mt-1 ${mobileTopMenuItemClass}`}
+                >
+                  {isDark ? <SunMedium size={16} /> : <Moon size={16} />}
+                  <span>{isDark ? 'โหมดสว่าง' : 'โหมดมืด'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
                     setShowMobileTopMenu(false);
                     logout();
                   }}
-                  className="mt-1 flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-semibold text-rose-500 transition hover:bg-rose-100/70"
+                  className={mobileTopMenuDangerItemClass}
                 >
                   <LogOut size={16} />
                   <span>ออกจากระบบ</span>
@@ -197,7 +226,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </span>
             </button>
 
-            <button
+              <button
+                onClick={toggleTheme}
+                title={!sidebarOpen ? (isDark ? 'โหมดสว่าง' : 'โหมดมืด') : ''}
+                className={`${desktopActionClass()} mt-2`}
+              >
+                {isDark ? <SunMedium size={20} className="flex-shrink-0" /> : <Moon size={20} className="flex-shrink-0" />}
+                <span className={`font-medium transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
+                  {isDark ? 'โหมดสว่าง' : 'โหมดมืด'}
+                </span>
+              </button>
+
+              <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className={`${desktopActionClass()} mt-2`}
             >
@@ -229,14 +269,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 py-2 text-[9px] font-semibold transition sm:text-[10px] ${
+                className={`driver-mobile-nav-link flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 py-2.5 transition ${
                   isActive
                     ? 'driver-mobile-nav-item-active'
-                    : 'text-slate-500 hover:bg-[#d9e6f2] hover:text-[#272727] active:bg-[#d9e6f2] active:text-[#272727]'
+                    : 'hover:bg-[#d9e6f2] active:bg-[#d9e6f2]'
                 }`}
               >
-                <Icon size={16} className="driver-float-icon" />
-                <span className="truncate">{item.label}</span>
+                <Icon size={17} className="driver-float-icon shrink-0" />
+                <span className="driver-mobile-nav-label truncate">{item.label}</span>
               </Link>
             );
           })}

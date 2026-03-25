@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Mail, Shield, Save, Loader2, BellRing, BellOff, Phone, Contact } from 'lucide-react';
 import Modal from './Modal';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { updateUserProfile } from '../services/userService';
 import { getStoredPushToken, isPushDisabledForUser, registerPushTokenForUser, unregisterPushTokenForUser } from '../services/pushService';
 
@@ -41,7 +42,8 @@ const formatPhone = (value: string): string => {
 
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) => {
   const { user, userProfile, refreshProfile } = useAuth();
-  const isDark = false;
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
 
   const [displayName, setDisplayName] = useState('');
   const [profileForm, setProfileForm] = useState<ProfileFormState>(emptyProfileForm);
@@ -177,7 +179,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
 
         <div className="space-y-4">
           <div className="space-y-1">
-            <label className={`text-sm font-medium ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+            <label className={`text-sm ${isDark ? 'admin-field-label' : 'font-medium text-light-muted'}`}>
               อีเมล
             </label>
             <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${
@@ -189,7 +191,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
           </div>
 
           <div className="space-y-1">
-            <label className={`text-sm font-medium ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+            <label className={`text-sm ${isDark ? 'admin-field-label' : 'font-medium text-light-muted'}`}>
               สิทธิ์การใช้งาน
             </label>
             <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${
@@ -208,7 +210,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
           </div>
 
           <div className="space-y-1">
-            <label className={`text-sm font-medium ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+            <label className={`text-sm ${isDark ? 'admin-field-label' : 'font-medium text-light-muted'}`}>
               ชื่อที่แสดง
             </label>
             <div className="relative">
@@ -234,7 +236,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
           }`}>
             <div className="mb-3 flex items-center gap-2">
               <Contact size={16} className={isDark ? 'text-dark-muted' : 'text-light-muted'} />
-              <p className={`text-sm font-semibold ${isDark ? 'text-dark-text' : 'text-light-text'}`}>
+              <p className={`text-sm ${isDark ? 'admin-field-label' : 'font-semibold text-light-text'}`}>
                 ประวัติส่วนตัว
               </p>
             </div>
@@ -338,7 +340,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
           </div>
 
           <div className="space-y-2">
-            <label className={`text-sm font-medium ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+            <label className={`text-sm ${isDark ? 'admin-field-label' : 'font-medium text-light-muted'}`}>
               การแจ้งเตือน Push (อุปกรณ์นี้)
             </label>
 

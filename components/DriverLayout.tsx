@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { CalendarDays, CheckCircle2, CircleDashed, LogOut, TableProperties, UserCircle2 } from 'lucide-react';
+import { CalendarDays, CheckCircle2, CircleDashed, LogOut, Menu, Moon, SunMedium, TableProperties, UserCircle2, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface DriverLayoutProps {
   children: React.ReactNode;
@@ -17,15 +18,34 @@ const navItems = [
 
 const DriverLayout: React.FC<DriverLayoutProps> = ({ children }) => {
   const { logout, userProfile } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
+  const [showMobileTopMenu, setShowMobileTopMenu] = useState(false);
+  const isDark = theme === 'dark';
   const nickname =
     userProfile?.nickname?.trim() ||
     userProfile?.displayName?.trim() ||
     userProfile?.email?.split('@')[0] ||
     'พนักงาน';
+  const mobileHeaderTitleClass = isDark ? 'truncate text-lg font-black tracking-tight text-[#eef3ff]' : 'truncate text-lg font-black tracking-tight text-[#34495e]';
+  const mobileHeaderSubtitleClass = isDark ? 'truncate text-sm font-semibold text-[#95a1c8]' : 'truncate text-sm font-semibold text-slate-500';
+  const mobileMenuIconClass = isDark ? 'text-[#cbd5f5]' : 'text-slate-600';
+  const mobileTopMenuPanelClass = isDark
+    ? 'absolute right-0 top-[calc(100%+0.55rem)] z-50 w-[min(84vw,16rem)] rounded-2xl border border-[rgba(91,104,146,0.45)] bg-[rgba(29,34,51,0.96)] p-2 shadow-[16px_16px_28px_rgba(7,10,18,0.52),-10px_-10px_22px_rgba(57,67,99,0.18)] md:hidden'
+    : 'absolute right-0 top-[calc(100%+0.55rem)] z-50 w-[min(84vw,16rem)] rounded-2xl border border-white/80 bg-[rgba(240,244,248,0.97)] p-2 shadow-[10px_10px_22px_rgba(166,180,200,0.36),-8px_-8px_18px_rgba(255,255,255,0.9)] md:hidden';
+  const mobileTopMenuItemClass = isDark
+    ? 'flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-semibold text-[#eef3ff] transition hover:bg-white/10 hover:text-white active:bg-white/10 active:text-white'
+    : 'flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-600 transition hover:bg-[#d9e6f2] hover:text-[#272727] active:bg-[#d9e6f2] active:text-[#272727]';
+  const mobileTopMenuDangerItemClass = isDark
+    ? 'mt-1 flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-semibold text-rose-300 transition hover:bg-rose-500/15 hover:text-rose-200'
+    : 'mt-1 flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-semibold text-rose-500 transition hover:bg-rose-100/70';
+
+  useEffect(() => {
+    setShowMobileTopMenu(false);
+  }, [location.pathname]);
 
   return (
-    <div className="driver-clay min-h-screen text-slate-700">
+    <div className={`driver-clay min-h-screen ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>
       <aside className="driver-desktop-sidebar fixed inset-y-0 left-0 z-40 hidden p-5 md:flex md:flex-col">
         <div className="flex h-full flex-col gap-4 rounded-[26px] border border-white/80 p-4 shadow-[6px_6px_12px_rgba(166,180,200,0.35),-6px_-6px_12px_rgba(255,255,255,0.9)]">
           <div className="flex items-center gap-3 px-1 py-2">
@@ -96,12 +116,22 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({ children }) => {
                 <img src="/icons/truck-logo.png" alt="SFast Logo" className="h-full w-full object-cover" />
               </div>
               <div className="min-w-0">
-                <p className="truncate text-lg font-black tracking-tight text-[#34495e]">S Fast Trucklog</p>
-                <p className="truncate text-sm font-semibold text-slate-500">หวัดดี คุณ {nickname}</p>
+                <p className={mobileHeaderTitleClass}>S Fast Trucklog</p>
+                <p className={mobileHeaderSubtitleClass}>หวัดดี คุณ {nickname}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="relative flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowMobileTopMenu((prev) => !prev)}
+                className="driver-clay-icon-btn md:hidden"
+                aria-label="Open driver menu"
+                aria-expanded={showMobileTopMenu}
+                aria-controls="driver-mobile-top-menu"
+              >
+                {showMobileTopMenu ? <X size={18} className={mobileMenuIconClass} /> : <Menu size={18} className={mobileMenuIconClass} />}
+              </button>
               <Link
                 to="/driver/profile"
                 className={`driver-clay-icon-btn ${location.pathname === '/driver/profile' ? 'ring-2 ring-[#82b4d6]' : ''}`}
@@ -125,6 +155,43 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({ children }) => {
               >
                 <LogOut size={18} />
               </button>
+
+              {showMobileTopMenu && (
+                <div
+                  id="driver-mobile-top-menu"
+                  className={mobileTopMenuPanelClass}
+                >
+                  <Link
+                    to="/driver/profile"
+                    className={mobileTopMenuItemClass}
+                  >
+                    <UserCircle2 size={16} />
+                    <span>โปรไฟล์</span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toggleTheme();
+                      setShowMobileTopMenu(false);
+                    }}
+                    className={`mt-1 ${mobileTopMenuItemClass}`}
+                  >
+                    {isDark ? <SunMedium size={16} /> : <Moon size={16} />}
+                    <span>{isDark ? 'โหมดสว่าง' : 'โหมดมืด'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMobileTopMenu(false);
+                      logout();
+                    }}
+                    className={mobileTopMenuDangerItemClass}
+                  >
+                    <LogOut size={16} />
+                    <span>ออกจากระบบ</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>
@@ -142,14 +209,14 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({ children }) => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-center text-[9px] font-semibold leading-tight transition ${
+                className={`driver-mobile-nav-link flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 py-2.5 text-center transition ${
                   isActive
                     ? 'driver-mobile-nav-item-active'
-                    : 'text-slate-500 hover:bg-white/55'
+                    : 'hover:bg-white/55'
                 }`}
               >
-                <Icon size={17} className="driver-float-icon" />
-                <span>{item.label}</span>
+                <Icon size={17} className="driver-float-icon shrink-0" />
+                <span className="driver-mobile-nav-label">{item.label}</span>
               </Link>
             );
           })}

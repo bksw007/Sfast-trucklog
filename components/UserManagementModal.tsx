@@ -3,6 +3,7 @@ import { User, Shield, AlertTriangle, Search, Loader2 } from 'lucide-react';
 import Modal from './Modal';
 import { useAdminUsers } from '../contexts/AdminUsersContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { updateUserRole } from '../services/userService';
 import { UserProfile, UserRole } from '../types';
 
@@ -14,7 +15,8 @@ interface UserManagementModalProps {
 const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen, onClose }) => {
   const { userProfile, user: currentUser } = useAuth();
   const { users, loading, refreshUsers } = useAdminUsers();
-  const isDark = false;
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [updatingUser, setUpdatingUser] = useState<string | null>(null);

@@ -4,6 +4,7 @@ import { JobEntry, OptionCategory } from '../types';
 import { addJob, addOption, getTodayJobById, RevisionConflictError, syncTodayJobToJobs, triggerTodayJobNotification, updateTodayJob, uploadImages } from '../services/firebaseService';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { Plus, Save, Loader2, Camera, X, Image as ImageIcon, FileText } from 'lucide-react';
 import Modal from '../components/Modal';
 import ConfirmModal from '../components/ConfirmModal';
@@ -68,10 +69,11 @@ type EntryFormData = Omit<JobEntry, 'id' | 'timestamp' | 'originImageUrl' | 'des
 const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const { data } = useData();
   const { user, userProfile } = useAuth();
+  const { theme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const isDriverEntryMode = location.pathname === '/driver/entry';
-  const isDark = false;
+  const isDark = theme === 'dark';
   const isAdmin = userProfile?.role === 'admin';
   const driverFullName =
     userProfile?.fullName?.trim() ||
@@ -791,7 +793,7 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   );
 
   const inputClass = isDriverEntryMode
-    ? 'driver-clay-input w-full rounded-2xl border border-white/65 bg-white/55 px-4 py-3 text-base text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition focus:outline-none focus:ring-0 sm:text-[17px]'
+    ? 'driver-clay-input w-full rounded-2xl px-4 py-3 text-base sm:text-[17px]'
     : `w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-accent-primary transition-all ${
         isDark
           ? 'bg-dark-bg border-dark-muted/30 text-dark-text placeholder-dark-muted/50'
@@ -1396,7 +1398,7 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
       >
         <div className="space-y-4">
            <div>
-              <label className={`block text-sm mb-1 ${mutedTextClass}`}>
+              <label className={`block text-sm mb-1 ${isDriverEntryMode ? 'driver-field-label' : isDark ? 'admin-field-label' : 'text-light-text'}`}>
                 ชื่อรายการใหม่
               </label>
               <input 
@@ -1477,14 +1479,14 @@ const EntryForm: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
 // Helper Components
 const FormGroup: React.FC<{ label: string; children: React.ReactNode; isDark: boolean; isDriverStyle?: boolean }> = ({ label, children, isDark, isDriverStyle = false }) => (
   <div className="min-w-0 flex flex-col gap-2">
-    <label className={isDriverStyle ? 'text-base font-semibold driver-clay-muted sm:text-lg' : `text-sm font-medium ${isDark ? 'text-dark-text' : 'text-light-text'}`}>{label}</label>
+    <label className={isDriverStyle ? 'driver-field-label text-base sm:text-lg' : `admin-field-label text-[15px] ${isDark ? '' : 'text-light-text'}`}>{label}</label>
     {children}
   </div>
 );
 
 const DisplayRow: React.FC<{ label: string; value: string; isDark: boolean; isDriverStyle?: boolean }> = ({ label, value, isDark, isDriverStyle = false }) => (
   <div className="space-y-1">
-    <p className={isDriverStyle ? 'text-sm font-medium driver-clay-muted sm:text-base' : `text-xs font-medium ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>{label}</p>
+    <p className={isDriverStyle ? 'driver-field-label text-sm sm:text-base' : `admin-field-label text-xs ${isDark ? '' : 'text-light-muted'}`}>{label}</p>
     <p className={isDriverStyle ? 'text-base font-semibold text-slate-700 sm:text-lg' : `text-sm font-semibold ${isDark ? 'text-dark-text' : 'text-slate-900'}`}>{value}</p>
   </div>
 );
@@ -1500,7 +1502,7 @@ const SelectWithAdd: React.FC<{
   isDriverStyle?: boolean;
 }> = ({ label, name, value, options, onChange, onAdd, isDark, isDriverStyle = false }) => {
   const selectClass = isDriverStyle
-    ? 'driver-clay-input min-w-0 w-full appearance-none rounded-xl px-4 py-3 pr-10 text-base text-light-text focus:outline-none sm:text-lg'
+    ? 'driver-clay-input min-w-0 w-full appearance-none rounded-xl px-4 py-3 pr-10 text-base focus:outline-none sm:text-lg'
     : `min-w-0 w-full appearance-none border rounded-xl px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-accent-primary transition-all ${
         isDark
           ? 'bg-dark-bg border-dark-muted/30 text-dark-text'

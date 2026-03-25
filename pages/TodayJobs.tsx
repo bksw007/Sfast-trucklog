@@ -28,6 +28,7 @@ import {
 import { useAdminUsers } from '../contexts/AdminUsersContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
+import { useTheme } from '../contexts/ThemeContext';
 import {
   addTodayJob,
   addOption,
@@ -316,7 +317,8 @@ const TodayJobs: React.FC = () => {
   const { user, userProfile } = useAuth();
   const { users: adminUsers } = useAdminUsers();
   const { data: appData } = useData();
-  const isDark = false;
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const isAdmin = userProfile?.role === 'admin';
 
   const [formData, setFormData] = useState<TodayJobForm>(initialFormData());
@@ -400,9 +402,10 @@ const TodayJobs: React.FC = () => {
   const selectClass = isDark
     ? 'w-full min-h-11 rounded-xl border border-dark-muted/35 bg-dark-bg/40 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none'
     : 'w-full min-h-11 rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none';
+  const fieldLabelClass = isDark ? 'admin-field-label' : 'font-medium text-light-muted';
   const modalInputClass = 'driver-clay-input px-3 py-2.5 text-[16px] md:text-sm';
   const modalTextareaClass = 'driver-clay-input min-h-[90px] resize-y px-3 py-2.5 text-[16px] md:text-sm';
-  const modalLabelClass = 'text-xs font-semibold text-slate-500';
+  const modalLabelClass = 'admin-field-label text-xs';
   const modalUploadButtonClass = 'driver-clay-btn driver-clay-btn-info w-full text-xs';
   const quickAddButtonClass = isDark
     ? 'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-dark-muted/35 bg-dark-bg/50 text-dark-text shadow-sm transition hover:bg-dark-bg disabled:opacity-55'
@@ -1290,10 +1293,10 @@ const TodayJobs: React.FC = () => {
 
   const statusBadgeClass = (status: JobStatus) =>
     status === 'completed'
-      ? 'bg-emerald-500/15 text-emerald-500'
+      ? 'bg-emerald-100/90 text-emerald-700'
       : status === 'in_progress'
-        ? 'bg-amber-500/15 text-amber-500'
-        : 'bg-slate-500/15 text-slate-500';
+        ? 'bg-amber-100/90 text-amber-700'
+        : 'bg-slate-100/95 text-slate-700';
 
   const statusIcon = (status: JobStatus) => {
     if (status === 'completed') return <CheckCircle2 size={13} />;
@@ -1328,7 +1331,7 @@ const TodayJobs: React.FC = () => {
                     isActive
                       ? 'bg-gradient-to-r from-[#0f766e] via-[#0e7490] to-[#075985] text-white shadow-lg'
                       : isDark
-                        ? 'text-dark-muted hover:bg-white/5'
+                        ? 'text-white hover:bg-white/5'
                         : 'text-light-muted hover:bg-white/60'
                   }`}
                 >
@@ -1445,11 +1448,11 @@ const TodayJobs: React.FC = () => {
         <div className="space-y-6 p-5 md:p-7">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <label className="text-sm">
-              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>เลขที่ใบสั่งงาน</span>
+              <span className={fieldLabelClass}>เลขที่ใบสั่งงาน</span>
               <input className={inputClass} value={formData.workOrderNo} onChange={(e) => updateField('workOrderNo', e.target.value)} />
             </label>
             <label className="text-sm">
-              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>บริษัทผู้ว่าจ้าง</span>
+              <span className={fieldLabelClass}>บริษัทผู้ว่าจ้าง</span>
               <div className="flex items-center gap-2">
                 <select
                   className={inputClass}
@@ -1483,11 +1486,11 @@ const TodayJobs: React.FC = () => {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
             <label className="text-sm">
-              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>วันที่รับงานจากผู้ว่าจ้าง</span>
+              <span className={fieldLabelClass}>วันที่รับงานจากผู้ว่าจ้าง</span>
               <input type="date" className={inputClass} value={formData.orderDate} onChange={(e) => updateField('orderDate', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
             </label>
             <label className="text-sm">
-              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ประเภทสินค้า</span>
+              <span className={fieldLabelClass}>ประเภทสินค้า</span>
               <div className="flex items-center gap-2">
                 <select
                   className={inputClass}
@@ -1518,7 +1521,7 @@ const TodayJobs: React.FC = () => {
               </div>
             </label>
             <label className="text-sm">
-              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ประเภทรถ</span>
+              <span className={fieldLabelClass}>ประเภทรถ</span>
               <div className="flex items-center gap-2">
                 <select
                   className={selectClass}
@@ -1549,7 +1552,7 @@ const TodayJobs: React.FC = () => {
               </div>
             </label>
             <label className="text-sm">
-              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>จำนวนรอบ</span>
+              <span className={fieldLabelClass}>จำนวนรอบ</span>
               <input type="number" min="0.5" step="0.5" inputMode="decimal" className={inputClass} value={formData.quantity} onChange={(e) => updateField('quantity', e.target.value)} />
             </label>
           </div>
@@ -1559,7 +1562,7 @@ const TodayJobs: React.FC = () => {
               <p className="mb-2 text-sm font-semibold">รับงาน</p>
               <div className="space-y-3">
                 <label className="block text-sm">
-                  <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>สถานที่</span>
+                  <span className={fieldLabelClass}>สถานที่</span>
                   <div className="flex items-center gap-2">
                     <input
                       list="location-options"
@@ -1586,15 +1589,15 @@ const TodayJobs: React.FC = () => {
                   </div>
                 </label>
                 <label className="block text-sm">
-                  <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>วันที่</span>
+                  <span className={fieldLabelClass}>วันที่</span>
                   <input type="date" min={formData.orderDate || undefined} className={pointInputClass} value={formData.pickup.date} onChange={(e) => updatePoint('pickup', 'date', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
                 </label>
                 <label className="block text-sm">
-                  <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>เวลา</span>
+                  <span className={fieldLabelClass}>เวลา</span>
                   <input type="time" lang="en-GB" step={60} className={pointInputClass} value={formData.pickup.time} onChange={(e) => updatePoint('pickup', 'time', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
                 </label>
                 <label className="block text-sm">
-                  <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ติดต่อ</span>
+                  <span className={fieldLabelClass}>ติดต่อ</span>
                   <div className="flex items-center gap-2">
                     <select
                       className={pointInputClass}
@@ -1631,7 +1634,7 @@ const TodayJobs: React.FC = () => {
               <p className="mb-2 text-sm font-semibold">ส่งงาน</p>
               <div className="space-y-3">
                 <label className="block text-sm">
-                  <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>สถานที่</span>
+                  <span className={fieldLabelClass}>สถานที่</span>
                   <div className="flex items-center gap-2">
                     <input
                       list="location-options"
@@ -1658,15 +1661,15 @@ const TodayJobs: React.FC = () => {
                   </div>
                 </label>
                 <label className="block text-sm">
-                  <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>วันที่</span>
+                  <span className={fieldLabelClass}>วันที่</span>
                   <input type="date" min={formData.pickup.date || undefined} className={pointInputClass} value={formData.delivery.date} onChange={(e) => updatePoint('delivery', 'date', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
                 </label>
                 <label className="block text-sm">
-                  <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>เวลา</span>
+                  <span className={fieldLabelClass}>เวลา</span>
                   <input type="time" lang="en-GB" step={60} className={pointInputClass} value={formData.delivery.time} onChange={(e) => updatePoint('delivery', 'time', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
                 </label>
                 <label className="block text-sm">
-                  <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ติดต่อ</span>
+                  <span className={fieldLabelClass}>ติดต่อ</span>
                   <div className="flex items-center gap-2">
                     <select
                       className={pointInputClass}
@@ -1703,13 +1706,13 @@ const TodayJobs: React.FC = () => {
 
           <div className={`hidden overflow-hidden rounded-xl border md:block ${isDark ? 'border-dark-muted/30' : 'border-light-muted/30'}`}>
             <div className={`grid grid-cols-[120px_1fr_1fr] ${isDark ? 'bg-dark-bg/60' : 'bg-slate-100/70'}`}>
-              <div className={`border-r px-3 py-2 text-center text-sm font-medium ${isDark ? 'border-dark-muted/30 text-dark-muted' : 'border-light-muted/30 text-light-muted'}`}>หัวข้อ</div>
+              <div className={`border-r px-3 py-2 text-center text-sm ${isDark ? 'border-dark-muted/30 admin-field-label' : 'border-light-muted/30 font-medium text-light-muted'}`}>หัวข้อ</div>
               <div className={`border-r px-3 py-2 text-center text-sm font-semibold ${isDark ? 'border-dark-muted/30' : 'border-light-muted/30'}`}>รับงาน</div>
               <div className="px-3 py-2 text-center text-sm font-semibold">ส่งงาน</div>
             </div>
             <div className="space-y-0">
               <div className={`grid grid-cols-[120px_1fr_1fr] ${isDark ? 'border-t border-dark-muted/25' : 'border-t border-light-muted/25'}`}>
-                <div className={`border-r px-3 py-3 text-sm font-medium ${isDark ? 'border-dark-muted/25 text-dark-muted' : 'border-light-muted/25 text-light-muted'}`}>สถานที่</div>
+                <div className={`border-r px-3 py-3 text-sm ${isDark ? 'border-dark-muted/25 admin-field-label' : 'border-light-muted/25 font-medium text-light-muted'}`}>สถานที่</div>
                 <div className={`border-r px-2 py-2 ${isDark ? 'border-dark-muted/25' : 'border-light-muted/25'}`}>
                   <div className="flex items-center gap-2">
                     <input
@@ -1764,7 +1767,7 @@ const TodayJobs: React.FC = () => {
                 </div>
               </div>
               <div className={`grid grid-cols-[120px_1fr_1fr] ${isDark ? 'border-t border-dark-muted/25' : 'border-t border-light-muted/25'}`}>
-                <div className={`border-r px-3 py-3 text-sm font-medium ${isDark ? 'border-dark-muted/25 text-dark-muted' : 'border-light-muted/25 text-light-muted'}`}>วันที่</div>
+                <div className={`border-r px-3 py-3 text-sm ${isDark ? 'border-dark-muted/25 admin-field-label' : 'border-light-muted/25 font-medium text-light-muted'}`}>วันที่</div>
                 <div className={`border-r px-2 py-2 ${isDark ? 'border-dark-muted/25' : 'border-light-muted/25'}`}>
                   <input type="date" min={formData.orderDate || undefined} className={pointInputClass} value={formData.pickup.date} onChange={(e) => updatePoint('pickup', 'date', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
                 </div>
@@ -1773,7 +1776,7 @@ const TodayJobs: React.FC = () => {
                 </div>
               </div>
               <div className={`grid grid-cols-[120px_1fr_1fr] ${isDark ? 'border-t border-dark-muted/25' : 'border-t border-light-muted/25'}`}>
-                <div className={`border-r px-3 py-3 text-sm font-medium ${isDark ? 'border-dark-muted/25 text-dark-muted' : 'border-light-muted/25 text-light-muted'}`}>เวลา</div>
+                <div className={`border-r px-3 py-3 text-sm ${isDark ? 'border-dark-muted/25 admin-field-label' : 'border-light-muted/25 font-medium text-light-muted'}`}>เวลา</div>
                 <div className={`border-r px-2 py-2 ${isDark ? 'border-dark-muted/25' : 'border-light-muted/25'}`}>
                   <input type="time" lang="en-GB" step={60} className={pointInputClass} value={formData.pickup.time} onChange={(e) => updatePoint('pickup', 'time', e.target.value)} onClick={openNativePicker} onFocus={openNativePicker} />
                 </div>
@@ -1782,7 +1785,7 @@ const TodayJobs: React.FC = () => {
                 </div>
               </div>
               <div className={`grid grid-cols-[120px_1fr_1fr] ${isDark ? 'border-t border-dark-muted/25' : 'border-t border-light-muted/25'}`}>
-                <div className={`border-r px-3 py-3 text-sm font-medium ${isDark ? 'border-dark-muted/25 text-dark-muted' : 'border-light-muted/25 text-light-muted'}`}>ติดต่อ</div>
+                <div className={`border-r px-3 py-3 text-sm ${isDark ? 'border-dark-muted/25 admin-field-label' : 'border-light-muted/25 font-medium text-light-muted'}`}>ติดต่อ</div>
                 <div className={`border-r px-2 py-2 ${isDark ? 'border-dark-muted/25' : 'border-light-muted/25'}`}>
                   <div className="flex items-center gap-2">
                     <select
@@ -1851,7 +1854,7 @@ const TodayJobs: React.FC = () => {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
             <label className="text-sm">
-              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>มอบหมายพนักงาน (แอพ)</span>
+              <span className={fieldLabelClass}>มอบหมายพนักงาน (แอพ)</span>
               <select
                 className={selectClass}
                 value={formData.assignedToUid}
@@ -1866,7 +1869,7 @@ const TodayJobs: React.FC = () => {
               </select>
             </label>
             <label className="text-sm">
-              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>พนักงานขับรถ</span>
+              <span className={fieldLabelClass}>พนักงานขับรถ</span>
               <div className="flex items-center gap-2">
                 <select
                   className={selectClass}
@@ -1897,7 +1900,7 @@ const TodayJobs: React.FC = () => {
               </div>
             </label>
             <label className="text-sm">
-              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>เบอร์ติดต่อ</span>
+              <span className={fieldLabelClass}>เบอร์ติดต่อ</span>
               <input
                 type="tel"
                 inputMode="numeric"
@@ -1909,7 +1912,7 @@ const TodayJobs: React.FC = () => {
               />
             </label>
             <label className="text-sm">
-              <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>ทะเบียน</span>
+              <span className={fieldLabelClass}>ทะเบียน</span>
               <div className="flex items-center gap-2">
                 <select
                   className={selectClass}
@@ -1948,7 +1951,7 @@ const TodayJobs: React.FC = () => {
           )}
 
           <label className="block text-sm">
-            <span className={isDark ? 'text-dark-muted' : 'text-light-muted'}>หมายเหตุ</span>
+            <span className={fieldLabelClass}>หมายเหตุ</span>
             <textarea rows={3} className={isDark ? 'mt-2 w-full rounded-xl border border-dark-muted/30 bg-dark-bg/40 px-3 py-2 text-sm text-dark-text focus:border-accent-primary focus:outline-none' : 'mt-2 w-full rounded-xl border border-light-muted/30 bg-white px-3 py-2 text-sm text-light-text focus:border-accent-primary focus:outline-none'} value={formData.importantNote} onChange={(e) => updateField('importantNote', e.target.value)} />
           </label>
 
@@ -2083,18 +2086,18 @@ const TodayJobs: React.FC = () => {
                 key={job.id}
                 type="button"
                 onClick={() => openJobDetail(job)}
-                className="driver-clay-card w-full p-4 text-left sm:p-5"
+                className="driver-clay-card w-full overflow-hidden p-3.5 text-left sm:p-5"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-base font-black text-slate-700">
+                <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 space-y-1">
+                    <p className="break-words text-[15px] font-black leading-tight text-slate-700 sm:text-base">
                       {job.employerCompany || '-'} | {job.productName || '-'}
                     </p>
-                    <p className="driver-clay-muted truncate text-xs">
+                    <p className="driver-clay-muted break-words text-[11px] leading-relaxed sm:text-xs">
                       เลขที่ใบสั่งงาน: {job.workOrderNo || job.ticketNo || '-'}
                     </p>
                   </div>
-                  <div className="flex flex-wrap items-center justify-end gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:max-w-[40%] sm:justify-end">
                     <span className={`driver-clay-chip ${statusBadgeClass(job.status)}`}>
                       {statusIcon(job.status)}
                       {statusLabelMap[job.status]}
@@ -2108,43 +2111,45 @@ const TodayJobs: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="mt-4 space-y-2 text-sm text-slate-700">
-                  <div className="flex items-center gap-2">
+                <div className="mt-3 space-y-2.5 text-[13px] text-slate-700 sm:text-sm">
+                  <div className="driver-clay-soft flex items-center gap-2 rounded-xl px-3 py-2.5">
                     <CalendarClock size={14} className="driver-clay-muted" />
-                    <span>วันที่รับงาน: {getJobDate(job) || '-'}</span>
+                    <span className="min-w-0 break-words">วันที่รับงาน: {getJobDate(job) || '-'}</span>
                   </div>
 
-                  <div className="flex items-start gap-2">
-                    <MapPin size={14} className="driver-clay-muted mt-0.5" />
-                    <div className="min-w-0 space-y-1">
-                      <p className="truncate">รับ: {job.pickup.location || '-'}</p>
-                      {(hasValue(job.pickup.date) || hasValue(job.pickup.time)) && (
-                        <p className="driver-clay-muted flex items-center gap-1 text-xs">
-                          <Clock3 size={12} />
-                          {`${job.pickup.date || '-'} ${job.pickup.time || ''}`.trim()}
-                        </p>
-                      )}
-                      {hasValue(job.pickup.contact) && (
-                        <p className="driver-clay-muted flex items-center gap-1 text-xs">
-                          <UserRound size={12} />
-                          ผู้ติดต่อ: {job.pickup.contact}
-                        </p>
-                      )}
+                  <div className="driver-clay-soft rounded-xl px-3 py-2.5">
+                    <div className="flex items-start gap-2">
+                      <MapPin size={14} className="driver-clay-muted mt-0.5 shrink-0" />
+                      <div className="min-w-0 space-y-1">
+                        <p className="break-words leading-relaxed">รับ: {job.pickup.location || '-'}</p>
+                        {(hasValue(job.pickup.date) || hasValue(job.pickup.time)) && (
+                          <p className="driver-clay-muted flex items-center gap-1 text-[11px] leading-relaxed sm:text-xs">
+                            <Clock3 size={12} />
+                            {`${job.pickup.date || '-'} ${job.pickup.time || ''}`.trim()}
+                          </p>
+                        )}
+                        {hasValue(job.pickup.contact) && (
+                          <p className="driver-clay-muted flex items-center gap-1 text-[11px] leading-relaxed sm:text-xs">
+                            <UserRound size={12} />
+                            ผู้ติดต่อ: {job.pickup.contact}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-2">
+                  <div className="driver-clay-soft rounded-xl px-3 py-2.5">
                     <MapPin size={14} className="driver-clay-muted mt-0.5" />
                     <div className="min-w-0 space-y-1">
-                      <p className="truncate">ส่ง: {job.delivery.location || '-'}</p>
+                      <p className="break-words leading-relaxed">ส่ง: {job.delivery.location || '-'}</p>
                       {(hasValue(job.delivery.date) || hasValue(job.delivery.time)) && (
-                        <p className="driver-clay-muted flex items-center gap-1 text-xs">
+                        <p className="driver-clay-muted flex items-center gap-1 text-[11px] leading-relaxed sm:text-xs">
                           <Clock3 size={12} />
                           {`${job.delivery.date || '-'} ${job.delivery.time || ''}`.trim()}
                         </p>
                       )}
                       {hasValue(job.delivery.contact) && (
-                        <p className="driver-clay-muted flex items-center gap-1 text-xs">
+                        <p className="driver-clay-muted flex items-center gap-1 text-[11px] leading-relaxed sm:text-xs">
                           <UserRound size={12} />
                           ผู้ติดต่อ: {job.delivery.contact}
                         </p>
@@ -2152,13 +2157,15 @@ const TodayJobs: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <Package2 size={14} className="driver-clay-muted" />
-                    <span>จำนวนรอบ: {resolveRounds(job)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Truck size={14} className="driver-clay-muted" />
-                    <span>ทะเบียนรถ: {job.plateNo || '-'}</span>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="driver-clay-soft flex items-center gap-2 rounded-xl px-3 py-2.5">
+                      <Package2 size={14} className="driver-clay-muted shrink-0" />
+                      <span className="min-w-0 break-words">จำนวนรอบ: {resolveRounds(job)}</span>
+                    </div>
+                    <div className="driver-clay-soft flex items-center gap-2 rounded-xl px-3 py-2.5">
+                      <Truck size={14} className="driver-clay-muted shrink-0" />
+                      <span className="min-w-0 break-words">ทะเบียนรถ: {job.plateNo || '-'}</span>
+                    </div>
                   </div>
                   {job.readyToClose && (
                     <p className="text-xs font-medium text-amber-600">พร้อมจบงานแล้ว</p>
@@ -2332,7 +2339,7 @@ const TodayJobs: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleDownloadPdf(toEditableForm(selectedJob))}
-                className="driver-clay-btn driver-clay-btn-info text-xs"
+                className="driver-clay-btn driver-clay-btn-info driver-clay-btn-pdf text-xs"
               >
                 <FileDown size={14} />
                 ดาวน์โหลด PDF

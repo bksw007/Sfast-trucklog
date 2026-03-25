@@ -102,11 +102,11 @@ const Login: React.FC = () => {
         {/* Email/Password Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+            <label className={`mb-2 block text-sm ${isDark ? 'admin-field-label' : 'font-medium text-light-muted'}`}>
               อีเมล
             </label>
             <div className="relative">
-              <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`} size={18} />
+              <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-[#aeb9df]' : 'text-light-muted'}`} size={18} />
               <input
                 type="email"
                 value={email}
@@ -123,11 +123,11 @@ const Login: React.FC = () => {
           </div>
 
           <div>
-            <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+            <label className={`mb-2 block text-sm ${isDark ? 'admin-field-label' : 'font-medium text-light-muted'}`}>
               รหัสผ่าน
             </label>
             <div className="relative">
-              <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`} size={18} />
+              <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-[#aeb9df]' : 'text-light-muted'}`} size={18} />
               <input
                 type="password"
                 value={password}
@@ -145,11 +145,11 @@ const Login: React.FC = () => {
 
           {!isLogin && (
             <div>
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+              <label className={`mb-2 block text-sm ${isDark ? 'admin-field-label' : 'font-medium text-light-muted'}`}>
                 ยืนยันรหัสผ่าน
               </label>
               <div className="relative">
-                <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`} size={18} />
+                <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-[#aeb9df]' : 'text-light-muted'}`} size={18} />
                 <input
                   type="password"
                   value={confirmPassword}
