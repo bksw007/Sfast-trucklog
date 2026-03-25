@@ -3,8 +3,6 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Table2,
-  ChevronLeft,
-  ChevronRight,
   LogOut,
   Moon,
   Settings,
@@ -13,6 +11,7 @@ import {
   Users,
   ClipboardList,
   Menu,
+  MoreHorizontal,
   X,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,6 +31,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showUserManagementModal, setShowUserManagementModal] = useState(false);
   const [showMobileTopMenu, setShowMobileTopMenu] = useState(false);
+  const [showDesktopUtilityMenu, setShowDesktopUtilityMenu] = useState(false);
   const isDark = theme === 'dark';
 
   const navItems = [
@@ -57,9 +57,36 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const desktopActionClass = (isDanger = false) => `driver-desktop-nav-item w-full whitespace-nowrap transition-all duration-200 ${
     sidebarOpen ? 'justify-start gap-3 px-4 py-3' : 'driver-desktop-nav-item-collapsed py-3'
   } ${isDanger ? 'text-rose-500 hover:text-rose-600' : 'text-slate-500 hover:text-[#2f4658]'}`;
+  const desktopUtilityItemClass = (isDanger = false) =>
+    `driver-desktop-nav-item w-full justify-start gap-3 px-4 py-3 whitespace-nowrap transition-all duration-200 ${
+      isDanger ? 'text-rose-500 hover:text-rose-600' : 'text-slate-500 hover:text-[#2f4658]'
+    }`;
+  const desktopUtilityPanelClass = isDark
+    ? 'border border-[rgba(91,104,146,0.42)] bg-[rgba(29,34,51,0.96)] shadow-[14px_14px_28px_rgba(7,10,18,0.5),-10px_-10px_22px_rgba(57,67,99,0.16)]'
+    : 'border border-white/85 bg-[rgba(240,244,248,0.97)] shadow-[10px_10px_22px_rgba(166,180,200,0.34),-8px_-8px_18px_rgba(255,255,255,0.88)]';
+
+  const stopSidebarToggle = (event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
+  };
+
+  const handleSidebarToggle = () => {
+    setSidebarOpen((prev) => {
+      const next = !prev;
+      if (!next) {
+        setShowDesktopUtilityMenu(false);
+      }
+      return next;
+    });
+  };
+
+  const toggleDesktopUtilityMenu = (event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
+    setShowDesktopUtilityMenu((prev) => !prev);
+  };
 
   useEffect(() => {
     setShowMobileTopMenu(false);
+    setShowDesktopUtilityMenu(false);
   }, [location.pathname]);
 
   return (
@@ -148,9 +175,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </header>
 
       <div className="flex">
-        <aside className={`driver-desktop-sidebar hidden md:flex flex-col fixed left-0 top-0 h-screen transition-all duration-300 z-40 ${
+        <aside
+          onClick={handleSidebarToggle}
+          className={`driver-desktop-sidebar hidden cursor-pointer md:flex flex-col fixed left-0 top-0 h-screen transition-all duration-300 z-40 ${
           sidebarOpen ? 'w-64' : 'w-20'
-        } bg-[rgba(240,244,248,0.96)]`}>
+        } bg-[rgba(240,244,248,0.96)]`}
+          aria-label={sidebarOpen ? 'คลิกเพื่อย่อเมนูด้านข้าง' : 'คลิกเพื่อขยายเมนูด้านข้าง'}
+        >
           <div className={`p-6 flex items-center ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
             <div className={`flex items-center transition-all duration-300 ${sidebarOpen ? 'gap-3' : 'gap-0 justify-center'}`}>
               <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-accent-primary/20 flex-shrink-0 bg-[#272727]">
@@ -164,7 +195,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
           </div>
 
-          <nav className="flex-1 px-4 py-2 space-y-2 overflow-x-hidden">
+          <nav className="flex-1 overflow-visible px-4 py-2 space-y-2">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
@@ -173,7 +204,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   key={item.path}
                   to={item.path}
                   title={!sidebarOpen ? item.label : ''}
-                  className={`flex items-center px-4 py-3 rounded-xl transition-all duration-200 group whitespace-nowrap ${
+                  onClick={stopSidebarToggle}
+                  className={`relative flex items-center px-4 py-3 rounded-xl transition-all duration-200 group whitespace-nowrap ${
                     sidebarOpen ? 'gap-3' : 'driver-desktop-nav-item-collapsed'
                   } driver-desktop-nav-item ${
                     isActive
@@ -185,69 +217,89 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <span className={`font-medium transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
                     {item.label}
                   </span>
+                  {!sidebarOpen && (
+                    <span className={`pointer-events-none absolute left-[calc(100%+0.75rem)] top-1/2 hidden -translate-y-1/2 rounded-xl px-3 py-2 text-sm font-semibold opacity-0 shadow-lg transition-all duration-200 group-hover:block group-hover:opacity-100 ${desktopUtilityPanelClass}`}>
+                      {item.label}
+                    </span>
+                  )}
                 </Link>
               );
             })}
           </nav>
 
-          <div className="p-4 border-t border-white/85 overflow-x-hidden">
+          <div
+            onClick={stopSidebarToggle}
+            className="relative overflow-visible p-4 border-t border-white/85"
+          >
             <button
-              onClick={() => setShowProfileModal(true)}
-              title={!sidebarOpen ? 'โปรไฟล์' : ''}
-              className={`${desktopActionClass()} mt-2`}
+              onClick={toggleDesktopUtilityMenu}
+              title={!sidebarOpen ? 'เมนูเพิ่มเติม' : ''}
+              className={`${desktopActionClass()} relative mt-2 group`}
             >
-              <User size={20} className="flex-shrink-0" />
+              <MoreHorizontal size={20} className="flex-shrink-0" />
               <span className={`font-medium transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
-                โปรไฟล์
+                เมนูเพิ่มเติม
               </span>
+              {!sidebarOpen && (
+                <span className={`pointer-events-none absolute left-[calc(100%+0.75rem)] top-1/2 hidden -translate-y-1/2 rounded-xl px-3 py-2 text-sm font-semibold opacity-0 shadow-lg transition-all duration-200 group-hover:block group-hover:opacity-100 ${desktopUtilityPanelClass}`}>
+                  เมนูเพิ่มเติม
+                </span>
+              )}
             </button>
 
-            {user?.uid && userProfile?.role === 'admin' && (
-              <button
-                onClick={() => setShowUserManagementModal(true)}
-                title={!sidebarOpen ? 'จัดการผู้ใช้' : ''}
-                className={`${desktopActionClass()} mt-2`}
+            {showDesktopUtilityMenu && (
+              <div
+                className={`mt-2 rounded-[1.4rem] p-2 ${desktopUtilityPanelClass} ${
+                  sidebarOpen ? 'space-y-2' : 'absolute bottom-4 left-[calc(100%+0.75rem)] w-60'
+                }`}
               >
-                <Users size={20} className="flex-shrink-0" />
-                <span className={`font-medium transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
-                  จัดการผู้ใช้
-                </span>
-              </button>
-            )}
+                <button
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setShowProfileModal(true);
+                  }}
+                  className={desktopUtilityItemClass()}
+                >
+                  <User size={20} className="flex-shrink-0" />
+                  <span className="font-medium">โปรไฟล์</span>
+                </button>
 
-            <button
-              onClick={logout}
-              title={!sidebarOpen ? 'ออกจากระบบ' : ''}
-              className={`${desktopActionClass(true)} mt-2`}
-            >
-              <LogOut size={20} className="flex-shrink-0" />
-              <span className={`font-medium transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
-                ออกจากระบบ
-              </span>
-            </button>
+                {user?.uid && userProfile?.role === 'admin' && (
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setShowUserManagementModal(true);
+                    }}
+                    className={desktopUtilityItemClass()}
+                  >
+                    <Users size={20} className="flex-shrink-0" />
+                    <span className="font-medium">จัดการผู้ใช้</span>
+                  </button>
+                )}
 
-              <button
-                onClick={toggleTheme}
-                title={!sidebarOpen ? (isDark ? 'โหมดสว่าง' : 'โหมดมืด') : ''}
-                className={`${desktopActionClass()} mt-2`}
-              >
-                {isDark ? <SunMedium size={20} className="flex-shrink-0" /> : <Moon size={20} className="flex-shrink-0" />}
-                <span className={`font-medium transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
-                  {isDark ? 'โหมดสว่าง' : 'โหมดมืด'}
-                </span>
-              </button>
+                <button
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleTheme();
+                  }}
+                  className={desktopUtilityItemClass()}
+                >
+                  {isDark ? <SunMedium size={20} className="flex-shrink-0" /> : <Moon size={20} className="flex-shrink-0" />}
+                  <span className="font-medium">{isDark ? 'โหมดสว่าง' : 'โหมดมืด'}</span>
+                </button>
 
-              <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className={`${desktopActionClass()} mt-2`}
-            >
-              <div className="flex-shrink-0">
-                {sidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+                <button
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    logout();
+                  }}
+                  className={desktopUtilityItemClass(true)}
+                >
+                  <LogOut size={20} className="flex-shrink-0" />
+                  <span className="font-medium">ออกจากระบบ</span>
+                </button>
               </div>
-              <span className={`font-medium transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
-                ย่อเมนู
-              </span>
-            </button>
+            )}
           </div>
         </aside>
 
