@@ -38,3 +38,4 @@ functions/.env.*
 # Local utility artifacts/scripts (not for versioning)
 scripts/backfill-assignee-map.json
 scripts/restore-job-images-from-backup.mjs
+.vercel
