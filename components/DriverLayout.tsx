@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { CalendarDays, CheckCircle2, CircleDashed, LogOut, Menu, Moon, SunMedium, TableProperties, UserCircle2, X } from 'lucide-react';
+import { CalendarDays, CheckCircle2, CircleDashed, LogOut, Menu, Moon, SunMedium, TableProperties, Type, UserCircle2, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -18,7 +18,7 @@ const navItems = [
 
 const DriverLayout: React.FC<DriverLayoutProps> = ({ children }) => {
   const { logout, userProfile } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, fontScale, toggleTheme, setFontScale } = useTheme();
   const location = useLocation();
   const [showMobileTopMenu, setShowMobileTopMenu] = useState(false);
   const isDark = theme === 'dark';
@@ -39,6 +39,10 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({ children }) => {
   const mobileTopMenuDangerItemClass = isDark
     ? 'mt-1 flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-semibold text-rose-300 transition hover:bg-rose-500/15 hover:text-rose-200'
     : 'mt-1 flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-semibold text-rose-500 transition hover:bg-rose-100/70';
+  const fontScaleButtonClass = (active: boolean) =>
+    isDark
+      ? `rounded-xl px-3 py-2 text-sm font-semibold transition ${active ? 'bg-white text-[#111827]' : 'bg-white/8 text-[#eef3ff] hover:bg-white/14'}`
+      : `rounded-xl px-3 py-2 text-sm font-semibold transition ${active ? 'bg-[#d9e6f2] text-[#272727]' : 'bg-white/75 text-slate-600 hover:bg-white'}`;
 
   useEffect(() => {
     setShowMobileTopMenu(false);
@@ -179,6 +183,34 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({ children }) => {
                     {isDark ? <SunMedium size={16} /> : <Moon size={16} />}
                     <span>{isDark ? 'โหมดสว่าง' : 'โหมดมืด'}</span>
                   </button>
+                  <div className="mt-1 rounded-xl px-3 py-2">
+                    <div className={`mb-2 flex items-center gap-2 text-sm font-semibold ${isDark ? 'text-[#eef3ff]' : 'text-slate-600'}`}>
+                      <Type size={16} />
+                      <span>ขนาดตัวอักษร</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFontScale('normal');
+                          setShowMobileTopMenu(false);
+                        }}
+                        className={fontScaleButtonClass(fontScale === 'normal')}
+                      >
+                        ปกติ
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFontScale('large');
+                          setShowMobileTopMenu(false);
+                        }}
+                        className={fontScaleButtonClass(fontScale === 'large')}
+                      >
+                        ใหญ่
+                      </button>
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={() => {

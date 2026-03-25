@@ -148,6 +148,7 @@ export const createUserProfile = async (user: User, additionalData?: Partial<Use
     createdAt: now,
     photoURL: user.photoURL || undefined,
     pinnedLocations: [],
+    fontScale: 'normal',
     ...additionalData
   };
 

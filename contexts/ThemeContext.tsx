@@ -3,25 +3,34 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useRef,
   ReactNode,
 } from "react";
+import { useAuth } from "./AuthContext";
+import { updateUserProfile } from "../services/userService";
+import type { FontScale } from "../types";
 
 type Theme = "light" | "dark";
 
 interface ThemeContextType {
   theme: Theme;
+  fontScale: FontScale;
   toggleTheme: () => void;
+  setFontScale: (scale: FontScale) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 const THEME_STORAGE_KEY = "sfast_trucklog_theme";
+const FONT_SCALE_STORAGE_KEY = "sfast_trucklog_font_scale";
+const isValidFontScale = (value: string | null): value is FontScale =>
+  value === "normal" || value === "large";
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
+  const { user, userProfile, loading } = useAuth();
   const [theme, setTheme] = useState<Theme>(() => {
-    // Default to light theme
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(THEME_STORAGE_KEY);
       if (stored === "dark" || stored === "light") {
@@ -30,11 +39,19 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({
     }
     return "light";
   });
+  const [fontScale, setFontScaleState] = useState<FontScale>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(FONT_SCALE_STORAGE_KEY);
+      if (isValidFontScale(stored)) {
+        return stored;
+      }
+    }
+    return "normal";
+  });
+  const skipNextProfileSyncRef = useRef(false);
 
   useEffect(() => {
     localStorage.setItem(THEME_STORAGE_KEY, theme);
-
-    // Apply theme class to document
     const root = document.documentElement;
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (theme === "dark") {
@@ -50,12 +67,50 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({
     }
   }, [theme]);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    localStorage.setItem(FONT_SCALE_STORAGE_KEY, fontScale);
+    root.dataset.fontScale = fontScale;
+    root.classList.toggle("font-scale-large", fontScale === "large");
+    root.classList.toggle("font-scale-normal", fontScale === "normal");
+  }, [fontScale]);
+
+  useEffect(() => {
+    if (loading || !user) return;
+    if (!userProfile?.fontScale || userProfile.fontScale === fontScale) return;
+
+    skipNextProfileSyncRef.current = true;
+    setFontScaleState(userProfile.fontScale);
+  }, [fontScale, loading, user, userProfile?.fontScale]);
+
+  useEffect(() => {
+    if (loading || !user) return;
+
+    if (skipNextProfileSyncRef.current) {
+      skipNextProfileSyncRef.current = false;
+      return;
+    }
+
+    if (userProfile?.fontScale === fontScale) return;
+
+    void updateUserProfile(user.uid, {
+      fontScale,
+      profileUpdatedAt: Date.now(),
+    }).catch((error) => {
+      console.error("Failed to sync font scale preference:", error);
+    });
+  }, [fontScale, loading, user, userProfile?.fontScale]);
+
   const toggleTheme = () => {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
   };
 
+  const setFontScale = (scale: FontScale) => {
+    setFontScaleState(scale);
+  };
+
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, fontScale, toggleTheme, setFontScale }}>
       {children}
     </ThemeContext.Provider>
   );

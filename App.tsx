@@ -5,6 +5,7 @@ import DriverLayout from './components/DriverLayout';
 import { AdminUsersProvider } from './contexts/AdminUsersContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider, useData } from './contexts/DataContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import SyncModal from './components/SyncModal';
 import { Loader2 } from 'lucide-react';
 import type { DriverView } from './pages/DriverJobsBoard';
@@ -231,10 +232,12 @@ const AppRoutes: React.FC = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <Router>
-        <ScrollToTopOnRouteChange />
-        <AppRoutes />
-      </Router>
+      <ThemeProvider>
+        <Router>
+          <ScrollToTopOnRouteChange />
+          <AppRoutes />
+        </Router>
+      </ThemeProvider>
     </AuthProvider>
   );
 };

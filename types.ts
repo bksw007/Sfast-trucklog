@@ -110,6 +110,7 @@ export enum OptionCategory {
 }
 
 export type UserRole = 'admin' | 'user';
+export type FontScale = 'normal' | 'large';
 
 export interface UserProfile {
   uid: string;
@@ -129,6 +130,7 @@ export interface UserProfile {
   profileUpdatedAt?: number;
   photoURL?: string;
   pinnedLocations?: string[];
+  fontScale?: FontScale;
   fcmTokens?: string[];
   lastPushTokenUpdatedAt?: number;
 }
