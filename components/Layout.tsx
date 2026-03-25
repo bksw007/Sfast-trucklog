@@ -393,7 +393,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 className={`driver-mobile-nav-link flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 py-2.5 transition ${
                   isActive
                     ? 'driver-mobile-nav-item-active'
-                    : 'hover:bg-[#d9e6f2] active:bg-[#d9e6f2]'
+                    : isDark
+                      ? 'hover:bg-white/10 active:bg-white/10'
+                      : 'hover:bg-[#d9e6f2] active:bg-[#d9e6f2]'
                 }`}
               >
                 <Icon size={17} className="driver-float-icon shrink-0" />

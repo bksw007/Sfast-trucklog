@@ -244,7 +244,9 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({ children }) => {
                 className={`driver-mobile-nav-link flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 py-2.5 text-center transition ${
                   isActive
                     ? 'driver-mobile-nav-item-active'
-                    : 'hover:bg-white/55'
+                    : isDark
+                      ? 'hover:bg-white/10 active:bg-white/10'
+                      : 'hover:bg-white/55 active:bg-white/55'
                 }`}
               >
                 <Icon size={17} className="driver-float-icon shrink-0" />
