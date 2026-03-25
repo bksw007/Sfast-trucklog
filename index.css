@@ -550,8 +550,7 @@ select.no-arrow {
 
 .driver-desktop-sidebar {
   min-height: 100vh;
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  border-right-color: rgba(255, 255, 255, 0.78);
+  border: 0;
   background: var(--driver-bg-color);
   box-shadow:
     8px 0 24px var(--driver-shadow-dark),
@@ -580,7 +579,11 @@ select.no-arrow {
 
 .driver-desktop-nav-item-active {
   background: var(--driver-clay-blue);
-  color: #fff;
+  color: #ffffff;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.18),
+    8px 8px 16px var(--driver-shadow-dark),
+    -6px -6px 14px var(--driver-shadow-light);
 }
 
 .driver-desktop-nav-item-collapsed {
@@ -592,7 +595,7 @@ select.no-arrow {
 
 .driver-mobile-nav-surface {
   background: var(--driver-bg-color);
-  border-color: rgba(255, 255, 255, 0.9);
+  border-color: transparent;
   box-shadow:
     8px 8px 16px var(--driver-shadow-dark),
     -8px -8px 16px var(--driver-shadow-light);
@@ -634,21 +637,48 @@ select.no-arrow {
 }
 
 .dark .driver-mobile-nav-link {
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(226, 234, 255, 0.78);
 }
 
 .dark .driver-mobile-nav-link:hover,
 .dark .driver-mobile-nav-link:active {
-  color: #111827;
+  color: #ffffff;
 }
 
 .dark .driver-mobile-nav-item-active {
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.08);
+  border: 0;
+  background: linear-gradient(135deg, rgba(83, 129, 168, 0.96), rgba(56, 90, 128, 0.96));
   color: #ffffff;
   box-shadow:
-    inset 1px 1px 0 rgba(255, 255, 255, 0.2),
-    0 0 0 1px rgba(255, 255, 255, 0.12);
+    inset 1px 1px 0 rgba(255, 255, 255, 0.14),
+    10px 10px 18px rgba(8, 11, 20, 0.45),
+    -6px -6px 14px rgba(67, 79, 115, 0.16);
+}
+
+.dark .driver-desktop-sidebar {
+  border-right: 1px solid rgba(77, 93, 133, 0.22);
+}
+
+.dark .driver-desktop-nav-item {
+  background: rgba(28, 34, 52, 0.94);
+  color: rgba(226, 234, 255, 0.82);
+  box-shadow:
+    8px 8px 16px rgba(8, 11, 20, 0.44),
+    -6px -6px 12px rgba(60, 72, 108, 0.14);
+}
+
+.dark .driver-desktop-nav-item:hover {
+  background: rgba(45, 58, 86, 0.94);
+  color: #ffffff;
+}
+
+.dark .driver-desktop-nav-item-active {
+  background: linear-gradient(135deg, rgba(83, 129, 168, 0.98), rgba(56, 90, 128, 0.98));
+  color: #ffffff;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.14),
+    10px 10px 18px rgba(8, 11, 20, 0.46),
+    -6px -6px 14px rgba(67, 79, 115, 0.16);
 }
 
 .dark .driver-clay [class*='text-slate-700'],
@@ -754,6 +784,7 @@ select.no-arrow {
 
 .driver-top-shell {
   background: var(--driver-bg-color);
+  border-color: transparent !important;
   box-shadow:
     6px 6px 12px var(--driver-shadow-dark),
     -6px -6px 12px var(--driver-shadow-light);
@@ -795,7 +826,7 @@ select.no-arrow {
 }
 
 .dark .driver-mobile-nav-surface {
-  border-color: rgba(91, 104, 146, 0.42);
+  border-color: transparent;
 }
 
 .admin-clay::before {
@@ -878,6 +909,10 @@ select.no-arrow {
 }
 
 .dark .admin-clay .driver-mobile-nav-item-active {
+  color: #ffffff;
+}
+
+.dark .admin-clay .driver-desktop-nav-item-active {
   color: #ffffff;
 }
 

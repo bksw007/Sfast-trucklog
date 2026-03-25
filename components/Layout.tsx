@@ -61,10 +61,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       : `rounded-xl px-3 py-2 text-sm font-semibold transition ${active ? 'bg-[#d9e6f2] text-[#272727]' : 'bg-white/75 text-slate-600 hover:bg-white'}`;
   const desktopActionClass = (isDanger = false) => `driver-desktop-nav-item w-full whitespace-nowrap transition-all duration-200 ${
     sidebarOpen ? 'justify-start gap-3 px-4 py-3' : 'driver-desktop-nav-item-collapsed py-3'
-  } ${isDanger ? 'text-rose-500 hover:text-rose-600' : 'text-slate-500 hover:text-[#2f4658]'}`;
+  } ${
+    isDanger
+      ? (isDark ? 'text-rose-300 hover:text-rose-200' : 'text-rose-500 hover:text-rose-600')
+      : (isDark ? 'text-[#c8d4f6] hover:text-white' : 'text-slate-500 hover:text-[#2f4658]')
+  }`;
   const desktopUtilityItemClass = (isDanger = false) =>
     `driver-desktop-nav-item w-full justify-start gap-3 px-4 py-3 whitespace-nowrap transition-all duration-200 ${
-      isDanger ? 'text-rose-500 hover:text-rose-600' : 'text-slate-500 hover:text-[#2f4658]'
+      isDanger
+        ? (isDark ? 'text-rose-300 hover:text-rose-200' : 'text-rose-500 hover:text-rose-600')
+        : (isDark ? 'text-[#c8d4f6] hover:text-white' : 'text-slate-500 hover:text-[#2f4658]')
     }`;
   const desktopUtilityPanelClass = isDark
     ? 'border border-[rgba(91,104,146,0.42)] bg-[rgba(29,34,51,0.96)] shadow-[14px_14px_28px_rgba(7,10,18,0.5),-10px_-10px_22px_rgba(57,67,99,0.16)]'
@@ -97,7 +103,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className={`admin-clay min-h-screen font-sans ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>
       <header className="sticky top-0 z-50 px-3 pb-1 pt-3 md:hidden">
-        <div className="driver-top-shell mx-auto flex w-full items-center justify-between gap-3 rounded-[24px] border border-white/80 px-4 py-3">
+        <div className="driver-top-shell mx-auto flex w-full items-center justify-between gap-3 rounded-[24px] border border-transparent px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
             <div className="h-11 w-11 overflow-hidden rounded-2xl bg-[#272727] shadow-[6px_6px_12px_rgba(166,180,200,0.35),-6px_-6px_12px_rgba(255,255,255,0.9)]">
               <img src={appLogo} alt="SFast Logo" className="h-full w-full object-cover" />
@@ -243,11 +249,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     sidebarOpen ? 'gap-3' : 'driver-desktop-nav-item-collapsed'
                   } driver-desktop-nav-item ${
                     isActive
-                      ? 'driver-desktop-nav-item-active text-[#2f4658]'
-                      : 'text-slate-500 hover:text-[#2f4658]'
+                      ? (isDark ? 'driver-desktop-nav-item-active text-white' : 'driver-desktop-nav-item-active text-[#2f4658]')
+                      : (isDark ? 'text-[#c8d4f6] hover:text-white' : 'text-slate-500 hover:text-[#2f4658]')
                   }`}
                 >
-                  <Icon size={20} className={`flex-shrink-0 ${isActive ? 'text-accent-primary' : ''}`} />
+                  <Icon size={20} className={`flex-shrink-0 ${isActive ? (isDark ? 'text-white' : 'text-accent-primary') : ''}`} />
                   <span className={`font-medium transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
                     {item.label}
                   </span>
@@ -263,7 +269,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           <div
             onClick={stopSidebarToggle}
-            className="relative overflow-visible p-4 border-t border-white/85"
+            className={`relative overflow-visible p-4 border-t ${isDark ? 'border-[rgba(77,93,133,0.22)]' : 'border-slate-200/85'}`}
           >
             <button
               onClick={toggleDesktopUtilityMenu}
@@ -376,7 +382,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </div>
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 px-2 pb-[calc(0.45rem+env(safe-area-inset-bottom))] pt-2 md:hidden">
-        <div className="driver-mobile-nav-surface mx-auto grid w-full max-w-6xl grid-cols-4 gap-1.5 rounded-[22px] border border-white/85 p-1.5">
+        <div className="driver-mobile-nav-surface mx-auto grid w-full max-w-6xl grid-cols-4 gap-1.5 rounded-[22px] border border-transparent p-1.5">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;

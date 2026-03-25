@@ -51,7 +51,7 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({ children }) => {
   return (
     <div className={`driver-clay min-h-screen ${isDark ? 'text-dark-text' : 'text-slate-700'}`}>
       <aside className="driver-desktop-sidebar fixed inset-y-0 left-0 z-40 hidden p-5 md:flex md:flex-col">
-        <div className="flex h-full flex-col gap-4 rounded-[26px] border border-white/80 p-4 shadow-[6px_6px_12px_rgba(166,180,200,0.35),-6px_-6px_12px_rgba(255,255,255,0.9)]">
+        <div className="flex h-full flex-col gap-4 rounded-[26px] border border-transparent p-4 shadow-[6px_6px_12px_rgba(166,180,200,0.35),-6px_-6px_12px_rgba(255,255,255,0.9)]">
           <div className="flex items-center gap-3 px-1 py-2">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#272727] shadow-[6px_6px_12px_rgba(166,180,200,0.35),-6px_-6px_12px_rgba(255,255,255,0.9)]">
               <img src="/icons/truck-logo.png" alt="SFast Logo" className="h-10 w-10 object-cover" />
@@ -114,7 +114,7 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({ children }) => {
 
       <div className="md:ml-[270px]">
         <header className="sticky top-0 z-40 px-3 pb-1 pt-3 sm:px-4 md:px-6 md:pt-5">
-          <div className="driver-top-shell mx-auto flex w-full max-w-6xl items-center justify-between gap-3 rounded-[24px] border border-white/80 px-4 py-3">
+          <div className="driver-top-shell mx-auto flex w-full max-w-6xl items-center justify-between gap-3 rounded-[24px] border border-transparent px-4 py-3">
             <div className="flex min-w-0 items-center gap-3">
               <div className="h-12 w-12 overflow-hidden rounded-2xl bg-[#272727] shadow-[6px_6px_12px_rgba(166,180,200,0.35),-6px_-6px_12px_rgba(255,255,255,0.9)]">
                 <img src="/icons/truck-logo.png" alt="SFast Logo" className="h-full w-full object-cover" />
@@ -232,7 +232,7 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({ children }) => {
       </div>
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 px-2 pb-[calc(0.45rem+env(safe-area-inset-bottom))] pt-2 md:hidden">
-        <div className="driver-mobile-nav-surface mx-auto grid w-full max-w-6xl grid-cols-5 gap-2 rounded-[26px] border border-white/85 p-2">
+        <div className="driver-mobile-nav-surface mx-auto grid w-full max-w-6xl grid-cols-5 gap-2 rounded-[26px] border border-transparent p-2">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
