@@ -327,6 +327,20 @@ const getBangkokToday = (): string =>
   new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Bangkok",
   }).format(new Date());
+const formatThaiDate = (value?: string): string => {
+  const normalized = (value || "").trim();
+  if (!normalized) return "-";
+
+  const [year, month, day] = normalized.split("-").map(Number);
+  if (!year || !month || !day) return normalized;
+
+  return new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+};
 const isBackdatedJob = (
   job: TodayJobEntry
 ): boolean => {
@@ -338,18 +352,36 @@ const isBackdatedJob = (
 const formatBaht = (value: number): string => value.toFixed(2);
 
 const buildDieselPriceSummaryText = (
+  effectiveDate: string,
   priceToday: number,
   differenceFromYesterday: number
 ): string => {
+  const dateLabel = formatThaiDate(effectiveDate);
+
   if (differenceFromYesterday > 0) {
-    return `ราคาน้ำมันวันนี้ น้ำมันดีเซลราคาลิตรละ ${formatBaht(priceToday)} บาท เพิ่มขึ้น ${formatBaht(differenceFromYesterday)} บาท`;
+    return [
+      `ราคาน้ำมันวันนี้ ${dateLabel}`,
+      "น้ำมันดีเซลราคาลิตรละ",
+      `${formatBaht(priceToday)} บาท`,
+      `เพิ่มขึ้น ${formatBaht(differenceFromYesterday)} บาท`,
+    ].join(" ");
   }
 
   if (differenceFromYesterday < 0) {
-    return `ราคาน้ำมันวันนี้ น้ำมันดีเซลราคาลิตรละ ${formatBaht(priceToday)} บาท ลดลง ${formatBaht(Math.abs(differenceFromYesterday))} บาท`;
+    return [
+      `ราคาน้ำมันวันนี้ ${dateLabel}`,
+      "น้ำมันดีเซลราคาลิตรละ",
+      `${formatBaht(priceToday)} บาท`,
+      `ลดลง ${formatBaht(Math.abs(differenceFromYesterday))} บาท`,
+    ].join(" ");
   }
 
-  return `ราคาน้ำมันวันนี้ น้ำมันดีเซลราคาลิตรละ ${formatBaht(priceToday)} บาท คงเดิม 0.00 บาท`;
+  return [
+    `ราคาน้ำมันวันนี้ ${dateLabel}`,
+    "น้ำมันดีเซลราคาลิตรละ",
+    `${formatBaht(priceToday)} บาท`,
+    "คงเดิม 0.00 บาท",
+  ].join(" ");
 };
 
 const selectDieselOilEntry = (
@@ -363,7 +395,9 @@ const selectDieselOilEntry = (
   ];
 
   for (const matcher of prioritizedMatchers) {
-    const found = items.find((item) => matcher((item.OilName || "").trim().toLowerCase()));
+    const found = items.find((item) =>
+      matcher((item.OilName || "").trim().toLowerCase())
+    );
     if (found) return found;
   }
 
@@ -382,7 +416,9 @@ const fetchBangchakDieselPrice = async (): Promise<DieselPriceRecord> => {
   }
 
   const payload = await response.json() as BangchakOilResponse[];
-  const latest = Array.isArray(payload) && payload.length > 0 ? payload[0] : null;
+  const latest = Array.isArray(payload) && payload.length > 0 ?
+    payload[0] :
+    null;
   if (!latest) {
     throw new Error("Bangchak API returned empty payload");
   }
@@ -407,6 +443,7 @@ const fetchBangchakDieselPrice = async (): Promise<DieselPriceRecord> => {
   const differenceFromYesterday = Number(
     (priceToday - priceYesterday).toFixed(2)
   );
+  const effectiveDate = getBangkokToday();
   const changeDirection = differenceFromYesterday > 0 ?
     "up" :
     differenceFromYesterday < 0 ?
@@ -417,12 +454,13 @@ const fetchBangchakDieselPrice = async (): Promise<DieselPriceRecord> => {
   return {
     fuelType: "diesel",
     oilName: dieselEntry.OilName || "ไฮดีเซล S",
-    effectiveDate: getBangkokToday(),
+    effectiveDate,
     priceToday,
     priceYesterday,
     differenceFromYesterday,
     changeDirection,
     summaryText: buildDieselPriceSummaryText(
+      effectiveDate,
       priceToday,
       differenceFromYesterday
     ),
@@ -448,7 +486,8 @@ const persistDieselPriceRecord = async (
   await batch.commit();
 };
 
-const getLatestDieselPriceRecord = async (): Promise<DieselPriceRecord | null> => {
+const getLatestDieselPriceRecord = async (
+): Promise<DieselPriceRecord | null> => {
   const snapshot = await db.collection(FUEL_PRICES_COLLECTION)
     .doc(LATEST_DIESEL_PRICE_DOC_ID)
     .get();
