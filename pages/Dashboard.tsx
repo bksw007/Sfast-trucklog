@@ -1,10 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { JobEntry } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
-import { Truck, MapPin, Calendar, CheckCircle2, Filter, X, ChevronDown } from 'lucide-react';
+import { Truck, MapPin, Calendar, CheckCircle2, Filter, X, ChevronDown, Droplets, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { rebuildDashboardMetricsMonth, subscribeToDashboardMetricsByMonth, subscribeToJobsByMonth, type DashboardMetricSummary } from '../services/firebaseService';
+import {
+  rebuildDashboardMetricsMonth,
+  subscribeToDashboardMetricsByMonth,
+  subscribeToJobsByMonth,
+  subscribeToLatestDieselPrice,
+  type DashboardMetricSummary,
+  type LatestDieselPrice,
+} from '../services/firebaseService';
 
 const MONTHS = [
   { value: 1, label: 'มกราคม' },
@@ -59,6 +66,7 @@ const Dashboard: React.FC = () => {
   const [jobs, setJobs] = useState<JobEntry[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [metricSummary, setMetricSummary] = useState<DashboardMetricSummary | null>(null);
+  const [latestDieselPrice, setLatestDieselPrice] = useState<LatestDieselPrice | null>(null);
   const [metricsLoading, setMetricsLoading] = useState(false);
   const [rebuildingMetrics, setRebuildingMetrics] = useState(false);
   const [rebuildRequestedMonth, setRebuildRequestedMonth] = useState('');
@@ -123,6 +131,20 @@ const Dashboard: React.FC = () => {
 
     return () => unsubscribe();
   }, [filters.month, filters.year, hasDimensionFilters, monthKey]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToLatestDieselPrice(
+      (price) => {
+        setLatestDieselPrice(price);
+      },
+      (error) => {
+        console.error('Latest diesel price subscribe failed:', error);
+        setLatestDieselPrice(null);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (!monthKey || hasDimensionFilters || metricsLoading || metricSummary || rebuildRequestedMonth === monthKey) {
@@ -215,6 +237,17 @@ const Dashboard: React.FC = () => {
   const tooltipBg = isDark ? '#1a1b26' : '#ffffff';
   const tooltipBorder = isDark ? '#414868' : '#e2e8f0';
   const tooltipTextColor = isDark ? '#e0e7ff' : '#1e293b';
+  const dieselDelta = latestDieselPrice?.differenceFromYesterday || 0;
+  const DieselTrendIcon =
+    dieselDelta > 0 ? TrendingUp : dieselDelta < 0 ? TrendingDown : Minus;
+  const dieselTrendClass =
+    dieselDelta > 0
+      ? 'bg-rose-500/15 text-rose-300'
+      : dieselDelta < 0
+        ? 'bg-emerald-500/15 text-emerald-300'
+        : isDark
+          ? 'bg-white/10 text-[#dfe7ff]'
+          : 'bg-slate-100 text-slate-600';
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -226,6 +259,31 @@ const Dashboard: React.FC = () => {
           <p className={isDark ? 'text-dark-muted' : 'text-light-muted'}>
             สรุปข้อมูลสถิติและการดำเนินงานทั้งหมด
           </p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold ${
+              isDark
+                ? 'bg-sky-500/12 text-[#eef6ff] ring-1 ring-sky-400/20'
+                : 'bg-sky-50 text-sky-700 ring-1 ring-sky-200'
+            }`}>
+              <Droplets size={16} />
+              {latestDieselPrice ? `ดีเซล ${latestDieselPrice.priceToday.toFixed(2)} บาท/ลิตร` : 'กำลังโหลดราคาดีเซล'}
+            </div>
+            {latestDieselPrice && (
+              <div className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ${dieselTrendClass}`}>
+                <DieselTrendIcon size={15} />
+                {latestDieselPrice.changeDirection === 'up'
+                  ? `เพิ่มขึ้น ${dieselDelta.toFixed(2)} บาท`
+                  : latestDieselPrice.changeDirection === 'down'
+                    ? `ลดลง ${Math.abs(dieselDelta).toFixed(2)} บาท`
+                    : 'คงเดิม'}
+              </div>
+            )}
+          </div>
+          {latestDieselPrice && (
+            <p className={`mt-2 text-sm ${isDark ? 'text-[#d9e4ff]' : 'text-slate-600'}`}>
+              {latestDieselPrice.summaryText}
+            </p>
+          )}
         </div>
         <button
           onClick={() => setShowFilters(!showFilters)}

@@ -54,6 +54,12 @@ service cloud.firestore {
     match /dashboard_metrics/{metricId} {
       allow read, write: if isAdmin();
     }
+
+    // 2.2 fuel_prices
+    match /fuel_prices/{priceId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
     
     // 3. options
     match /options/{optionId} {

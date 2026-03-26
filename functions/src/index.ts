@@ -4,6 +4,7 @@ import {FieldValue, getFirestore} from "firebase-admin/firestore";
 import {getMessaging} from "firebase-admin/messaging";
 import {setGlobalOptions} from "firebase-functions/v2";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
+import {onSchedule} from "firebase-functions/v2/scheduler";
 import * as logger from "firebase-functions/logger";
 
 initializeApp();
@@ -74,6 +75,39 @@ type DashboardMetricEntry = {
   count: number;
 };
 
+type BangchakOilEntry = {
+  OilName?: string;
+  PriceYesterday?: number | string;
+  PriceToday?: number | string;
+};
+
+type BangchakOilResponse = {
+  OilPriceDate?: string;
+  OilPriceTime?: string;
+  OilRemark?: string;
+  OilRemark2?: string;
+  OilList?: string;
+};
+
+type DieselPriceRecord = {
+  fuelType: "diesel";
+  oilName: string;
+  effectiveDate: string;
+  priceToday: number;
+  priceYesterday: number;
+  differenceFromYesterday: number;
+  changeDirection: "up" | "down" | "same";
+  summaryText: string;
+  sourcePriceDate?: string;
+  sourcePriceTime?: string;
+  sourceRemark?: string;
+  sourceRemark2?: string;
+  fetchedAt: number;
+  updatedAt: number;
+  morningNotifiedOn?: string;
+  eveningNotifiedOn?: string;
+};
+
 const db = getFirestore();
 const adminAuth = getAuth();
 const messaging = getMessaging();
@@ -82,6 +116,9 @@ const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN || "";
 const LINE_GROUP_ID = process.env.LINE_GROUP_ID || "";
 const DASHBOARD_METRICS_COLLECTION = "dashboard_metrics";
+const FUEL_PRICES_COLLECTION = "fuel_prices";
+const LATEST_DIESEL_PRICE_DOC_ID = "latest_diesel";
+const BANGCHAK_OIL_API_URL = "https://oil-price.bangchak.co.th/ApiOilPrice2/th";
 const INVALID_FCM_TOKEN_ERROR_CODES = new Set([
   "messaging/invalid-registration-token",
   "messaging/registration-token-not-registered",
@@ -110,6 +147,13 @@ const getAdminTokens = async (): Promise<string[]> => {
   const snapshot = await db.collection("users")
     .where("role", "==", "admin")
     .get();
+  const tokens = snapshot.docs
+    .flatMap((doc) => normalizeTokens(doc.data()?.fcmTokens));
+  return Array.from(new Set(tokens));
+};
+
+const getAllUserTokens = async (): Promise<string[]> => {
+  const snapshot = await db.collection("users").get();
   const tokens = snapshot.docs
     .flatMap((doc) => normalizeTokens(doc.data()?.fcmTokens));
   return Array.from(new Set(tokens));
@@ -188,6 +232,11 @@ const getMonthDateRange = (
 const toPositiveNumber = (value: unknown): number => {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
+
+const toFiniteNumber = (value: unknown): number | null => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 };
 
 const buildDashboardMetricSummary = (
@@ -284,6 +333,191 @@ const isBackdatedJob = (
   const pickupDate = asDateOnly(job.pickup?.date);
   if (!pickupDate) return false;
   return pickupDate < getBangkokToday();
+};
+
+const formatBaht = (value: number): string => value.toFixed(2);
+
+const buildDieselPriceSummaryText = (
+  priceToday: number,
+  differenceFromYesterday: number
+): string => {
+  if (differenceFromYesterday > 0) {
+    return `ราคาน้ำมันวันนี้ น้ำมันดีเซลราคาลิตรละ ${formatBaht(priceToday)} บาท เพิ่มขึ้น ${formatBaht(differenceFromYesterday)} บาท`;
+  }
+
+  if (differenceFromYesterday < 0) {
+    return `ราคาน้ำมันวันนี้ น้ำมันดีเซลราคาลิตรละ ${formatBaht(priceToday)} บาท ลดลง ${formatBaht(Math.abs(differenceFromYesterday))} บาท`;
+  }
+
+  return `ราคาน้ำมันวันนี้ น้ำมันดีเซลราคาลิตรละ ${formatBaht(priceToday)} บาท คงเดิม 0.00 บาท`;
+};
+
+const selectDieselOilEntry = (
+  items: BangchakOilEntry[]
+): BangchakOilEntry | null => {
+  const prioritizedMatchers = [
+    (name: string) => name === "ไฮดีเซล s",
+    (name: string) => name === "ดีเซล s",
+    (name: string) => name.includes("ดีเซล") && !name.includes("พรีเมียม"),
+    (name: string) => name.includes("ดีเซล"),
+  ];
+
+  for (const matcher of prioritizedMatchers) {
+    const found = items.find((item) => matcher((item.OilName || "").trim().toLowerCase()));
+    if (found) return found;
+  }
+
+  return null;
+};
+
+const fetchBangchakDieselPrice = async (): Promise<DieselPriceRecord> => {
+  const response = await fetch(BANGCHAK_OIL_API_URL, {
+    headers: {
+      "Accept": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Bangchak API failed with status ${response.status}`);
+  }
+
+  const payload = await response.json() as BangchakOilResponse[];
+  const latest = Array.isArray(payload) && payload.length > 0 ? payload[0] : null;
+  if (!latest) {
+    throw new Error("Bangchak API returned empty payload");
+  }
+
+  const oilListRaw = latest.OilList || "[]";
+  const oilList = JSON.parse(oilListRaw) as BangchakOilEntry[];
+  if (!Array.isArray(oilList) || oilList.length === 0) {
+    throw new Error("Bangchak API OilList is empty");
+  }
+
+  const dieselEntry = selectDieselOilEntry(oilList);
+  if (!dieselEntry) {
+    throw new Error("Diesel price entry not found in Bangchak API");
+  }
+
+  const priceToday = toFiniteNumber(dieselEntry.PriceToday);
+  const priceYesterday = toFiniteNumber(dieselEntry.PriceYesterday);
+  if (priceToday === null || priceYesterday === null) {
+    throw new Error("Diesel price fields are invalid");
+  }
+
+  const differenceFromYesterday = Number(
+    (priceToday - priceYesterday).toFixed(2)
+  );
+  const changeDirection = differenceFromYesterday > 0 ?
+    "up" :
+    differenceFromYesterday < 0 ?
+      "down" :
+      "same";
+  const now = Date.now();
+
+  return {
+    fuelType: "diesel",
+    oilName: dieselEntry.OilName || "ไฮดีเซล S",
+    effectiveDate: getBangkokToday(),
+    priceToday,
+    priceYesterday,
+    differenceFromYesterday,
+    changeDirection,
+    summaryText: buildDieselPriceSummaryText(
+      priceToday,
+      differenceFromYesterday
+    ),
+    sourcePriceDate: latest.OilPriceDate,
+    sourcePriceTime: latest.OilPriceTime,
+    sourceRemark: latest.OilRemark,
+    sourceRemark2: latest.OilRemark2,
+    fetchedAt: now,
+    updatedAt: now,
+  };
+};
+
+const persistDieselPriceRecord = async (
+  record: DieselPriceRecord
+): Promise<void> => {
+  const batch = db.batch();
+  const collectionRef = db.collection(FUEL_PRICES_COLLECTION);
+  const latestRef = collectionRef.doc(LATEST_DIESEL_PRICE_DOC_ID);
+  const dailyRef = collectionRef.doc(record.effectiveDate);
+
+  batch.set(dailyRef, record, {merge: true});
+  batch.set(latestRef, record, {merge: true});
+  await batch.commit();
+};
+
+const getLatestDieselPriceRecord = async (): Promise<DieselPriceRecord | null> => {
+  const snapshot = await db.collection(FUEL_PRICES_COLLECTION)
+    .doc(LATEST_DIESEL_PRICE_DOC_ID)
+    .get();
+  if (!snapshot.exists) return null;
+  return snapshot.data() as DieselPriceRecord;
+};
+
+const syncLatestDieselPrice = async (): Promise<DieselPriceRecord> => {
+  const record = await fetchBangchakDieselPrice();
+  await persistDieselPriceRecord(record);
+  return record;
+};
+
+const ensureFreshDieselPriceRecord = async (): Promise<DieselPriceRecord> => {
+  const today = getBangkokToday();
+  const latest = await getLatestDieselPriceRecord();
+  if (latest && latest.effectiveDate === today) {
+    return latest;
+  }
+
+  return syncLatestDieselPrice();
+};
+
+const notifyDieselPriceUpdate = async (
+  slot: "morning" | "evening"
+): Promise<void> => {
+  const today = getBangkokToday();
+  const latest = await ensureFreshDieselPriceRecord();
+  const notificationField =
+    slot === "morning" ? "morningNotifiedOn" : "eveningNotifiedOn";
+
+  if (latest[notificationField] === today) {
+    logger.info("Diesel price notification already sent", {slot, today});
+    return;
+  }
+
+  const tokens = await getAllUserTokens();
+  if (tokens.length === 0) {
+    logger.info("Diesel price notification skipped (no tokens)", {slot, today});
+    return;
+  }
+
+  await sendPush(
+    tokens,
+    "อัปเดตราคาน้ำมันดีเซล",
+    latest.summaryText,
+    {
+      eventType: "fuel_price",
+      fuelType: latest.fuelType,
+      slot,
+      effectiveDate: latest.effectiveDate,
+      priceToday: formatBaht(latest.priceToday),
+      differenceFromYesterday: formatBaht(latest.differenceFromYesterday),
+    },
+    "/#/"
+  );
+
+  await db.collection(FUEL_PRICES_COLLECTION)
+    .doc(LATEST_DIESEL_PRICE_DOC_ID)
+    .set({
+      [notificationField]: today,
+      updatedAt: Date.now(),
+    }, {merge: true});
+
+  logger.info("Diesel price notification sent", {
+    slot,
+    today,
+    tokenCount: tokens.length,
+  });
 };
 
 const buildLineText = (
@@ -979,6 +1213,32 @@ export const rebuildDashboardMetrics = onCall(async (request) => {
     ok: true,
     monthKey,
   };
+});
+
+export const syncDailyDieselPrice = onSchedule({
+  schedule: "0 6 * * *",
+  timeZone: "Asia/Bangkok",
+}, async () => {
+  const record = await syncLatestDieselPrice();
+  logger.info("Daily diesel price synced", {
+    effectiveDate: record.effectiveDate,
+    priceToday: record.priceToday,
+    differenceFromYesterday: record.differenceFromYesterday,
+  });
+});
+
+export const notifyDieselPriceMorning = onSchedule({
+  schedule: "0 7 * * *",
+  timeZone: "Asia/Bangkok",
+}, async () => {
+  await notifyDieselPriceUpdate("morning");
+});
+
+export const notifyDieselPriceEvening = onSchedule({
+  schedule: "0 17 * * *",
+  timeZone: "Asia/Bangkok",
+}, async () => {
+  await notifyDieselPriceUpdate("evening");
 });
 
 export const setUserRole = onCall(async (request) => {

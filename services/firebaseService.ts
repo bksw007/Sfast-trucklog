@@ -26,13 +26,15 @@ import {
 import { httpsCallable } from 'firebase/functions';
 import imageCompression from 'browser-image-compression';
 import { cloudFunctions, db, storage } from '../firebase';
-import { JobEntry, AppData, OptionCategory, TodayJobEntry } from '../types';
+import { JobEntry, AppData, OptionCategory, TodayJobEntry, DieselPriceEntry } from '../types';
 
 // Collection names
 const JOBS_COLLECTION = 'jobs';
 const OPTIONS_COLLECTION = 'options';
 const TODAY_JOBS_COLLECTION = 'today_jobs';
 const DASHBOARD_METRICS_COLLECTION = 'dashboard_metrics';
+const FUEL_PRICES_COLLECTION = 'fuel_prices';
+const LATEST_DIESEL_PRICE_DOC_ID = 'latest_diesel';
 const NOTIFY_CALLABLE_NAME = 'dispatchTodayJobNotification';
 const SYNC_TODAY_JOB_CALLABLE_NAME = 'syncTodayJobToJobs';
 const REBUILD_DASHBOARD_METRICS_CALLABLE_NAME = 'rebuildDashboardMetrics';
@@ -57,6 +59,8 @@ export type DashboardMetricSummary = {
   vehicleTypeCounts: Array<{ name: string; count: number }>;
   updatedAt?: number;
 };
+
+export type LatestDieselPrice = DieselPriceEntry;
 
 const getMonthKeyFromDate = (dateStr?: string) => (dateStr || '').split('T')[0].slice(0, 7);
 
@@ -329,6 +333,33 @@ export const subscribeToDashboardMetricsByMonth = (
     },
     (error) => {
       console.error('[Firebase] Dashboard metrics subscription error:', error);
+      onError?.(error);
+    }
+  );
+
+  return unsubscribe;
+};
+
+export const subscribeToLatestDieselPrice = (
+  callback: (price: LatestDieselPrice | null) => void,
+  onError?: (error: Error) => void
+): (() => void) => {
+  const priceRef = doc(db, FUEL_PRICES_COLLECTION, LATEST_DIESEL_PRICE_DOC_ID);
+  const unsubscribe = onSnapshot(
+    priceRef,
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        callback(null);
+        return;
+      }
+
+      callback({
+        id: snapshot.id,
+        ...(snapshot.data() as LatestDieselPrice),
+      });
+    },
+    (error) => {
+      console.error('[Firebase] Latest diesel price subscription error:', error);
       onError?.(error);
     }
   );

@@ -109,6 +109,26 @@ export enum OptionCategory {
   CONTACT = 'contacts',
 }
 
+export interface DieselPriceEntry {
+  id?: string;
+  fuelType: 'diesel';
+  oilName: string;
+  effectiveDate: string; // YYYY-MM-DD
+  priceToday: number;
+  priceYesterday: number;
+  differenceFromYesterday: number;
+  changeDirection: 'up' | 'down' | 'same';
+  summaryText: string;
+  sourcePriceDate?: string;
+  sourcePriceTime?: string;
+  sourceRemark?: string;
+  sourceRemark2?: string;
+  fetchedAt: number;
+  updatedAt?: number;
+  morningNotifiedOn?: string;
+  eveningNotifiedOn?: string;
+}
+
 export type UserRole = 'admin' | 'user';
 export type FontScale = 'normal' | 'large';
 
