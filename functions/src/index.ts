@@ -380,7 +380,7 @@ const buildDieselPriceSummaryText = (
     `ราคาน้ำมันวันนี้ ${dateLabel}`,
     "น้ำมันดีเซลราคาลิตรละ",
     `${formatBaht(priceToday)} บาท`,
-    "คงเดิม 0.00 บาท",
+    "ราคาเท่าเดิมจากเมื่อวาน",
   ].join(" ");
 };
 

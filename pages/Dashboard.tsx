@@ -275,7 +275,7 @@ const Dashboard: React.FC = () => {
                   ? `เพิ่มขึ้น ${dieselDelta.toFixed(2)} บาท`
                   : latestDieselPrice.changeDirection === 'down'
                     ? `ลดลง ${Math.abs(dieselDelta).toFixed(2)} บาท`
-                    : 'คงเดิม'}
+                    : 'ราคาเท่าเดิมจากเมื่อวาน'}
               </div>
             )}
           </div>
