@@ -333,6 +333,12 @@ select.no-arrow {
   opacity: 0.4;
 }
 
+.dark .driver-clay::before,
+.dark .admin-clay::before {
+  background-image: none;
+  opacity: 0;
+}
+
 .driver-float-shape {
   position: absolute;
   border-radius: 999px;
