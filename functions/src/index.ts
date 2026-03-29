@@ -496,7 +496,51 @@ const getLatestDieselPriceRecord = async (
 };
 
 const syncLatestDieselPrice = async (): Promise<DieselPriceRecord> => {
-  const record = await fetchBangchakDieselPrice();
+  const fetchedRecord = await fetchBangchakDieselPrice();
+  const [latestRecord, todaySnapshot] = await Promise.all([
+    getLatestDieselPriceRecord(),
+    db
+      .collection(FUEL_PRICES_COLLECTION)
+      .doc(fetchedRecord.effectiveDate)
+      .get(),
+  ]);
+
+  let comparisonPrice = fetchedRecord.priceYesterday;
+  const todayStoredPrice = todaySnapshot.exists ?
+    toFiniteNumber(todaySnapshot.data()?.priceToday) :
+    null;
+
+  if (todayStoredPrice !== null) {
+    comparisonPrice = todayStoredPrice;
+  } else if (
+    latestRecord &&
+    latestRecord.effectiveDate !== fetchedRecord.effectiveDate
+  ) {
+    comparisonPrice = latestRecord.priceToday;
+  }
+
+  const differenceFromYesterday = Number(
+    (fetchedRecord.priceToday - comparisonPrice).toFixed(2)
+  );
+  const changeDirection = differenceFromYesterday > 0 ?
+    "up" :
+    differenceFromYesterday < 0 ?
+      "down" :
+      "same";
+
+  const record: DieselPriceRecord = {
+    ...fetchedRecord,
+    priceYesterday: comparisonPrice,
+    differenceFromYesterday,
+    changeDirection,
+    summaryText: buildDieselPriceSummaryText(
+      fetchedRecord.effectiveDate,
+      fetchedRecord.priceToday,
+      differenceFromYesterday
+    ),
+    updatedAt: Date.now(),
+  };
+
   await persistDieselPriceRecord(record);
   return record;
 };
