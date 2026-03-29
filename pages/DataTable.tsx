@@ -1569,64 +1569,51 @@ const DataTable: React.FC = () => {
             <button
               key={job.id}
               onClick={() => handleRowClick(job)}
-              className="driver-clay-card w-full overflow-hidden p-3.5 text-left"
+              className="driver-clay-card w-full overflow-hidden p-4 text-left transition hover:-translate-y-[1px] sm:p-5"
             >
-              <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0 space-y-1">
-                  <p className="break-words text-[15px] font-black leading-tight text-slate-700 sm:text-base">{resolveProductName(job)}</p>
-                  <p className="driver-clay-muted break-words text-[11px] leading-relaxed sm:text-xs">
-                    {formatDate(job.date)} | {job.workOrderNo || '-'}
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="break-words text-base font-black text-slate-700">
+                    {formatDate(job.date)}
+                  </p>
+                  <p className="mt-1 break-words text-sm font-semibold text-slate-600">
+                    {resolveProductName(job)}
                   </p>
                 </div>
-                <span className="driver-clay-chip self-start whitespace-nowrap bg-slate-100/85 text-slate-700 sm:self-auto">
+                <span className="driver-clay-chip self-start whitespace-nowrap bg-slate-100/85 text-slate-700">
                   {job.rounds} รอบ
                 </span>
               </div>
 
-              <div className="mt-3 space-y-2.5 text-[13px] text-slate-700">
-                <div className="driver-clay-soft flex items-center gap-2 rounded-xl px-3 py-2.5">
-                  <CalendarClock size={14} className="driver-clay-muted" />
-                  <span className="min-w-0 break-words">วันที่งาน: {formatDate(job.date)}</span>
+              <div className="mt-4 space-y-2 text-sm text-slate-700">
+                <div className="driver-clay-soft flex items-start gap-2 rounded-xl px-3 py-2.5">
+                  <MapPin size={14} className="driver-clay-muted mt-0.5 shrink-0" />
+                  <span className="min-w-0 break-words leading-relaxed">
+                    รับ: {job.pickupLocation || '-'}
+                  </span>
                 </div>
-                <div className="driver-clay-soft rounded-xl px-3 py-2.5">
-                  <div className="flex items-start gap-2">
-                    <MapPin size={14} className="driver-clay-muted mt-0.5 shrink-0" />
-                    <div className="min-w-0 space-y-1">
-                      <p className="break-words leading-relaxed">รับ: {job.pickupLocation || '-'}</p>
-                      <p className="break-words leading-relaxed">ส่ง: {job.dropoffLocation || '-'}</p>
-                    </div>
-                  </div>
+                <div className="driver-clay-soft flex items-start gap-2 rounded-xl px-3 py-2.5">
+                  <MapPin size={14} className="driver-clay-muted mt-0.5 shrink-0" />
+                  <span className="min-w-0 break-words leading-relaxed">
+                    ส่ง: {job.dropoffLocation || '-'}
+                  </span>
                 </div>
                 <div className="driver-clay-soft flex items-start gap-2 rounded-xl px-3 py-2.5">
                   <Truck size={14} className="driver-clay-muted mt-0.5 shrink-0" />
-                  <div className="min-w-0 space-y-1">
-                    <p className="break-words leading-relaxed">รถ: {job.vehicleType || '-'}</p>
-                    <p className="break-words leading-relaxed">ทะเบียน: {job.licensePlate || '-'}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 gap-2 pt-1 text-xs sm:grid-cols-2">
-                  <div className="driver-clay-soft px-3 py-2">
-                    <span className="driver-clay-muted block">คนขับ</span>
-                    <span className="block break-words text-slate-700">{job.driverName || '-'}</span>
-                  </div>
-                  <div className="driver-clay-soft px-3 py-2">
-                    <span className="driver-clay-muted block">Job / Inv</span>
-                    <span className="block break-words text-slate-700">{job.jobNo || '-'} / {resolveInvoiceNo(job) || '-'}</span>
-                  </div>
-                </div>
-                <div className="driver-clay-soft flex items-center gap-2 rounded-xl px-3 py-2.5">
-                  <Package2 size={14} className="driver-clay-muted shrink-0" />
-                  <span className="min-w-0 break-words">สินค้า: {resolveProductName(job)}</span>
-                </div>
-                <div className="driver-clay-soft flex items-center gap-2 rounded-xl px-3 py-2.5">
-                  <CalendarClock size={14} className="driver-clay-muted shrink-0" />
-                  <span>
-                    ค่าน้ำมัน/ทางด่วน:{' '}
-                    {job.fuelAndToll !== null && job.fuelAndToll !== undefined && job.fuelAndToll !== ''
-                      ? Number(job.fuelAndToll).toLocaleString()
-                      : '-'}
+                  <span className="min-w-0 break-words leading-relaxed">
+                    รถ: {job.vehicleType || '-'} | ทะเบียน: {job.licensePlate || '-'}
                   </span>
                 </div>
+              </div>
+
+              <div className="mt-3 space-y-1.5 text-xs">
+                <p className="driver-clay-muted break-words">
+                  เลขที่ใบแจ้งงาน: {resolveWorkOrderNo(job) || '-'}
+                </p>
+                <p className="driver-clay-muted break-words">
+                  คนขับ: {job.driverName || '-'}
+                </p>
+                <p className="driver-clay-muted">แตะการ์ดเพื่อดูรายละเอียด/แก้ไขงาน</p>
               </div>
             </button>
           ))
