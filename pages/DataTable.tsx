@@ -2,7 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { deleteJob as firebaseDeleteJob, subscribeToJobsByMonth, updateJob as firebaseUpdateJob } from '../services/firebaseService';
 import { JobEntry } from '../types';
 import {
+  ArrowUpDown,
   CalendarClock,
+  ChevronUp,
   Download,
   Eye,
   Edit2,
@@ -49,6 +51,8 @@ interface Filters {
   licensePlate: string;
 }
 
+type DateSortDirection = 'desc' | 'asc';
+
 const getCurrentMonthYear = () => {
   const now = new Date();
   return {
@@ -78,6 +82,7 @@ const DataTable: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Filters>(() => createDefaultFilters());
+  const [dateSortDirection, setDateSortDirection] = useState<DateSortDirection>('desc');
 
   const getJobYearMonth = (dateStr: string): { year: number; month: number } | null => {
     const datePart = dateStr?.split('T')[0];
@@ -193,6 +198,28 @@ const DataTable: React.FC = () => {
       return true;
     });
   }, [jobs, filters]);
+
+  const getDateSortValue = (dateValue: string): number => {
+    const normalizedDate = dateValue?.split('T')[0] || dateValue;
+    const parsedTime = new Date(normalizedDate).getTime();
+    return Number.isNaN(parsedTime) ? Number.POSITIVE_INFINITY : parsedTime;
+  };
+
+  const sortedJobs = useMemo(() => {
+    return [...filteredJobs].sort((a, b) => {
+      const dateDiff = getDateSortValue(a.date) - getDateSortValue(b.date);
+      if (dateDiff !== 0) {
+        return dateSortDirection === 'asc' ? dateDiff : -dateDiff;
+      }
+
+      const timestampDiff = (a.timestamp || 0) - (b.timestamp || 0);
+      return dateSortDirection === 'asc' ? timestampDiff : -timestampDiff;
+    });
+  }, [filteredJobs, dateSortDirection]);
+
+  const toggleDateSortDirection = () => {
+    setDateSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+  };
 
   const clearFilters = () => {
     setFilters(createDefaultFilters());
@@ -389,12 +416,6 @@ const DataTable: React.FC = () => {
         .replace(/\r\n/g, '\n')
         .replace(/\r/g, '\n');
       return `"${normalizedValue.replace(/"/g, '""')}"`;
-    };
-
-    const getDateSortValue = (dateValue: string): number => {
-      const normalizedDate = dateValue?.split('T')[0] || dateValue;
-      const parsedTime = new Date(normalizedDate).getTime();
-      return Number.isNaN(parsedTime) ? Number.POSITIVE_INFINITY : parsedTime;
     };
 
     const headers = ["Date", "Pickup", "Dropoff", "Rounds", "Product", "Vehicle", "Plate", "Driver", "Job No", "Inv No", "Fuel/Toll", "Remarks"];
@@ -1560,12 +1581,12 @@ const DataTable: React.FC = () => {
           <article className="driver-clay-card p-4 sm:p-5">
             <p className="driver-clay-muted text-sm">กำลังโหลดข้อมูล...</p>
           </article>
-        ) : filteredJobs.length === 0 ? (
+        ) : sortedJobs.length === 0 ? (
           <article className="driver-clay-card p-4 sm:p-5">
             <p className="driver-clay-muted text-sm">ไม่พบข้อมูล</p>
           </article>
         ) : (
-          filteredJobs.map((job) => (
+          sortedJobs.map((job) => (
             <button
               key={job.id}
               onClick={() => handleRowClick(job)}
@@ -1629,7 +1650,18 @@ const DataTable: React.FC = () => {
           <table className="w-full table-fixed text-sm">
             <thead className={isDark ? 'bg-dark-bg/70 text-dark-muted' : 'bg-slate-100/80 text-slate-600'}>
               <tr>
-                <th className={`sticky top-[74px] z-20 px-3 py-3 text-left font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[10%]' : 'w-[12%]'}`}>วันที่</th>
+                <th className={`sticky top-[74px] z-20 px-3 py-3 text-left font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[10%]' : 'w-[12%]'}`}>
+                  <button
+                    type="button"
+                    onClick={toggleDateSortDirection}
+                    className={`inline-flex items-center gap-1 rounded-lg px-1 py-0.5 transition focus:outline-none focus:ring-2 focus:ring-accent-primary/40 ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-200/70'}`}
+                    aria-label={`เรียงตามวันที่ ${dateSortDirection === 'desc' ? 'ใหม่ไปเก่า' : 'เก่าไปใหม่'}`}
+                    title={`เรียงตามวันที่ ${dateSortDirection === 'desc' ? 'ใหม่ไปเก่า' : 'เก่าไปใหม่'}`}
+                  >
+                    <span>วันที่</span>
+                    {dateSortDirection === 'desc' ? <ChevronDown size={15} /> : dateSortDirection === 'asc' ? <ChevronUp size={15} /> : <ArrowUpDown size={15} />}
+                  </button>
+                </th>
                 <th className={`sticky top-[74px] z-20 px-3 py-3 text-left font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[16%]' : 'w-[28%]'}`}>เส้นทาง</th>
                 <th className={`sticky top-[74px] z-20 px-3 py-3 text-center font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[6%]' : 'w-[7%]'}`}>รอบ</th>
                 <th className={`sticky top-[74px] z-20 px-3 py-3 text-left font-semibold ${isDark ? 'bg-dark-bg/70' : 'bg-slate-100/95'} ${isAdmin ? 'w-[10%]' : 'w-[11%]'}`}>สินค้า</th>
@@ -1652,14 +1684,14 @@ const DataTable: React.FC = () => {
                     กำลังโหลดข้อมูล...
                   </td>
                 </tr>
-              ) : filteredJobs.length === 0 ? (
+              ) : sortedJobs.length === 0 ? (
                 <tr>
                   <td colSpan={isAdmin ? 10 : 8} className="px-3 py-10 text-center text-sm text-slate-500">
                     ไม่พบข้อมูล
                   </td>
                 </tr>
               ) : (
-                filteredJobs.map((job) => (
+                sortedJobs.map((job) => (
                   <tr
                     key={job.id}
                     onClick={() => handleRowClick(job)}
