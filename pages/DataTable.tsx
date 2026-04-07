@@ -53,6 +53,21 @@ interface Filters {
 
 type DateSortDirection = 'desc' | 'asc';
 
+const getLocalDate = () => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - offset).toISOString().split('T')[0];
+};
+
+const asDateOnly = (dateStr: string) => (dateStr || '').split('T')[0];
+
+const DetailRow: React.FC<{ icon: React.ReactNode; value: string }> = ({ icon, value }) => (
+  <div className="flex items-start gap-2">
+    <div className="mt-0.5 shrink-0">{icon}</div>
+    <div className="min-w-0 break-words leading-relaxed">{value}</div>
+  </div>
+);
+
 const getCurrentMonthYear = () => {
   const now = new Date();
   return {
@@ -338,6 +353,48 @@ const DataTable: React.FC = () => {
   const editOriginImageUrls = useMemo(() => extractImageUrls(editData, 'origin'), [editData]);
   const editDestinationImageUrls = useMemo(() => extractImageUrls(editData, 'destination'), [editData]);
   const editDocumentImageUrls = useMemo(() => extractImageUrls(editData, 'document'), [editData]);
+  const todayDate = asDateOnly(getLocalDate());
+
+  const getMobileRunCardTone = (job: JobEntry) => {
+    const jobDate = asDateOnly(job.date || '');
+
+    if (jobDate > todayDate) {
+      return {
+        cardClass:
+          'border border-sky-300/90 bg-[linear-gradient(145deg,rgba(224,242,254,0.96),rgba(240,249,255,0.92))] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),10px_10px_22px_rgba(125,171,203,0.18),-8px_-8px_18px_rgba(255,255,255,0.88)]',
+        headerClass:
+          '-mx-4 -mt-4 mb-3 flex items-center justify-between rounded-t-[1.45rem] border-b border-sky-200/80 bg-[linear-gradient(90deg,#0284c7,#38bdf8)] px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-white sm:-mx-5 sm:-mt-5 sm:px-5',
+        title: 'งานล่วงหน้า',
+        subtitle: 'ตามแผนงานวิ่ง',
+        dateChipClass: 'border border-sky-200/70 bg-white/80 text-sky-700',
+        dateChipLabel: 'ล่วงหน้า',
+      };
+    }
+
+    if (jobDate < todayDate) {
+      return {
+        cardClass:
+          'border border-slate-300/90 bg-[linear-gradient(145deg,rgba(241,245,249,0.98),rgba(248,250,252,0.95))] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),10px_10px_22px_rgba(148,163,184,0.16),-8px_-8px_18px_rgba(255,255,255,0.9)]',
+        headerClass:
+          '-mx-4 -mt-4 mb-3 flex items-center justify-between rounded-t-[1.45rem] border-b border-slate-300/80 bg-[linear-gradient(90deg,#64748b,#94a3b8)] px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-white sm:-mx-5 sm:-mt-5 sm:px-5',
+        title: 'งานย้อนหลัง',
+        subtitle: 'ประวัติงานวิ่ง',
+        dateChipClass: 'border border-slate-300/80 bg-white/80 text-slate-600',
+        dateChipLabel: 'ย้อนหลัง',
+      };
+    }
+
+    return {
+      cardClass:
+        'border border-orange-200/90 bg-[linear-gradient(145deg,rgba(255,247,237,0.98),rgba(255,251,235,0.94))] shadow-[inset_0_1px_0_rgba(255,255,255,0.88),10px_10px_22px_rgba(215,176,126,0.14),-8px_-8px_18px_rgba(255,255,255,0.9)]',
+      headerClass:
+        '-mx-4 -mt-4 mb-3 flex items-center justify-between rounded-t-[1.45rem] border-b border-orange-200/80 bg-[linear-gradient(90deg,#f59e0b,#fbbf24)] px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-white sm:-mx-5 sm:-mt-5 sm:px-5',
+      title: 'งานวันนี้',
+      subtitle: 'ตารางงานวิ่ง',
+      dateChipClass: 'border border-orange-200/80 bg-white/80 text-orange-700',
+      dateChipLabel: 'วันนี้',
+    };
+  };
 
   // Handle edit toggle
   const handleEditClick = () => {
@@ -1586,58 +1643,83 @@ const DataTable: React.FC = () => {
             <p className="driver-clay-muted text-sm">ไม่พบข้อมูล</p>
           </article>
         ) : (
-          sortedJobs.map((job) => (
-            <button
-              key={job.id}
-              onClick={() => handleRowClick(job)}
-              className="driver-clay-card w-full overflow-hidden p-4 text-left transition hover:-translate-y-[1px] sm:p-5"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="break-words text-base font-black text-slate-700">
-                    {formatDate(job.date)}
-                  </p>
-                  <p className="mt-1 break-words text-sm font-semibold text-slate-600">
-                    {resolveProductName(job)}
-                  </p>
-                </div>
-                <span className="driver-clay-chip self-start whitespace-nowrap bg-slate-100/85 text-slate-700">
-                  {job.rounds} รอบ
-                </span>
-              </div>
+          sortedJobs.map((job) => {
+            const mobileTone = getMobileRunCardTone(job);
 
-              <div className="mt-4 space-y-2 text-sm text-slate-700">
-                <div className="driver-clay-soft flex items-start gap-2 rounded-xl px-3 py-2.5">
-                  <MapPin size={14} className="driver-clay-muted mt-0.5 shrink-0" />
-                  <span className="min-w-0 break-words leading-relaxed">
-                    รับ: {job.pickupLocation || '-'}
-                  </span>
+            return (
+              <article
+                key={job.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleRowClick(job)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    handleRowClick(job);
+                  }
+                }}
+                className={`driver-clay-card w-full cursor-pointer overflow-hidden p-4 text-left transition hover:-translate-y-[1px] sm:p-5 ${mobileTone.cardClass}`}
+              >
+                <div className={mobileTone.headerClass}>
+                  <span>{mobileTone.title}</span>
+                  <span>{mobileTone.subtitle}</span>
                 </div>
-                <div className="driver-clay-soft flex items-start gap-2 rounded-xl px-3 py-2.5">
-                  <MapPin size={14} className="driver-clay-muted mt-0.5 shrink-0" />
-                  <span className="min-w-0 break-words leading-relaxed">
-                    ส่ง: {job.dropoffLocation || '-'}
-                  </span>
-                </div>
-                <div className="driver-clay-soft flex items-start gap-2 rounded-xl px-3 py-2.5">
-                  <Truck size={14} className="driver-clay-muted mt-0.5 shrink-0" />
-                  <span className="min-w-0 break-words leading-relaxed">
-                    รถ: {job.vehicleType || '-'} | ทะเบียน: {job.licensePlate || '-'}
-                  </span>
-                </div>
-              </div>
 
-              <div className="mt-3 space-y-1.5 text-xs">
-                <p className="driver-clay-muted break-words">
-                  เลขที่ใบแจ้งงาน: {resolveWorkOrderNo(job) || '-'}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="break-words text-base font-black text-slate-700">
+                      {formatDate(job.date)}
+                    </p>
+                    <p className="mt-1 break-words text-sm font-semibold text-slate-600">
+                      {resolveProductName(job)}
+                    </p>
+                    <p className="driver-clay-muted mt-1 break-words text-xs">
+                      เลขที่ใบแจ้งงาน: {resolveWorkOrderNo(job) || '-'}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <span className="driver-clay-chip whitespace-nowrap bg-slate-100/85 text-slate-700">
+                      {job.rounds} รอบ
+                    </span>
+                    <span className={`driver-clay-chip whitespace-nowrap ${mobileTone.dateChipClass}`}>
+                      {mobileTone.dateChipLabel}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-3 space-y-1.5 text-[13px] text-slate-700 sm:mt-4 sm:space-y-2 sm:text-sm">
+                  <DetailRow
+                    icon={<CalendarClock size={14} className="driver-clay-muted" />}
+                    value={`วันที่งาน: ${formatDate(job.date)}`}
+                  />
+                  <DetailRow
+                    icon={<MapPin size={14} className="driver-clay-muted mt-0.5" />}
+                    value={`รับ: ${job.pickupLocation || '-'}`}
+                  />
+                  <DetailRow
+                    icon={<MapPin size={14} className="driver-clay-muted mt-0.5" />}
+                    value={`ส่ง: ${job.dropoffLocation || '-'}`}
+                  />
+                  <DetailRow
+                    icon={<Truck size={14} className="driver-clay-muted" />}
+                    value={`รถ: ${job.vehicleType || '-'} | ทะเบียน: ${job.licensePlate || '-'}`}
+                  />
+                  <DetailRow
+                    icon={<UserRound size={14} className="driver-clay-muted" />}
+                    value={`คนขับ: ${job.driverName || '-'}`}
+                  />
+                  <DetailRow
+                    icon={<Package2 size={14} className="driver-clay-muted" />}
+                    value={`สินค้า: ${resolveProductName(job)}`}
+                  />
+                </div>
+
+                <p className="driver-clay-muted mt-4 text-[11px] sm:mt-3 sm:text-xs">
+                  แตะการ์ดเพื่อดูรายละเอียดและแก้ไขงาน
                 </p>
-                <p className="driver-clay-muted break-words">
-                  คนขับ: {job.driverName || '-'}
-                </p>
-                <p className="driver-clay-muted">แตะการ์ดเพื่อดูรายละเอียด/แก้ไขงาน</p>
-              </div>
-            </button>
-          ))
+              </article>
+            );
+          })
         )}
       </div>
 
