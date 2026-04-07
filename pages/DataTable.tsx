@@ -374,13 +374,13 @@ const DataTable: React.FC = () => {
     if (jobDate < todayDate) {
       return {
         cardClass:
-          'border border-slate-300/90 bg-[linear-gradient(145deg,rgba(241,245,249,0.98),rgba(248,250,252,0.95))] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),10px_10px_22px_rgba(148,163,184,0.16),-8px_-8px_18px_rgba(255,255,255,0.9)]',
+          'border border-emerald-200/90 bg-[linear-gradient(145deg,rgba(236,253,245,0.98),rgba(240,253,250,0.95))] shadow-[inset_0_1px_0_rgba(255,255,255,0.88),10px_10px_22px_rgba(110,231,183,0.14),-8px_-8px_18px_rgba(255,255,255,0.9)]',
         headerClass:
-          '-mx-4 -mt-4 mb-3 flex items-center justify-between rounded-t-[1.45rem] border-b border-slate-300/80 bg-[linear-gradient(90deg,#64748b,#94a3b8)] px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-white sm:-mx-5 sm:-mt-5 sm:px-5',
-        title: 'งานย้อนหลัง',
+          '-mx-4 -mt-4 mb-3 flex items-center justify-between rounded-t-[1.45rem] border-b border-emerald-200/80 bg-[linear-gradient(90deg,#10b981,#34d399)] px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-white sm:-mx-5 sm:-mt-5 sm:px-5',
+        title: 'งานสำเร็จ',
         subtitle: 'ประวัติงานวิ่ง',
-        dateChipClass: 'border border-slate-300/80 bg-white/80 text-slate-600',
-        dateChipLabel: 'ย้อนหลัง',
+        dateChipClass: 'border border-emerald-200/80 bg-white/80 text-emerald-700',
+        dateChipLabel: 'สำเร็จ',
       };
     }
 
