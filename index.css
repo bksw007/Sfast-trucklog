@@ -854,12 +854,8 @@ select.no-arrow {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-image:
-    radial-gradient(rgba(255, 255, 255, 0.4) 1px, transparent 1px),
-    radial-gradient(rgba(180, 193, 214, 0.14) 0.8px, transparent 0.8px);
-  background-size: 20px 20px, 16px 16px;
-  background-position: 0 0, 8px 8px;
-  opacity: 0.35;
+  background-image: none;
+  opacity: 0;
 }
 
 .admin-clay [class*='bg-light-card'] {

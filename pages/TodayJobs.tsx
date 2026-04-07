@@ -141,6 +141,18 @@ const buildMonthOptions = (monthsBack: number, monthsForward = 0) => {
   return options;
 };
 
+const compareJobsByDateAsc = (a: TodayJobEntry, b: TodayJobEntry) => {
+  const dateA = getJobDate(a);
+  const dateB = getJobDate(b);
+  if (dateA !== dateB) return dateA.localeCompare(dateB);
+
+  const timeA = (a.pickup?.time || '').trim();
+  const timeB = (b.pickup?.time || '').trim();
+  if (timeA !== timeB) return timeA.localeCompare(timeB);
+
+  return (a.workOrderNo || a.ticketNo || '').localeCompare(b.workOrderNo || b.ticketNo || '');
+};
+
 const hasValue = (value?: string) => !!value && value.trim().length > 0;
 const isDeliveryBeforePickup = (pickupDate?: string, deliveryDate?: string) =>
   !!pickupDate && !!deliveryDate && deliveryDate < pickupDate;
@@ -236,6 +248,13 @@ const formatAssignableUserLabel = (staff: Pick<UserProfile, 'displayName' | 'rol
   `${staff.displayName} [${staff.role === 'admin' ? 'Admin' : 'User'}]`;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const DetailRow: React.FC<{ icon: React.ReactNode; value: string }> = ({ icon, value }) => (
+  <div className="flex items-start gap-2">
+    <div className="mt-0.5 shrink-0">{icon}</div>
+    <div className="min-w-0 break-words leading-relaxed">{value}</div>
+  </div>
+);
 
 const initialFormData = (): TodayJobForm => ({
   employerCompany: '',
@@ -430,11 +449,15 @@ const TodayJobs: React.FC = () => {
   const contactOptions = useMemo(() => sortUniqueOptions(options?.contacts ?? []), [options?.contacts]);
 
   const tableMonthOptions = useMemo(() => buildMonthOptions(11, 1), []);
+  const previousTableMonth = useMemo(() => shiftMonthKey(tableMonth, -1), [tableMonth]);
 
   useEffect(() => {
     const range =
       activeMainTab === 'table'
-        ? getMonthRange(tableMonth)
+        ? {
+            startDate: `${previousTableMonth}-01`,
+            endDateExclusive: `${shiftMonthKey(tableMonth, 1)}-01`,
+          }
         : {
             startDate: `${shiftMonthKey(getMonthKey(), -1)}-01`,
             endDateExclusive: `${shiftMonthKey(getMonthKey(), 2)}-01`,
@@ -450,7 +473,7 @@ const TodayJobs: React.FC = () => {
     );
 
     return () => unsubscribe();
-  }, [activeMainTab, tableMonth]);
+  }, [activeMainTab, previousTableMonth, tableMonth]);
 
   const assignableUsers = useMemo(
     () => (isAdmin ? adminUsers : []),
@@ -489,6 +512,13 @@ const TodayJobs: React.FC = () => {
     () => todayJobs.filter((job) => job.status === 'completed'),
     [todayJobs]
   );
+  const myAssignedJobs = useMemo(() => {
+    if (!user?.uid) return [] as TodayJobEntry[];
+
+    return jobs
+      .filter((job) => job.assignedToUid === user.uid && job.status !== 'completed')
+      .sort(compareJobsByDateAsc);
+  }, [jobs, user?.uid]);
 
   const upcomingWeeklyJobs = useMemo(() => {
     const today = parseDate(todayDate);
@@ -504,6 +534,20 @@ const TodayJobs: React.FC = () => {
     });
   }, [jobs, todayDate]);
 
+  const driverNameByUid = useMemo(() => {
+    const map = new Map<string, string>();
+    assignableUsers.forEach((user) => {
+      map.set(user.uid, user.fullName?.trim() || user.displayName || '');
+    });
+    return map;
+  }, [assignableUsers]);
+
+  const getDriverFullName = (job: TodayJobEntry) =>
+    (job.assignedToUid ? driverNameByUid.get(job.assignedToUid) : '') ||
+    job.assignedToName?.trim() ||
+    job.driverName ||
+    '-';
+
   const dashboardStats = useMemo(() => {
     const today = parseDate(todayDate);
     if (!today) {
@@ -518,7 +562,9 @@ const TodayJobs: React.FC = () => {
     }
 
     const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay());
+    const dayOfWeek = today.getDay();
+    const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    startOfWeek.setDate(today.getDate() - mondayOffset);
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6);
 
@@ -530,18 +576,19 @@ const TodayJobs: React.FC = () => {
     const weekJobsByDriver = new Map<string, TodayJobEntry[]>();
 
     jobs.forEach((job) => {
-      const driver = job.driverName || 'ไม่ระบุคนขับ';
       const jobDate = parseDate(getJobDate(job));
       if (!jobDate) return;
+      const driver = getDriverFullName(job);
+      const normalizedDriver = driver && driver !== '-' ? driver : 'ไม่ระบุผู้รับงาน';
 
       if (jobDate >= startOfWeek && jobDate <= endOfWeek) {
-        weekCountMap.set(driver, (weekCountMap.get(driver) || 0) + 1);
-        const current = weekJobsByDriver.get(driver) || [];
-        weekJobsByDriver.set(driver, [...current, job]);
+        weekCountMap.set(normalizedDriver, (weekCountMap.get(normalizedDriver) || 0) + 1);
+        const current = weekJobsByDriver.get(normalizedDriver) || [];
+        weekJobsByDriver.set(normalizedDriver, [...current, job]);
       }
 
       if (jobDate.getMonth() === month && jobDate.getFullYear() === year) {
-        monthCountMap.set(driver, (monthCountMap.get(driver) || 0) + 1);
+        monthCountMap.set(normalizedDriver, (monthCountMap.get(normalizedDriver) || 0) + 1);
       }
     });
 
@@ -562,27 +609,97 @@ const TodayJobs: React.FC = () => {
       monthByDriver,
       topDriverWeekJobs: weekByDriver[0] ? weekJobsByDriver.get(weekByDriver[0].name) || [] : [],
     };
-  }, [jobs, todayDate, todayJobs, todayCompletedJobs, upcomingWeeklyJobs]);
-
-  const driverNameByUid = useMemo(() => {
-    const map = new Map<string, string>();
-    assignableUsers.forEach((user) => {
-      map.set(user.uid, user.fullName?.trim() || user.displayName || '');
-    });
-    return map;
-  }, [assignableUsers]);
-
-  const getDriverFullName = (job: TodayJobEntry) =>
-    (job.assignedToUid ? driverNameByUid.get(job.assignedToUid) : '') ||
-    job.driverName ||
-    '-';
+  }, [getDriverFullName, jobs, todayDate, todayJobs, todayCompletedJobs, upcomingWeeklyJobs]);
 
   const getAssignedAppLabel = (job: TodayJobEntry) => (job.assignedToUid ? 'Yes' : 'No');
+  const isCarryOverJob = (job: TodayJobEntry) =>
+    job.status !== 'completed' && getMonthKey(getJobDate(job)) === previousTableMonth;
+  const isCurrentMonthOverdueJob = (job: TodayJobEntry) => {
+    const jobDate = getJobDate(job);
+    return job.status !== 'completed' && getMonthKey(jobDate) === tableMonth && jobDate < todayDate;
+  };
+
+  const getMobileCardTone = (job: TodayJobEntry) => {
+    const jobDate = getJobDate(job);
+
+    if (job.status === 'completed') {
+      return {
+        cardClass:
+          'border border-emerald-200/90 bg-[linear-gradient(145deg,rgba(236,253,245,0.98),rgba(240,253,250,0.95))] shadow-[inset_0_1px_0_rgba(255,255,255,0.88),10px_10px_22px_rgba(110,231,183,0.14),-8px_-8px_18px_rgba(255,255,255,0.9)]',
+        headerClass:
+          '-mx-3.5 -mt-3.5 mb-3 flex items-center justify-between rounded-t-[1.45rem] border-b border-emerald-200/80 bg-[linear-gradient(90deg,#10b981,#34d399)] px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-white sm:-mx-5 sm:-mt-5 sm:px-5',
+        title: 'งานเสร็จแล้ว',
+        subtitle: 'พร้อมตรวจสอบข้อมูล',
+        dateChipClass: 'border border-emerald-200/70 bg-white/80 text-emerald-700',
+        dateChipLabel: 'เสร็จแล้ว',
+        actionClass: 'driver-clay-btn driver-clay-btn-info min-h-[2.85rem] justify-center text-sm',
+      };
+    }
+
+    if (isCarryOverJob(job)) {
+      return {
+        cardClass:
+          'border border-rose-300/90 bg-[linear-gradient(145deg,rgba(255,241,242,0.98),rgba(255,245,245,0.95))] shadow-[inset_0_1px_0_rgba(255,255,255,0.88),10px_10px_22px_rgba(244,114,182,0.14),-8px_-8px_18px_rgba(255,255,255,0.9)]',
+        headerClass:
+          '-mx-3.5 -mt-3.5 mb-3 flex items-center justify-between rounded-t-[1.45rem] border-b border-rose-200/80 bg-[linear-gradient(90deg,#dc2626,#f43f5e)] px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-white sm:-mx-5 sm:-mt-5 sm:px-5',
+        title: 'งานค้าง',
+        subtitle: 'เลยกำหนด',
+        dateChipClass: 'border border-rose-200/80 bg-white/80 text-rose-700',
+        dateChipLabel: 'เลยเดือน',
+        actionClass: 'driver-clay-btn driver-clay-btn-warning min-h-[2.85rem] justify-center text-sm',
+      };
+    }
+
+    if (jobDate > todayDate) {
+      return {
+        cardClass:
+          'border border-sky-300/90 bg-[linear-gradient(145deg,rgba(224,242,254,0.96),rgba(240,249,255,0.92))] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),10px_10px_22px_rgba(125,171,203,0.18),-8px_-8px_18px_rgba(255,255,255,0.88)]',
+        headerClass:
+          '-mx-3.5 -mt-3.5 mb-3 flex items-center justify-between rounded-t-[1.45rem] border-b border-sky-200/80 bg-[linear-gradient(90deg,#0284c7,#38bdf8)] px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-white sm:-mx-5 sm:-mt-5 sm:px-5',
+        title: 'งานล่วงหน้า',
+        subtitle: 'เตรียมพร้อมดำเนินงาน',
+        dateChipClass: 'border border-sky-200/70 bg-white/80 text-sky-700',
+        dateChipLabel: 'ล่วงหน้า',
+        actionClass: 'driver-clay-btn driver-clay-btn-info min-h-[2.85rem] justify-center text-sm',
+      };
+    }
+
+    if (isCurrentMonthOverdueJob(job)) {
+      return {
+        cardClass:
+          'border border-slate-300/90 bg-[linear-gradient(145deg,rgba(241,245,249,0.98),rgba(248,250,252,0.95))] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),10px_10px_22px_rgba(148,163,184,0.16),-8px_-8px_18px_rgba(255,255,255,0.9)]',
+        headerClass:
+          '-mx-3.5 -mt-3.5 mb-3 flex items-center justify-between rounded-t-[1.45rem] border-b border-slate-300/80 bg-[linear-gradient(90deg,#64748b,#94a3b8)] px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-white sm:-mx-5 sm:-mt-5 sm:px-5',
+        title: 'งานค้าง',
+        subtitle: 'ต้องติดตามต่อ',
+        dateChipClass: 'border border-slate-300/80 bg-white/80 text-slate-600',
+        dateChipLabel: 'ย้อนหลัง',
+        actionClass: 'driver-clay-btn driver-clay-btn-warning min-h-[2.85rem] justify-center text-sm',
+      };
+    }
+
+    return {
+      cardClass:
+        'border border-orange-200/90 bg-[linear-gradient(145deg,rgba(255,247,237,0.98),rgba(255,251,235,0.94))] shadow-[inset_0_1px_0_rgba(255,255,255,0.88),10px_10px_22px_rgba(215,176,126,0.14),-8px_-8px_18px_rgba(255,255,255,0.9)]',
+      headerClass:
+        '-mx-3.5 -mt-3.5 mb-3 flex items-center justify-between rounded-t-[1.45rem] border-b border-orange-200/80 bg-[linear-gradient(90deg,#f59e0b,#fbbf24)] px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-white sm:-mx-5 sm:-mt-5 sm:px-5',
+      title: 'งานวันนี้',
+      subtitle: 'พร้อมดำเนินงาน',
+      dateChipClass: 'border border-orange-200/80 bg-white/80 text-orange-700',
+      dateChipLabel: 'วันนี้',
+      actionClass: 'driver-clay-btn driver-clay-btn-success min-h-[2.85rem] justify-center text-sm',
+    };
+  };
 
   const filteredJobs = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
 
-    return jobs.filter((job) => {
+    const visibleJobs = jobs.filter((job) => {
+      const jobMonth = getMonthKey(getJobDate(job));
+      const isInSelectedMonth = jobMonth === tableMonth;
+      const shouldIncludeCarryOver = jobMonth === previousTableMonth && job.status !== 'completed';
+
+      if (!isInSelectedMonth && !shouldIncludeCarryOver) return false;
       if (statusFilter !== 'all' && job.status !== statusFilter) return false;
       if (!keyword) return true;
 
@@ -602,7 +719,12 @@ const TodayJobs: React.FC = () => {
 
       return haystack.includes(keyword);
     });
-  }, [jobs, searchText, statusFilter]);
+
+    const currentMonthJobs = visibleJobs.filter((job) => getMonthKey(getJobDate(job)) === tableMonth);
+    const carryOverJobs = visibleJobs.filter((job) => isCarryOverJob(job));
+
+    return [...currentMonthJobs, ...carryOverJobs];
+  }, [jobs, previousTableMonth, searchText, statusFilter, tableMonth]);
 
   const selectedJob = useMemo(() => {
     if (!selectedJobId) return null;
@@ -1348,13 +1470,13 @@ const TodayJobs: React.FC = () => {
         <div role="tabpanel" id="today-panel-overview" aria-labelledby="today-tab-overview" className="space-y-6">
       <section className={`${cardClass} overflow-hidden`}>
         <div className="bg-gradient-to-r from-[#0f766e] via-[#0e7490] to-[#075985] px-6 py-4 text-white md:px-7 md:py-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
               <p className="text-[11px] uppercase tracking-[0.28em] text-white/80">Dispatch Center</p>
               <h1 className="mt-1 text-2xl font-black tracking-tight md:text-[2rem]">งานวันนี้</h1>
-              <p className="mt-1 text-sm text-white/90">แดชบอร์ด + ฟอร์มแจ้งงาน + ตารางประวัติในหน้าเดียว</p>
+              <p className="mt-1 max-w-[26rem] text-sm leading-relaxed text-white/90">สรุปภาพรวม ติดตามงาน และจัดการใบแจ้งงานได้ในหน้าเดียว</p>
             </div>
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/30 bg-white/15 shadow-[inset_1px_1px_0_rgba(255,255,255,0.35)]">
+            <div className="inline-flex h-12 w-12 shrink-0 items-center justify-center self-start rounded-2xl border border-white/30 bg-white/15 shadow-[inset_1px_1px_0_rgba(255,255,255,0.35)]">
               <ClipboardCheck className="h-7 w-7 text-white" />
             </div>
           </div>
@@ -1368,11 +1490,11 @@ const TodayJobs: React.FC = () => {
               <Truck className="h-5 w-5 text-cyan-500" />
             </div>
           </button>
-          <button type="button" onClick={() => openBadgeModal('งานเสร็จแล้ววันนี้', todayCompletedJobs)} className={`rounded-xl p-4 text-left transition hover:-translate-y-0.5 ${isDark ? 'bg-dark-bg/60 hover:bg-dark-bg/80' : 'bg-emerald-50 hover:bg-emerald-100'}`}>
-            <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-slate-600'}`}>งานเสร็จแล้ววันนี้</p>
+          <button type="button" onClick={() => openBadgeModal('งานของฉัน', myAssignedJobs)} className={`rounded-xl p-4 text-left transition hover:-translate-y-0.5 ${isDark ? 'bg-dark-bg/60 hover:bg-dark-bg/80' : 'bg-emerald-50 hover:bg-emerald-100'}`}>
+            <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-slate-600'}`}>งานของฉัน</p>
             <div className="mt-2 flex items-center justify-between">
-              <p className="text-2xl font-semibold">{dashboardStats.todayCompleted}</p>
-              <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+              <p className="text-2xl font-semibold">{myAssignedJobs.length}</p>
+              <UserCheck className="h-5 w-5 text-emerald-500" />
             </div>
           </button>
           <button type="button" onClick={() => openBadgeModal('งานที่กำลังจะมา (7 วัน)', upcomingWeeklyJobs)} className={`rounded-xl p-4 text-left transition hover:-translate-y-0.5 ${isDark ? 'bg-dark-bg/60 hover:bg-dark-bg/80' : 'bg-amber-50 hover:bg-amber-100'}`}>
@@ -1382,14 +1504,76 @@ const TodayJobs: React.FC = () => {
               <CalendarClock className="h-5 w-5 text-amber-500" />
             </div>
           </button>
-          <button type="button" onClick={() => openBadgeModal('งานของพนักงานที่รับงานสูงสุดสัปดาห์นี้', dashboardStats.topDriverWeekJobs)} className={`rounded-xl p-4 text-left transition hover:-translate-y-0.5 ${isDark ? 'bg-dark-bg/60 hover:bg-dark-bg/80' : 'bg-violet-50 hover:bg-violet-100'}`}>
-            <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-slate-600'}`}>พนักงานที่รับงานสูงสุดสัปดาห์นี้</p>
+          <button type="button" onClick={() => openBadgeModal('งานของพนักงานที่มีงานมากสุดในสัปดาห์นี้', dashboardStats.topDriverWeekJobs)} className={`rounded-xl p-4 text-left transition hover:-translate-y-0.5 ${isDark ? 'bg-dark-bg/60 hover:bg-dark-bg/80' : 'bg-violet-50 hover:bg-violet-100'}`}>
+            <p className={`text-xs ${isDark ? 'text-dark-muted' : 'text-slate-600'}`}>พนักงานที่มีงานมากสุดในสัปดาห์นี้</p>
             <div className="mt-2 flex items-center justify-between">
               <p className="text-sm font-semibold">{dashboardStats.weekByDriver[0]?.name || '-'}</p>
               <UserCheck className="h-5 w-5 text-violet-500" />
             </div>
             <p className="mt-1 text-xs text-violet-500">{dashboardStats.weekByDriver[0]?.count || 0} งาน</p>
           </button>
+        </div>
+      </section>
+
+      <section className={`${cardClass} p-5`}>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold">งานของฉัน</h2>
+            <p className={`mt-1 text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+              งานที่ถูก assign ให้ฉันและยังไม่เสร็จ
+            </p>
+          </div>
+          <span className={`inline-flex min-w-10 items-center justify-center rounded-full px-3 py-1 text-sm font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-emerald-100 text-emerald-700'}`}>
+            {myAssignedJobs.length}
+          </span>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {myAssignedJobs.length === 0 ? (
+            <p className={`text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>ยังไม่มีงานที่ assign ให้คุณในตอนนี้</p>
+          ) : (
+            myAssignedJobs.map((job) => (
+              <button
+                key={job.id}
+                type="button"
+                onClick={() => openJobDetail(job)}
+                className="driver-clay-soft w-full rounded-2xl p-4 text-left transition hover:-translate-y-0.5"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="break-words text-sm font-black text-slate-700">
+                      {job.employerCompany || '-'}
+                    </p>
+                    <p className="mt-1 break-words text-sm font-semibold text-slate-600">
+                      {job.productName || '-'}
+                    </p>
+                    <p className="driver-clay-muted mt-1 text-xs">
+                      เลขที่ใบสั่งงาน: {job.workOrderNo || job.ticketNo || '-'}
+                    </p>
+                  </div>
+                  <span className={`driver-clay-chip shrink-0 whitespace-nowrap ${statusBadgeClass(job.status)}`}>
+                    {statusIcon(job.status)}
+                    {statusLabelMap[job.status]}
+                  </span>
+                </div>
+
+                <div className="mt-3 space-y-1.5 text-sm text-slate-700">
+                  <DetailRow
+                    icon={<CalendarClock size={14} className="driver-clay-muted" />}
+                    value={`วันที่รับงาน: ${getJobDate(job) || '-'}`}
+                  />
+                  <DetailRow
+                    icon={<MapPin size={14} className="driver-clay-muted" />}
+                    value={`รับ: ${job.pickup.location || '-'}`}
+                  />
+                  <DetailRow
+                    icon={<MapPin size={14} className="driver-clay-muted" />}
+                    value={`ส่ง: ${job.delivery.location || '-'}`}
+                  />
+                </div>
+              </button>
+            ))
+          )}
         </div>
       </section>
 
@@ -2055,7 +2239,7 @@ const TodayJobs: React.FC = () => {
         <div className={`flex flex-col gap-3 border-b px-4 py-3 md:flex-row md:items-center md:justify-between md:px-7 ${isDark ? 'border-dark-muted/25 bg-dark-bg/40' : 'border-light-muted/20 bg-slate-50'}`}>
           <div>
             <h3 className="text-base font-semibold">ค้นหาและกรองข้อมูล</h3>
-            <p className={`mt-1 text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>เลือกสถานะหรือพิมพ์คำค้นเพื่อดูรายการที่ต้องการ</p>
+            <p className={`mt-1 text-sm ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>แสดงงานของเดือนที่เลือก และงานค้างจากเดือนก่อนหน้าที่ยังไม่เสร็จ</p>
           </div>
           <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 xl:flex xl:w-auto xl:flex-wrap">
             <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="ค้นหา Job No./คนขับ/ทะเบียน" className={isDark ? 'min-h-11 w-full rounded-xl border border-dark-muted/35 bg-dark-bg/50 px-3 py-2.5 text-[16px] md:text-sm text-dark-text focus:border-accent-primary focus:outline-none xl:min-w-[18rem]' : 'min-h-11 w-full rounded-xl border border-light-muted/35 bg-white px-3 py-2.5 text-[16px] md:text-sm text-light-text focus:border-accent-primary focus:outline-none xl:min-w-[18rem]'} />
@@ -2081,98 +2265,111 @@ const TodayJobs: React.FC = () => {
               <p className="driver-clay-muted text-sm">ยังไม่มีข้อมูลในตารางการแจ้งงาน</p>
             </article>
           ) : (
-            filteredJobs.map((job) => (
-              <button
-                key={job.id}
-                type="button"
-                onClick={() => openJobDetail(job)}
-                className="driver-clay-card w-full overflow-hidden p-3.5 text-left sm:p-5"
-              >
-                <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 space-y-1">
-                    <p className="break-words text-[15px] font-black leading-tight text-slate-700 sm:text-base">
-                      {job.employerCompany || '-'} | {job.productName || '-'}
-                    </p>
-                    <p className="driver-clay-muted break-words text-[11px] leading-relaxed sm:text-xs">
-                      เลขที่ใบสั่งงาน: {job.workOrderNo || job.ticketNo || '-'}
-                    </p>
+            filteredJobs.map((job) => {
+              const mobileTone = getMobileCardTone(job);
+
+              return (
+                <article
+                  key={job.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openJobDetail(job)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      openJobDetail(job);
+                    }
+                  }}
+                  className={`driver-clay-card w-full cursor-pointer overflow-hidden p-3.5 text-left transition hover:-translate-y-[1px] sm:p-5 ${mobileTone.cardClass}`}
+                >
+                  <div className={mobileTone.headerClass}>
+                    <span>{mobileTone.title}</span>
+                    <span>{mobileTone.subtitle}</span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-1.5 sm:max-w-[40%] sm:justify-end">
-                    <span className={`driver-clay-chip ${statusBadgeClass(job.status)}`}>
-                      {statusIcon(job.status)}
-                      {statusLabelMap[job.status]}
-                    </span>
-                    {job.status === 'in_progress' && job.readyToClose && (
-                      <span className="driver-clay-chip bg-indigo-100/90 text-indigo-700">
-                        <CheckCircle2 size={13} />
-                        รอจบงาน
+
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="break-words text-base font-black text-slate-700">
+                        {job.employerCompany || '-'}
+                      </p>
+                      <p className="mt-1 break-words text-sm font-semibold text-slate-600">
+                        {job.productName || '-'}
+                      </p>
+                      <p className="driver-clay-muted mt-1 break-words text-xs">
+                        เลขที่ใบสั่งงาน: {job.workOrderNo || job.ticketNo || '-'}
+                      </p>
+                    </div>
+
+                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                      <span className={`driver-clay-chip whitespace-nowrap ${statusBadgeClass(job.status)}`}>
+                        {statusIcon(job.status)}
+                        {statusLabelMap[job.status]}
                       </span>
+                      {job.status === 'in_progress' && job.readyToClose && (
+                        <span className="driver-clay-chip whitespace-nowrap bg-indigo-100/90 text-indigo-700">
+                          <CheckCircle2 size={13} />
+                          รอจบงาน
+                        </span>
+                      )}
+                      <span className={`driver-clay-chip whitespace-nowrap ${mobileTone.dateChipClass}`}>
+                        {mobileTone.dateChipLabel}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 space-y-1.5 text-[13px] text-slate-700 sm:mt-4 sm:space-y-2 sm:text-sm">
+                    <DetailRow
+                      icon={<CalendarClock size={14} className="driver-clay-muted" />}
+                      value={`วันที่รับงาน: ${getJobDate(job) || '-'}`}
+                    />
+                    <DetailRow
+                      icon={<MapPin size={14} className="driver-clay-muted mt-0.5" />}
+                      value={`รับ: ${job.pickup.location || '-'}`}
+                    />
+                    <DetailRow
+                      icon={<MapPin size={14} className="driver-clay-muted mt-0.5" />}
+                      value={`ส่ง: ${job.delivery.location || '-'}`}
+                    />
+                    <DetailRow
+                      icon={<Truck size={14} className="driver-clay-muted" />}
+                      value={`คนขับ: ${getDriverFullName(job)} | ทะเบียน: ${job.plateNo || '-'}`}
+                    />
+                    <DetailRow
+                      icon={<Package2 size={14} className="driver-clay-muted" />}
+                      value={`จำนวนรอบ: ${resolveRounds(job)}`}
+                    />
+                    {hasValue(job.pickup.time) && (
+                      <DetailRow
+                        icon={<Clock3 size={14} className="driver-clay-muted" />}
+                        value={`เวลารับ: ${`${job.pickup.date || '-'} ${job.pickup.time || ''}`.trim()}`}
+                      />
+                    )}
+                    {hasValue(job.delivery.time) && (
+                      <DetailRow
+                        icon={<Clock3 size={14} className="driver-clay-muted" />}
+                        value={`เวลาส่ง: ${`${job.delivery.date || '-'} ${job.delivery.time || ''}`.trim()}`}
+                      />
+                    )}
+                    {hasValue(job.pickup.contact) && (
+                      <DetailRow
+                        icon={<UserRound size={14} className="driver-clay-muted" />}
+                        value={`ผู้ติดต่อจุดรับ: ${job.pickup.contact}`}
+                      />
+                    )}
+                    {hasValue(job.delivery.contact) && (
+                      <DetailRow
+                        icon={<UserRound size={14} className="driver-clay-muted" />}
+                        value={`ผู้ติดต่อจุดส่ง: ${job.delivery.contact}`}
+                      />
                     )}
                   </div>
-                </div>
 
-                <div className="mt-3 space-y-2.5 text-[13px] text-slate-700 sm:text-sm">
-                  <div className="driver-clay-soft flex items-center gap-2 rounded-xl px-3 py-2.5">
-                    <CalendarClock size={14} className="driver-clay-muted" />
-                    <span className="min-w-0 break-words">วันที่รับงาน: {getJobDate(job) || '-'}</span>
-                  </div>
-
-                  <div className="driver-clay-soft rounded-xl px-3 py-2.5">
-                    <div className="flex items-start gap-2">
-                      <MapPin size={14} className="driver-clay-muted mt-0.5 shrink-0" />
-                      <div className="min-w-0 space-y-1">
-                        <p className="break-words leading-relaxed">รับ: {job.pickup.location || '-'}</p>
-                        {(hasValue(job.pickup.date) || hasValue(job.pickup.time)) && (
-                          <p className="driver-clay-muted flex items-center gap-1 text-[11px] leading-relaxed sm:text-xs">
-                            <Clock3 size={12} />
-                            {`${job.pickup.date || '-'} ${job.pickup.time || ''}`.trim()}
-                          </p>
-                        )}
-                        {hasValue(job.pickup.contact) && (
-                          <p className="driver-clay-muted flex items-center gap-1 text-[11px] leading-relaxed sm:text-xs">
-                            <UserRound size={12} />
-                            ผู้ติดต่อ: {job.pickup.contact}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="driver-clay-soft rounded-xl px-3 py-2.5">
-                    <MapPin size={14} className="driver-clay-muted mt-0.5" />
-                    <div className="min-w-0 space-y-1">
-                      <p className="break-words leading-relaxed">ส่ง: {job.delivery.location || '-'}</p>
-                      {(hasValue(job.delivery.date) || hasValue(job.delivery.time)) && (
-                        <p className="driver-clay-muted flex items-center gap-1 text-[11px] leading-relaxed sm:text-xs">
-                          <Clock3 size={12} />
-                          {`${job.delivery.date || '-'} ${job.delivery.time || ''}`.trim()}
-                        </p>
-                      )}
-                      {hasValue(job.delivery.contact) && (
-                        <p className="driver-clay-muted flex items-center gap-1 text-[11px] leading-relaxed sm:text-xs">
-                          <UserRound size={12} />
-                          ผู้ติดต่อ: {job.delivery.contact}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <div className="driver-clay-soft flex items-center gap-2 rounded-xl px-3 py-2.5">
-                      <Package2 size={14} className="driver-clay-muted shrink-0" />
-                      <span className="min-w-0 break-words">จำนวนรอบ: {resolveRounds(job)}</span>
-                    </div>
-                    <div className="driver-clay-soft flex items-center gap-2 rounded-xl px-3 py-2.5">
-                      <Truck size={14} className="driver-clay-muted shrink-0" />
-                      <span className="min-w-0 break-words">ทะเบียนรถ: {job.plateNo || '-'}</span>
-                    </div>
-                  </div>
-                  {job.readyToClose && (
-                    <p className="text-xs font-medium text-amber-600">พร้อมจบงานแล้ว</p>
-                  )}
-                </div>
-              </button>
-            ))
+                  <p className="driver-clay-muted mt-4 text-[11px] sm:mt-3 sm:text-xs">
+                    แตะการ์ดเพื่อเปิดรายละเอียดและจัดการรายการ
+                  </p>
+                </article>
+              );
+            })
           )}
         </div>
 
@@ -2196,7 +2393,23 @@ const TodayJobs: React.FC = () => {
                 </tr>
               ) : (
                 filteredJobs.map((job) => (
-                  <tr key={job.id} onClick={() => openJobDetail(job)} className={`cursor-pointer transition ${isDark ? 'border-t border-dark-muted/20 hover:bg-white/5' : 'border-t border-light-muted/20 hover:bg-slate-50'}`}>
+                  <tr
+                    key={job.id}
+                    onClick={() => openJobDetail(job)}
+                    className={`cursor-pointer transition ${
+                      isCarryOverJob(job)
+                        ? isDark
+                          ? 'border-t border-rose-400/20 bg-rose-500/10 hover:bg-rose-500/15'
+                          : 'border-t border-rose-200/80 bg-rose-50/70 hover:bg-rose-100/70'
+                        : isCurrentMonthOverdueJob(job)
+                          ? isDark
+                            ? 'border-t border-dark-muted/20 bg-white/5 hover:bg-white/10'
+                            : 'border-t border-light-muted/20 bg-slate-50 hover:bg-slate-100'
+                          : isDark
+                            ? 'border-t border-dark-muted/20 hover:bg-white/5'
+                            : 'border-t border-light-muted/20 hover:bg-slate-50'
+                    }`}
+                  >
                     <td className="px-3 py-3 align-top">{getJobDate(job)}</td>
                     <td className="px-3 py-3 align-top">{job.employerCompany || '-'}</td>
                     <td className="px-3 py-3 align-top text-xs">
