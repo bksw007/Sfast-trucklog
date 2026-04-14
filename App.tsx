@@ -113,18 +113,19 @@ const AdminRoutes: React.FC = () => (
   <ProtectedContent>
     <AdminUsersProvider>
       <Routes>
-        <Route path="/login" element={<Navigate to="/?tab=income" replace />} />
-        <Route path="/" element={
-          <Layout>
-            <Suspense fallback={<PageLoader />}>
-              <AdminAccounting />
-            </Suspense>
-          </Layout>
-        } />
+        <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={
           <Layout>
             <Suspense fallback={<PageLoader />}>
               <Dashboard />
+            </Suspense>
+          </Layout>
+        } />
+        <Route path="/accounting" element={
+          <Layout>
+            <Suspense fallback={<PageLoader />}>
+              <AdminAccounting />
             </Suspense>
           </Layout>
         } />
@@ -156,8 +157,8 @@ const AdminRoutes: React.FC = () => (
             </Suspense>
           </Layout>
         } />
-        <Route path="/driver/*" element={<Navigate to="/" replace />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/driver/*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </AdminUsersProvider>
   </ProtectedContent>

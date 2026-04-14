@@ -1,18 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
   Calendar,
-  ClipboardList,
   Download,
-  FileText,
   Image as ImageIcon,
-  LayoutDashboard,
   Pencil,
   Save,
-  Settings as SettingsIcon,
-  Table2,
   Trash2,
   Upload,
 } from 'lucide-react';
@@ -77,14 +72,6 @@ const MONTHS = [
   { value: 10, label: 'ตุลาคม' },
   { value: 11, label: 'พฤศจิกายน' },
   { value: 12, label: 'ธันวาคม' },
-];
-
-const SECONDARY_MENU = [
-  { to: '/dashboard', label: 'แดชบอร์ด', icon: LayoutDashboard },
-  { to: '/entry', label: 'ฟอร์มบันทึกงาน', icon: FileText },
-  { to: '/today', label: 'งานวันนี้', icon: ClipboardList },
-  { to: '/data', label: 'ข้อมูลงานวิ่ง', icon: Table2 },
-  { to: '/settings', label: 'ตั้งค่า', icon: SettingsIcon },
 ];
 
 const INCOME_CATEGORIES = ['ค่าขนส่ง', 'รายรับลูกค้า', 'รับคืนเงิน', 'รายได้อื่นๆ'];
@@ -787,8 +774,6 @@ const AdminAccounting: React.FC = () => {
   const ghostButtonClass = isDark
     ? 'inline-flex min-w-0 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-center text-sm font-semibold leading-tight text-[#e4ecff]'
     : 'inline-flex min-w-0 items-center justify-center gap-2 rounded-2xl border border-[#d5e4d7] bg-white px-4 py-3 text-center text-sm font-semibold leading-tight text-slate-700';
-  const secondaryMenuGridClass = 'grid grid-cols-2 gap-2 xl:flex';
-  const secondaryMenuButtonClass = `${ghostButtonClass} w-full justify-start px-3 text-left`;
   const tabGridClass = 'grid grid-cols-2 gap-2 md:grid-cols-3 xl:flex';
   const tabChipClass = (selected: boolean) => `${tabButtonClass(selected)} min-h-[3rem] w-full justify-center px-3`;
   const keypadButtonClass = isDark
@@ -802,10 +787,10 @@ const AdminAccounting: React.FC = () => {
         <div className="flex flex-col gap-5 px-5 py-6 md:px-8 md:py-7">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div className="space-y-2">
-              <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${mutedTextClass}`}>เมนูหลัก</p>
+              <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${mutedTextClass}`}>งานบัญชี</p>
               <h1 className="text-3xl font-black tracking-tight md:text-4xl">บันทึกรายรับ-รายจ่าย</h1>
               <p className={`max-w-3xl text-sm leading-6 ${mutedTextClass}`}>
-                บันทึกรายการรายวัน เก็บเลขอ้างอิงเอกสารเป็นรายเดือน และสร้าง PDF สำหรับสมุดบัญชีรายรับ-รายจ่ายหรือใบรับรองแทนใบเสร็จรับเงินได้จากหน้าจอนี้
+                หน้านี้เป็นเมนูย่อยของระบบสำหรับงานรายรับ-รายจ่าย ใช้บันทึกรายการรายวัน เก็บเลขอ้างอิงเอกสารเป็นรายเดือน และสร้าง PDF สำหรับสมุดบัญชีรายรับ-รายจ่ายหรือใบรับรองแทนใบเสร็จรับเงิน
               </p>
             </div>
 
@@ -832,28 +817,7 @@ const AdminAccounting: React.FC = () => {
               </div>
             </div>
           </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className={`text-sm font-semibold ${mutedTextClass}`}>เมนูรอง</p>
-              {notice ? <p className="text-sm font-semibold text-emerald-600">{notice}</p> : null}
-            </div>
-            <div className={secondaryMenuGridClass}>
-              {SECONDARY_MENU.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    className={secondaryMenuButtonClass}
-                  >
-                    <Icon size={16} />
-                    <span className="min-w-0 break-words">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
+          {notice ? <p className="text-sm font-semibold text-emerald-600">{notice}</p> : null}
         </div>
       </section>
 

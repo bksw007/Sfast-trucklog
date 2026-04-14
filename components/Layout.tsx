@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
+  LayoutDashboard,
   Table2,
   LogOut,
   Moon,
@@ -36,7 +37,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isDark = theme === 'dark';
 
   const navItems = [
-    { path: '/', label: 'รับ-จ่าย', icon: FileText },
+    { path: '/dashboard', label: 'แดชบอร์ด', icon: LayoutDashboard },
+    { path: '/accounting', label: 'รับ-จ่าย', icon: FileText },
     { path: '/today', label: 'งานวันนี้', icon: ClipboardList },
     { path: '/data', label: 'ข้อมูลงานวิ่ง', icon: Table2 },
     { path: '/settings', label: 'ตั้งค่า', icon: Settings },
@@ -382,7 +384,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </div>
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 px-2 pb-[calc(0.45rem+env(safe-area-inset-bottom))] pt-2 md:hidden">
-        <div className="driver-mobile-nav-surface mx-auto grid w-full max-w-6xl grid-cols-4 gap-1.5 rounded-[22px] border border-transparent p-1.5">
+        <div className="driver-mobile-nav-surface mx-auto grid w-full max-w-6xl grid-cols-5 gap-1.5 rounded-[22px] border border-transparent p-1.5">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
