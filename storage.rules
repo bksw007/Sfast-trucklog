@@ -5,6 +5,11 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    function isAdmin() {
+      return request.auth != null &&
+        request.auth.token.role == 'admin';
+    }
+
     function isImageUpload() {
       return request.resource != null &&
         request.resource.contentType.matches('image/.*');
@@ -23,6 +28,14 @@ service firebase.storage {
     match /jobs/{jobId}/{allPaths=**} {
       allow read: if isSignedIn();
       allow write: if isSignedIn() &&
+        isImageUpload() &&
+        request.resource.size < 12 * 1024 * 1024;
+    }
+
+    // Accounting proof images
+    match /accounting/{entryId}/{allPaths=**} {
+      allow read: if isAdmin();
+      allow write: if isAdmin() &&
         isImageUpload() &&
         request.resource.size < 12 * 1024 * 1024;
     }

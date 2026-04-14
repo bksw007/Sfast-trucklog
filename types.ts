@@ -31,6 +31,31 @@ export interface JobEntry {
   timestamp: number;
 }
 
+export type AccountingEntryType = 'income' | 'expense';
+export type AccountingPaymentMethod = 'cash' | 'transfer' | 'card' | 'other';
+export type AccountingDocumentStatus = 'receipt' | 'replacement_receipt' | 'other_evidence';
+
+export interface AccountingEntry {
+  id: string;
+  transactionDate: string; // YYYY-MM-DD
+  type: AccountingEntryType;
+  amount: number;
+  paymentMethod: AccountingPaymentMethod;
+  description: string;
+  category: string;
+  counterpartyName?: string;
+  counterpartyTaxId?: string;
+  referenceNo?: string;
+  note?: string;
+  documentStatus: AccountingDocumentStatus;
+  reasonNoReceipt?: string;
+  proofUrls?: string[];
+  createdByUid?: string;
+  createdByName?: string;
+  updatedAt?: number;
+  timestamp: number;
+}
+
 export interface DispatchPoint {
   location: string;
   date: string;
@@ -153,4 +178,9 @@ export interface UserProfile {
   fontScale?: FontScale;
   fcmTokens?: string[];
   lastPushTokenUpdatedAt?: number;
+  citizenId?: string;
+  businessName?: string;
+  businessTaxId?: string;
+  businessBranchName?: string;
+  signatureName?: string;
 }

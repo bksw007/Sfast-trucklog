@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard,
   Table2,
   LogOut,
   Moon,
@@ -14,6 +13,7 @@ import {
   Menu,
   MoreHorizontal,
   X,
+  FileText,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -36,7 +36,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isDark = theme === 'dark';
 
   const navItems = [
-    { path: '/', label: 'แดชบอร์ด', icon: LayoutDashboard },
+    { path: '/', label: 'รับ-จ่าย', icon: FileText },
     { path: '/today', label: 'งานวันนี้', icon: ClipboardList },
     { path: '/data', label: 'ข้อมูลงานวิ่ง', icon: Table2 },
     { path: '/settings', label: 'ตั้งค่า', icon: Settings },

@@ -26,7 +26,14 @@ import {
 import { httpsCallable } from 'firebase/functions';
 import imageCompression from 'browser-image-compression';
 import { cloudFunctions, db, storage } from '../firebase';
-import { JobEntry, AppData, OptionCategory, TodayJobEntry, DieselPriceEntry } from '../types';
+import {
+  JobEntry,
+  AppData,
+  OptionCategory,
+  TodayJobEntry,
+  DieselPriceEntry,
+  AccountingEntry,
+} from '../types';
 
 // Collection names
 const JOBS_COLLECTION = 'jobs';
@@ -34,6 +41,7 @@ const OPTIONS_COLLECTION = 'options';
 const TODAY_JOBS_COLLECTION = 'today_jobs';
 const DASHBOARD_METRICS_COLLECTION = 'dashboard_metrics';
 const FUEL_PRICES_COLLECTION = 'fuel_prices';
+const ACCOUNTING_ENTRIES_COLLECTION = 'accounting_entries';
 const LATEST_DIESEL_PRICE_DOC_ID = 'latest_diesel';
 const NOTIFY_CALLABLE_NAME = 'dispatchTodayJobNotification';
 const SYNC_TODAY_JOB_CALLABLE_NAME = 'syncTodayJobToJobs';
@@ -242,6 +250,96 @@ export const deleteImage = async (imageUrl: string): Promise<void> => {
   } catch (error) {
     console.error('[Firebase] Failed to delete image:', error);
   }
+};
+
+export const uploadAccountingProofs = async (
+  files: File[],
+  entryId: string
+): Promise<string[]> => {
+  const uploadPromises = files.map(async (file, index) => {
+    const compressedFile = await compressImage(file);
+    const timestamp = Date.now();
+    const fileName = `${timestamp}_${index}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+    const storageRef = ref(storage, `accounting/${entryId}/${fileName}`);
+    const snapshot = await uploadBytes(storageRef, compressedFile);
+    return getDownloadURL(snapshot.ref);
+  });
+
+  return Promise.all(uploadPromises);
+};
+
+export const subscribeToAccountingEntries = (
+  callback: (entries: AccountingEntry[]) => void,
+  onError?: (error: Error) => void
+): (() => void) => {
+  const accountingQuery = query(
+    collection(db, ACCOUNTING_ENTRIES_COLLECTION),
+    orderBy('timestamp', 'desc')
+  );
+
+  return onSnapshot(
+    accountingQuery,
+    (snapshot) => {
+      const rows = snapshot.docs.map((row) => {
+        const raw = row.data() as Omit<AccountingEntry, 'id'>;
+        return {
+          id: row.id,
+          ...raw,
+          proofUrls: Array.isArray(raw.proofUrls)
+            ? raw.proofUrls.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+            : [],
+        } as AccountingEntry;
+      });
+      callback(rows);
+    },
+    (error) => {
+      console.error('[Firebase] Accounting subscribe failed:', error);
+      onError?.(error);
+    }
+  );
+};
+
+export const addAccountingEntry = async (
+  entry: Omit<AccountingEntry, 'id' | 'timestamp'>,
+  proofFiles: File[] = []
+): Promise<string> => {
+  const timestamp = Date.now();
+  const docRef = await addDoc(collection(db, ACCOUNTING_ENTRIES_COLLECTION), {
+    ...entry,
+    proofUrls: [],
+    timestamp,
+    updatedAt: timestamp,
+  });
+
+  if (proofFiles.length > 0) {
+    const proofUrls = await uploadAccountingProofs(proofFiles, docRef.id);
+    await updateDoc(docRef, {
+      proofUrls,
+      updatedAt: Date.now(),
+    });
+  }
+
+  return docRef.id;
+};
+
+export const updateAccountingEntry = async (
+  id: string,
+  patch: Partial<Omit<AccountingEntry, 'id' | 'timestamp'>>,
+): Promise<void> => {
+  const rowRef = doc(db, ACCOUNTING_ENTRIES_COLLECTION, id);
+  await updateDoc(rowRef, {
+    ...patch,
+    updatedAt: Date.now(),
+  });
+};
+
+export const deleteAccountingEntry = async (entry: AccountingEntry): Promise<void> => {
+  const proofUrls = Array.isArray(entry.proofUrls) ? entry.proofUrls : [];
+  if (proofUrls.length > 0) {
+    await Promise.allSettled(proofUrls.map((url) => deleteImage(url)));
+  }
+
+  await deleteDoc(doc(db, ACCOUNTING_ENTRIES_COLLECTION, entry.id));
 };
 
 /**

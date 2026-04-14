@@ -12,6 +12,7 @@ import type { DriverView } from './pages/DriverJobsBoard';
 
 // Lazy load pages for better performance
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const AdminAccounting = lazy(() => import('./pages/AdminAccounting'));
 const EntryForm = lazy(() => import('./pages/EntryForm'));
 const DataTable = lazy(() => import('./pages/DataTable'));
 const TodayJobs = lazy(() => import('./pages/TodayJobs'));
@@ -112,8 +113,15 @@ const AdminRoutes: React.FC = () => (
   <ProtectedContent>
     <AdminUsersProvider>
       <Routes>
-        <Route path="/login" element={<Navigate to="/today?tab=form" replace />} />
+        <Route path="/login" element={<Navigate to="/?tab=income" replace />} />
         <Route path="/" element={
+          <Layout>
+            <Suspense fallback={<PageLoader />}>
+              <AdminAccounting />
+            </Suspense>
+          </Layout>
+        } />
+        <Route path="/dashboard" element={
           <Layout>
             <Suspense fallback={<PageLoader />}>
               <Dashboard />

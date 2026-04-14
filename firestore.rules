@@ -76,5 +76,10 @@ service cloud.firestore {
          request.resource.data.createdByUid == resource.data.createdByUid);
       allow delete: if isAdmin();
     }
+
+    // 5. accounting_entries
+    match /accounting_entries/{entryId} {
+      allow read, write: if isAdmin();
+    }
   }
 }
