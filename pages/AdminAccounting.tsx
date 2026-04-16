@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -6,6 +6,7 @@ import {
   Calendar,
   Download,
   Image as ImageIcon,
+  Plus,
   Pencil,
   Save,
   Trash2,
@@ -22,6 +23,7 @@ import {
   uploadAccountingProofs,
 } from '../services/firebaseService';
 import { updateUserProfile } from '../services/userService';
+import ConfirmModal from '../components/ConfirmModal';
 import type {
   AccountingDocumentStatus,
   AccountingEntry,
@@ -59,6 +61,13 @@ type ProfileFormState = {
   signatureName: string;
 };
 
+type AlertModalState = {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  type: 'success' | 'warning' | 'info';
+};
+
 const MONTHS = [
   { value: 1, label: 'มกราคม' },
   { value: 2, label: 'กุมภาพันธ์' },
@@ -85,6 +94,7 @@ const EXPENSE_CATEGORIES = [
   'ค่าใช้จ่ายหน้างาน',
   'ค่าใช้จ่ายอื่นๆ',
 ];
+const ACCOUNTING_CATEGORY_STORAGE_KEY = 'admin-accounting-category-options';
 
 const PAYMENT_METHOD_LABEL: Record<AccountingPaymentMethod, string> = {
   cash: 'เงินสด',
@@ -124,6 +134,19 @@ const formatCompactCurrency = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value || 0);
 
+const formatAmountInput = (raw: string) => {
+  if (!raw) return '';
+  const [integerPartRaw, decimalPart] = raw.split('.');
+  const integerPart = integerPartRaw.replace(/^0+(?=\d)/, '') || '0';
+  const formattedInteger = new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: 0,
+  }).format(Number(integerPart));
+
+  return decimalPart !== undefined
+    ? `${formattedInteger}.${decimalPart}`
+    : formattedInteger;
+};
+
 const formatThaiDate = (value: string) => {
   if (!value) return '-';
   const [year, month, day] = value.split('-').map(Number);
@@ -134,7 +157,7 @@ const formatThaiDate = (value: string) => {
 const getMonthName = (month: number) => MONTHS.find((item) => item.value === month)?.label || '';
 
 const parseAmount = (raw: string) => {
-  const amount = Number(raw);
+  const amount = Number(raw.replace(/,/g, ''));
   return Number.isFinite(amount) ? amount : 0;
 };
 
@@ -249,6 +272,16 @@ const numberToThaiBaht = (value: number) => {
   return `${bahtText}บาท${convertThaiInteger(satangPart)}สตางค์`;
 };
 
+const getAddressLines = (address: string | undefined, doc: jsPDF, width: number) => {
+  const trimmedAddress = address?.trim();
+  if (!trimmedAddress) {
+    return ['-'];
+  }
+
+  const wrappedLines = doc.splitTextToSize(trimmedAddress, width) as string[];
+  return wrappedLines.length > 0 ? wrappedLines.slice(0, 3) : ['-'];
+};
+
 const getDocumentHint = (status: AccountingDocumentStatus) => {
   if (status === 'replacement_receipt') {
     return 'ไม่มีใบเสร็จ ให้ระบุเหตุผลและเก็บหลักฐานประกอบ';
@@ -294,15 +327,19 @@ const exportLedgerPdf = (
   doc.setFontSize(18);
   doc.text('สมุดบัญชีรายรับ - รายจ่าย', pageWidth / 2, 16, { align: 'center' });
   doc.setFontSize(11);
+  const ledgerAddressLines = getAddressLines(profile?.address, doc, 128);
   doc.text(`ชื่อผู้ประกอบการ: ${resolveTaxPayerName(profile)}`, 14, 26);
   doc.text(`เลขผู้เสียภาษี/เลขบัตรประชาชน: ${resolveTaxId(profile)}`, 14, 32);
   doc.text(`สาขา: ${profile?.businessBranchName?.trim() || 'สำนักงานใหญ่'}`, 14, 38);
-  doc.text(`ที่อยู่: ${profile?.address?.trim() || '-'}`, 14, 44);
-  doc.text(`ประจำเดือน ${getMonthName(month)} ${businessYear}`, 14, 50);
-  doc.text(`พิมพ์เมื่อ ${formatThaiDate(getLocalDate())}`, pageWidth - 14, 50, { align: 'right' });
+  doc.text('ที่อยู่:', 14, 44);
+  ledgerAddressLines.forEach((line, index) => {
+    doc.text(line, 30, 44 + (index * 6));
+  });
+  doc.text(`ประจำเดือน ${getMonthName(month)} ${businessYear}`, 14, 62);
+  doc.text(`พิมพ์เมื่อ ${formatThaiDate(getLocalDate())}`, pageWidth - 14, 62, { align: 'right' });
 
   autoTable(doc, {
-    startY: 56,
+    startY: 68,
     margin: { left: 10, right: 10 },
     styles: {
       font: 'NotoSansThai',
@@ -388,15 +425,19 @@ const exportReplacementReceiptPdf = (
   doc.setFontSize(17);
   doc.text('ใบรับรองแทนใบเสร็จรับเงิน', 105, 18, { align: 'center' });
   doc.setFontSize(10);
+  const receiptAddressLines = getAddressLines(profile?.address, doc, 126);
   doc.text(`เลขที่อ้างอิง ${entry.referenceNo || '-'}`, 195, 26, { align: 'right' });
   doc.text(`ชื่อผู้ประกอบการ: ${resolveTaxPayerName(profile)}`, 14, 32);
   doc.text(`เลขผู้เสียภาษี/เลขบัตรประชาชน: ${resolveTaxId(profile)}`, 14, 38);
   doc.text(`สาขา: ${profile?.businessBranchName?.trim() || 'สำนักงานใหญ่'}`, 14, 44);
-  doc.text(`ที่อยู่: ${profile?.address?.trim() || '-'}`, 14, 50);
-  doc.text('ขอรับรองว่าได้จ่ายเงินตามรายการต่อไปนี้จริง และไม่สามารถเรียกใบเสร็จรับเงินจากผู้รับเงินได้', 14, 60);
+  doc.text('ที่อยู่:', 14, 50);
+  receiptAddressLines.forEach((line, index) => {
+    doc.text(line, 26, 50 + (index * 6));
+  });
+  doc.text('ขอรับรองว่าได้จ่ายเงินตามรายการต่อไปนี้จริง และไม่สามารถเรียกใบเสร็จรับเงินจากผู้รับเงินได้', 14, 68);
 
   autoTable(doc, {
-    startY: 66,
+    startY: 74,
     margin: { left: 10, right: 10 },
     styles: {
       font: 'NotoSansThai',
@@ -456,6 +497,7 @@ const AdminAccounting: React.FC = () => {
   const { user, userProfile, refreshProfile } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const dateInputRef = useRef<HTMLInputElement | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab') as AccountingTab | null;
   const activeTab: AccountingTab = requestedTab && ['income', 'expense', 'summary', 'history', 'profile'].includes(requestedTab)
@@ -474,6 +516,18 @@ const AdminAccounting: React.FC = () => {
   const [savingEntry, setSavingEntry] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [notice, setNotice] = useState('');
+  const [alertModal, setAlertModal] = useState<AlertModalState>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+  const [deleteTarget, setDeleteTarget] = useState<AccountingEntry | null>(null);
+  const [customCategories, setCustomCategories] = useState<Record<AccountingEntryType, string[]>>({
+    income: [],
+    expense: [],
+  });
+  const [referenceNoEdited, setReferenceNoEdited] = useState(false);
 
   useEffect(() => {
     const unsubscribe = subscribeToAccountingEntries(
@@ -492,6 +546,27 @@ const AdminAccounting: React.FC = () => {
   useEffect(() => {
     setProfileForm(createProfileForm(userProfile));
   }, [userProfile]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const raw = window.localStorage.getItem(ACCOUNTING_CATEGORY_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<Record<AccountingEntryType, string[]>>;
+      setCustomCategories({
+        income: Array.isArray(parsed.income) ? parsed.income.filter(Boolean) : [],
+        expense: Array.isArray(parsed.expense) ? parsed.expense.filter(Boolean) : [],
+      });
+    } catch (error) {
+      console.error('Failed to load accounting categories:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(ACCOUNTING_CATEGORY_STORAGE_KEY, JSON.stringify(customCategories));
+  }, [customCategories]);
 
   useEffect(() => {
     if (activeTab !== 'income' && activeTab !== 'expense') {
@@ -513,6 +588,19 @@ const AdminAccounting: React.FC = () => {
     const timer = window.setTimeout(() => setNotice(''), 2200);
     return () => window.clearTimeout(timer);
   }, [notice]);
+
+  const suggestedReferenceNo = useMemo(
+    () => createReferenceNo(entries, entryForm.transactionDate, entryForm.type),
+    [entries, entryForm.transactionDate, entryForm.type],
+  );
+
+  useEffect(() => {
+    if (entryForm.id || referenceNoEdited) return;
+    setEntryForm((prev) => {
+      if (prev.referenceNo === suggestedReferenceNo) return prev;
+      return { ...prev, referenceNo: suggestedReferenceNo };
+    });
+  }, [entryForm.id, referenceNoEdited, suggestedReferenceNo]);
 
   const years = useMemo(() => {
     const base = new Date().getFullYear();
@@ -565,6 +653,17 @@ const AdminAccounting: React.FC = () => {
     return monthEntries.filter((entry) => entry.type === 'expense');
   }, [monthEntries]);
 
+  const categoryOptions = useMemo(() => {
+    const base = entryForm.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+    const custom = customCategories[entryForm.type];
+    const fromHistory = entries
+      .filter((entry) => entry.type === entryForm.type)
+      .map((entry) => entry.category.trim())
+      .filter(Boolean);
+
+    return Array.from(new Set([...base, ...custom, ...fromHistory]));
+  }, [customCategories, entries, entryForm.type]);
+
   const applyTab = (nextTab: AccountingTab) => {
     const next = new URLSearchParams(searchParams);
     next.set('tab', nextTab);
@@ -575,24 +674,67 @@ const AdminAccounting: React.FC = () => {
     setEntryForm(createEmptyEntryForm(type));
     setExistingProofUrls([]);
     setProofFiles([]);
+    setReferenceNoEdited(false);
   };
 
   const showNotice = (message: string) => {
     setNotice(message);
   };
 
+  const openAlertModal = (title: string, message: string, type: AlertModalState['type'] = 'warning') => {
+    setAlertModal({
+      isOpen: true,
+      title,
+      message,
+      type,
+    });
+  };
+
+  const closeAlertModal = () => {
+    setAlertModal((prev) => ({ ...prev, isOpen: false }));
+  };
+
   const ensureProfileReady = () => {
     const missing = validateProfileForTaxPdf(profileForm);
     if (missing.length === 0) return true;
     applyTab('profile');
-    alert(`กรุณากรอกข้อมูลให้ครบก่อน export PDF: ${missing.join(', ')}`);
+    openAlertModal('ข้อมูลยังไม่ครบ', `กรุณากรอกข้อมูลให้ครบก่อน export PDF: ${missing.join(', ')}`);
     return false;
   };
 
   const handleAmountChange = (value: string) => {
-    if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
-      setEntryForm((prev) => ({ ...prev, amountInput: value }));
+    const sanitizedValue = value.replace(/,/g, '');
+    if (sanitizedValue === '' || /^\d*\.?\d{0,2}$/.test(sanitizedValue)) {
+      setEntryForm((prev) => ({ ...prev, amountInput: sanitizedValue }));
     }
+  };
+
+  const handleAddCategoryOption = () => {
+    const trimmedCategory = entryForm.category.trim();
+    if (!trimmedCategory) {
+      openAlertModal('ยังไม่ได้กรอกหมวดรายการ', 'กรุณากรอกหมวดรายการก่อนเพิ่มเข้าลิสต์');
+      return;
+    }
+
+    if (categoryOptions.includes(trimmedCategory)) {
+      showNotice('หมวดรายการนี้มีอยู่แล้ว');
+      return;
+    }
+
+    setCustomCategories((prev) => ({
+      ...prev,
+      [entryForm.type]: [...prev[entryForm.type], trimmedCategory],
+    }));
+    showNotice('เพิ่มหมวดรายการแล้ว');
+  };
+
+  const openDatePicker = () => {
+    if (!dateInputRef.current) return;
+    dateInputRef.current.focus();
+    const inputWithPicker = dateInputRef.current as HTMLInputElement & {
+      showPicker?: () => void;
+    };
+    inputWithPicker.showPicker?.();
   };
 
   const handleKeypad = (key: string) => {
@@ -614,21 +756,21 @@ const AdminAccounting: React.FC = () => {
 
   const handleSaveEntry = async () => {
     if (!user?.uid) {
-      alert('ไม่พบผู้ใช้งานที่ล็อกอิน');
+      openAlertModal('ไม่พบผู้ใช้งาน', 'ไม่พบผู้ใช้งานที่ล็อกอิน');
       return;
     }
 
     const amount = parseAmount(entryForm.amountInput);
     if (amount <= 0) {
-      alert('กรุณาระบุจำนวนเงินให้มากกว่า 0');
+      openAlertModal('จำนวนเงินไม่ถูกต้อง', 'กรุณาระบุจำนวนเงินให้มากกว่า 0');
       return;
     }
     if (!entryForm.description.trim()) {
-      alert('กรุณาระบุรายละเอียดรายการ');
+      openAlertModal('ยังไม่ได้กรอกรายละเอียด', 'กรุณาระบุรายละเอียดรายการ');
       return;
     }
     if (entryForm.documentStatus === 'replacement_receipt' && !entryForm.reasonNoReceipt.trim()) {
-      alert('กรุณาระบุเหตุผลที่ไม่มีใบเสร็จ');
+      openAlertModal('ยังไม่ได้กรอกเหตุผล', 'กรุณาระบุเหตุผลที่ไม่มีใบเสร็จ');
       return;
     }
 
@@ -671,7 +813,7 @@ const AdminAccounting: React.FC = () => {
       applyTab('history');
     } catch (error) {
       console.error('Failed to save accounting entry:', error);
-      alert('บันทึกรายการไม่สำเร็จ กรุณาลองอีกครั้ง');
+      openAlertModal('บันทึกรายการไม่สำเร็จ', 'กรุณาลองอีกครั้ง');
     } finally {
       setSavingEntry(false);
     }
@@ -700,23 +842,30 @@ const AdminAccounting: React.FC = () => {
     });
     setExistingProofUrls(Array.isArray(entry.proofUrls) ? entry.proofUrls : []);
     setProofFiles([]);
+    setReferenceNoEdited(true);
     applyTab(entry.type);
   };
 
   const handleDeleteEntry = async (entry: AccountingEntry) => {
-    if (!window.confirm(`ต้องการลบรายการ ${entry.description} ใช่ไหม?`)) return;
+    setDeleteTarget(entry);
+  };
+
+  const confirmDeleteEntry = async () => {
+    if (!deleteTarget) return;
     try {
-      await deleteAccountingEntry(entry);
+      await deleteAccountingEntry(deleteTarget);
       showNotice('ลบรายการแล้ว');
     } catch (error) {
       console.error('Failed to delete accounting entry:', error);
-      alert('ลบรายการไม่สำเร็จ');
+      openAlertModal('ลบรายการไม่สำเร็จ', 'กรุณาลองใหม่');
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
   const handleSaveProfile = async () => {
     if (!user?.uid) {
-      alert('ไม่พบผู้ใช้งานที่ล็อกอิน');
+      openAlertModal('ไม่พบผู้ใช้งาน', 'ไม่พบผู้ใช้งานที่ล็อกอิน');
       return;
     }
 
@@ -736,7 +885,7 @@ const AdminAccounting: React.FC = () => {
       showNotice('บันทึกข้อมูลผู้เสียภาษีแล้ว');
     } catch (error) {
       console.error('Failed to save profile:', error);
-      alert('บันทึกข้อมูลไม่สำเร็จ');
+      openAlertModal('บันทึกข้อมูลไม่สำเร็จ', 'กรุณาลองใหม่');
     } finally {
       setSavingProfile(false);
     }
@@ -752,8 +901,8 @@ const AdminAccounting: React.FC = () => {
 
   const mutedTextClass = isDark ? 'text-[#9fb0d4]' : 'text-slate-500';
   const inputClass = isDark
-    ? 'w-full rounded-2xl border border-white/10 bg-[#0d1422] px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-400'
-    : 'w-full rounded-2xl border border-[#d5e4d7] bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500';
+    ? 'w-full rounded-2xl border border-white/10 bg-[#0d1422] px-4 py-2.5 text-sm text-white outline-none transition focus:border-emerald-400'
+    : 'w-full rounded-2xl border border-[#d5e4d7] bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald-500';
   const tabButtonClass = (selected: boolean) =>
     selected
       ? 'rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white'
@@ -777,16 +926,16 @@ const AdminAccounting: React.FC = () => {
   const tabGridClass = 'grid grid-cols-2 gap-2 md:grid-cols-3 xl:flex';
   const tabChipClass = (selected: boolean) => `${tabButtonClass(selected)} min-h-[3rem] w-full justify-center px-3`;
   const keypadButtonClass = isDark
-    ? 'aspect-square w-full rounded-2xl border border-white/10 bg-[#10192a] text-2xl font-black text-white transition hover:bg-white/10'
-    : 'aspect-square w-full rounded-2xl border border-[#dfe9e1] bg-white text-2xl font-black text-slate-800 transition hover:bg-[#edf5ee]';
+    ? 'aspect-square w-full rounded-2xl border border-white/10 bg-[#10192a] text-xl font-black text-white transition hover:bg-white/10 sm:text-2xl'
+    : 'aspect-square w-full rounded-2xl border border-[#dfe9e1] bg-white text-xl font-black text-slate-800 transition hover:bg-[#edf5ee] sm:text-2xl';
   const attachmentChipClass = `${ghostButtonClass} max-w-full justify-start px-3`;
 
   return (
     <div className="space-y-5">
       <section className={`${surfaceClass} overflow-hidden`}>
         <div className="flex flex-col gap-5 px-5 py-6 md:px-8 md:py-7">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div className="space-y-2">
+          <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+            <div className="space-y-2 xl:max-w-[calc(100%-39rem)] xl:pr-6">
               <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${mutedTextClass}`}>งานบัญชี</p>
               <h1 className="text-3xl font-black tracking-tight md:text-4xl">บันทึกรายรับ-รายจ่าย</h1>
               <p className={`max-w-3xl text-sm leading-6 ${mutedTextClass}`}>
@@ -794,25 +943,25 @@ const AdminAccounting: React.FC = () => {
               </p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <div className={subSurfaceClass}>
-                <div className="px-4 py-4">
-                  <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${mutedTextClass}`}>รายรับเดือนนี้</p>
-                  <p className="mt-2 text-3xl font-black text-emerald-600">{formatCompactCurrency(totals.income)}</p>
-                </div>
-              </div>
-              <div className={subSurfaceClass}>
-                <div className="px-4 py-4">
-                  <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${mutedTextClass}`}>รายจ่ายเดือนนี้</p>
-                  <p className="mt-2 text-3xl font-black text-rose-600">{formatCompactCurrency(totals.expense)}</p>
-                </div>
-              </div>
-              <div className={subSurfaceClass}>
-                <div className="px-4 py-4">
-                  <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${mutedTextClass}`}>คงเหลือสุทธิ</p>
-                  <p className={`mt-2 text-3xl font-black ${totals.net >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {totals.net >= 0 ? '' : '-'}{formatCompactCurrency(Math.abs(totals.net))}
-                  </p>
+	            <div className="grid gap-3 sm:grid-cols-2 xl:w-[36rem] xl:grid-cols-3 2xl:w-[38.25rem]">
+	              <div className={`${subSurfaceClass} min-w-0 xl:min-w-[11rem]`}>
+	                <div className="px-4 py-4">
+	                  <p className={`text-sm font-semibold leading-tight xl:whitespace-nowrap ${mutedTextClass}`}>รายรับเดือนนี้</p>
+	                  <p className="mt-2 text-3xl font-black text-emerald-600">{formatCompactCurrency(totals.income)}</p>
+	                </div>
+	              </div>
+	              <div className={`${subSurfaceClass} min-w-0 xl:min-w-[11rem]`}>
+	                <div className="px-4 py-4">
+	                  <p className={`text-sm font-semibold leading-tight xl:whitespace-nowrap ${mutedTextClass}`}>รายจ่ายเดือนนี้</p>
+	                  <p className="mt-2 text-3xl font-black text-rose-600">{formatCompactCurrency(totals.expense)}</p>
+	                </div>
+	              </div>
+	              <div className={`${subSurfaceClass} min-w-0 xl:min-w-[11rem]`}>
+	                <div className="px-4 py-4">
+	                  <p className={`text-sm font-semibold leading-tight xl:whitespace-nowrap ${mutedTextClass}`}>คงเหลือสุทธิ</p>
+	                  <p className={`mt-2 text-3xl font-black ${totals.net >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+	                    {totals.net >= 0 ? '' : '-'}{formatCompactCurrency(Math.abs(totals.net))}
+	                  </p>
                 </div>
               </div>
             </div>
@@ -869,14 +1018,15 @@ const AdminAccounting: React.FC = () => {
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="space-y-2">
                   <span className={`text-sm font-semibold ${mutedTextClass}`}>วันที่รายการ</span>
-                  <div className="relative">
+                  <div className="relative" onClick={openDatePicker}>
                     <input
+                      ref={dateInputRef}
                       type="date"
                       value={entryForm.transactionDate}
                       onChange={(event) => setEntryForm((prev) => ({ ...prev, transactionDate: event.target.value }))}
-                      className={inputClass}
+                      onClick={openDatePicker}
+                      className={`${inputClass} cursor-pointer pr-4`}
                     />
-                    <Calendar size={16} className={`pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 ${mutedTextClass}`} />
                   </div>
                 </label>
 
@@ -900,20 +1050,24 @@ const AdminAccounting: React.FC = () => {
                 </div>
               </div>
 
-              <div className={`${subSurfaceClass} px-4 py-4`}>
+              <div className={`${subSurfaceClass} px-4 py-4 lg:px-5 lg:py-5`}>
                 <p className={`text-sm font-semibold ${mutedTextClass}`}>
                   {activeTab === 'income' ? 'จำนวนเงินรับ (บาท)' : 'จำนวนเงินจ่าย (บาท)'}
                 </p>
                 <input
-                  value={entryForm.amountInput}
+                  value={formatAmountInput(entryForm.amountInput)}
                   inputMode="decimal"
                   onChange={(event) => handleAmountChange(event.target.value)}
-                  className={`mt-3 w-full border-0 bg-transparent p-0 text-right text-4xl font-black leading-none outline-none sm:text-5xl ${
+                  className={`accounting-amount-input mt-3 min-h-[4.5rem] w-full rounded-2xl border px-4 py-3 text-right font-black leading-none tracking-tight outline-none sm:min-h-[5rem] lg:min-h-[4.75rem] lg:px-5 lg:py-2 ${
+                    isDark
+                      ? 'border-white/10 bg-[#0d1422]'
+                      : 'border-[#dfe9e1] bg-white'
+                  } ${
                     activeTab === 'income' ? 'text-emerald-600' : 'text-rose-600'
                   }`}
                   placeholder="0"
                 />
-                <div className="mt-4 grid grid-cols-3 gap-2">
+                <div className="mt-4 grid grid-cols-3 gap-2 lg:hidden">
                   {['7', '8', '9', '4', '5', '6', '1', '2', '3', 'C', '0', '.'].map((key) => (
                     <button
                       key={key}
@@ -927,7 +1081,7 @@ const AdminAccounting: React.FC = () => {
                 </div>
                 <button
                   type="button"
-                  className={`mt-2 w-full ${ghostButtonClass}`}
+                  className={`mt-2 w-full lg:hidden ${ghostButtonClass}`}
                   onClick={() => handleKeypad('Del')}
                 >
                   ลบตัวท้าย
@@ -937,33 +1091,50 @@ const AdminAccounting: React.FC = () => {
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="space-y-2">
                   <span className={`text-sm font-semibold ${mutedTextClass}`}>หมวดรายการ</span>
-                  <input
-                    list={activeTab === 'income' ? 'income-categories' : 'expense-categories'}
-                    value={entryForm.category}
-                    onChange={(event) => setEntryForm((prev) => ({ ...prev, category: event.target.value }))}
-                    placeholder="เช่น ค่าน้ำมัน, ค่าขนส่ง"
-                    className={inputClass}
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      list={activeTab === 'income' ? 'income-categories' : 'expense-categories'}
+                      value={entryForm.category}
+                      onChange={(event) => setEntryForm((prev) => ({ ...prev, category: event.target.value }))}
+                      placeholder="เช่น ค่าน้ำมัน, ค่าขนส่ง"
+                      className={inputClass}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddCategoryOption}
+                      className={`${ghostButtonClass} shrink-0 px-3`}
+                      aria-label="เพิ่มหมวดรายการ"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
+                  <p className={`text-xs ${mutedTextClass}`}>พิมพ์ชื่อหมวดแล้วกด + เพื่อเพิ่มเข้าลิสต์ใช้งานครั้งถัดไป</p>
                 </label>
 
                 <label className="space-y-2">
                   <span className={`text-sm font-semibold ${mutedTextClass}`}>เลขที่อ้างอิงเอกสาร</span>
                   <input
                     value={entryForm.referenceNo}
-                    onChange={(event) => setEntryForm((prev) => ({ ...prev, referenceNo: event.target.value }))}
-                    placeholder={createReferenceNo(entries, entryForm.transactionDate, entryForm.type)}
+                    onChange={(event) => {
+                      setReferenceNoEdited(true);
+                      setEntryForm((prev) => ({ ...prev, referenceNo: event.target.value }));
+                    }}
                     className={inputClass}
                   />
                 </label>
               </div>
 
               <datalist id="income-categories">
-                {INCOME_CATEGORIES.map((category) => (
+                {categoryOptions
+                  .filter((category) => activeTab === 'income' || !INCOME_CATEGORIES.includes(category))
+                  .map((category) => (
                   <option key={category} value={category} />
                 ))}
               </datalist>
               <datalist id="expense-categories">
-                {EXPENSE_CATEGORIES.map((category) => (
+                {categoryOptions
+                  .filter((category) => activeTab === 'expense' || !EXPENSE_CATEGORIES.includes(category))
+                  .map((category) => (
                   <option key={category} value={category} />
                 ))}
               </datalist>
@@ -1114,7 +1285,7 @@ const AdminAccounting: React.FC = () => {
                       if (!ensureProfileReady()) return;
                       const amount = parseAmount(entryForm.amountInput);
                       if (amount <= 0 || !entryForm.description.trim()) {
-                        alert('กรุณากรอกจำนวนเงินและรายละเอียดรายการก่อน');
+                        openAlertModal('ข้อมูลยังไม่ครบ', 'กรุณากรอกจำนวนเงินและรายละเอียดรายการก่อน');
                         return;
                       }
                       exportReplacementReceiptPdf(
@@ -1514,6 +1685,28 @@ const AdminAccounting: React.FC = () => {
           </div>
         </section>
       )}
+
+      <ConfirmModal
+        isOpen={alertModal.isOpen}
+        onClose={closeAlertModal}
+        onConfirm={closeAlertModal}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+        confirmText="ตกลง"
+        showCancel={false}
+      />
+
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => void confirmDeleteEntry()}
+        title="ยืนยันการลบรายการ"
+        message={deleteTarget ? `ต้องการลบรายการ ${deleteTarget.description} ใช่ไหม?` : ''}
+        type="warning"
+        confirmText="ลบรายการ"
+        cancelText="ยกเลิก"
+      />
     </div>
   );
 };

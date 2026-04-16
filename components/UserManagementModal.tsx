@@ -3,6 +3,7 @@ import { User, Shield, AlertTriangle, Search, Loader2 } from 'lucide-react';
 import Modal from './Modal';
 import { useAdminUsers } from '../contexts/AdminUsersContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useDialog } from '../contexts/DialogContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { updateUserRole } from '../services/userService';
 import { UserProfile, UserRole } from '../types';
@@ -15,6 +16,7 @@ interface UserManagementModalProps {
 const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen, onClose }) => {
   const { userProfile, user: currentUser } = useAuth();
   const { users, loading, refreshUsers } = useAdminUsers();
+  const { confirm } = useDialog();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -37,7 +39,14 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen, onClo
     
     if (currentRole === newRole) return;
     
-    if (!confirm(`ต้องการเปลี่ยนสิทธิ์ผู้ใช้นี้เป็น ${newRole.toUpperCase()} ใช่หรือไม่?`)) return;
+    const confirmed = await confirm({
+      title: 'ยืนยันการเปลี่ยนสิทธิ์',
+      message: `ต้องการเปลี่ยนสิทธิ์ผู้ใช้นี้เป็น ${newRole.toUpperCase()} ใช่หรือไม่?`,
+      type: 'warning',
+      confirmText: 'ยืนยัน',
+      cancelText: 'ยกเลิก',
+    });
+    if (!confirmed) return;
 
     setUpdatingUser(targetUid);
     try {

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useDialog } from '../contexts/DialogContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { addOption, renameOptionAndSyncJobs } from '../services/firebaseService';
 import { updateUserProfile } from '../services/userService';
@@ -30,6 +31,7 @@ import { collection, query, where, getDocs, deleteDoc } from 'firebase/firestore
 const Settings: React.FC = () => {
   const { data, refreshData, syncing, lastUpdate } = useData();
   const { user, userProfile, refreshProfile } = useAuth();
+  const { confirm } = useDialog();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -171,7 +173,14 @@ const Settings: React.FC = () => {
   };
 
   const handleDelete = async (value: string) => {
-    if (!confirm(`ต้องการลบ "${value}" ใช่ไหม?`)) return;
+    const confirmed = await confirm({
+      title: 'ยืนยันการลบ',
+      message: `ต้องการลบ "${value}" ใช่ไหม?`,
+      type: 'warning',
+      confirmText: 'ลบ',
+      cancelText: 'ยกเลิก',
+    });
+    if (!confirmed) return;
     setDeletingItem(value);
     try {
       // Find and delete the option document

@@ -6,6 +6,7 @@ interface DataContextType {
   data: AppData | null;
   loading: boolean;
   syncing: boolean;
+  syncStage: 'idle' | 'connecting' | 'subscribing' | 'seeding' | 'ready' | 'error';
   lastUpdate: Date | null;
   error: string | null;
   refreshData: () => Promise<void>;
@@ -26,6 +27,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   });
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(true);
+  const [syncStage, setSyncStage] = useState<DataContextType['syncStage']>('idle');
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [initialSyncComplete, setInitialSyncComplete] = useState(false);
@@ -43,8 +45,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     console.log('[DataContext] Setting up Firebase real-time subscriptions...');
+    setSyncStage('connecting');
 
     // Subscribe to options collection
+    setSyncStage('subscribing');
     const unsubscribeOptions = subscribeToOptions(
       (newOptions) => {
         console.log('[DataContext] Received options from Firebase:', newOptions);
@@ -52,11 +56,13 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const totalOptionCount = Object.values(newOptions).reduce((sum, items) => sum + items.length, 0);
         if (totalOptionCount === 0 && !seedAttemptedRef.current) {
           seedAttemptedRef.current = true;
+          setSyncStage('seeding');
           initializeDefaultOptions(true).catch(console.error);
         }
         setLastUpdate(new Date());
         setLoading(false);
         setSyncing(false);
+        setSyncStage('ready');
         setInitialSyncComplete(true);
       },
       (err) => {
@@ -64,6 +70,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setError(err.message);
         setLoading(false);
         setSyncing(false);
+        setSyncStage('error');
       }
     );
 
@@ -79,6 +86,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       data, 
       loading, 
       syncing, 
+      syncStage,
       lastUpdate, 
       error, 
       refreshData,

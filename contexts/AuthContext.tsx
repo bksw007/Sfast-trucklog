@@ -28,6 +28,7 @@ interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
+  loadingStage: 'booting' | 'session' | 'profile' | 'ready';
   loginWithEmail: (email: string, password: string) => Promise<void>;
   signupWithEmail: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
@@ -53,6 +54,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingStage, setLoadingStage] = useState<'booting' | 'session' | 'profile' | 'ready'>('booting');
 
   const resolveGooglePhotoURL = async (currentUser: User): Promise<string> => {
     const fromGoogleProvider = (currentUser.providerData || [])
@@ -149,13 +151,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setLoadingStage('session');
       setUser(user);
       if (user) {
+        setLoadingStage('profile');
         await fetchProfile(user);
       } else {
         setUserProfile(null);
         stopForegroundPushListener();
       }
+      setLoadingStage('ready');
       setLoading(false);
     });
 
@@ -202,6 +207,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       user, 
       userProfile, 
       loading, 
+      loadingStage,
       loginWithEmail, 
       signupWithEmail, 
       loginWithGoogle, 

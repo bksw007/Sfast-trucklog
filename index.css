@@ -227,6 +227,40 @@ html.font-scale-large textarea {
   font-size: var(--font-scale-base);
 }
 
+.admin-clay input.accounting-amount-input {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+@media (min-width: 640px) {
+  .admin-clay input.accounting-amount-input {
+    font-size: 3.75rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .admin-clay input.accounting-amount-input {
+    font-size: 3rem;
+  }
+}
+
+html.font-scale-large .admin-clay input.accounting-amount-input {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+@media (min-width: 640px) {
+  html.font-scale-large .admin-clay input.accounting-amount-input {
+    font-size: 3.75rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  html.font-scale-large .admin-clay input.accounting-amount-input {
+    font-size: 3rem;
+  }
+}
+
 @media (max-width: 768px) {
   html.font-scale-large .driver-mobile-nav-label {
     font-size: 0.74rem;
