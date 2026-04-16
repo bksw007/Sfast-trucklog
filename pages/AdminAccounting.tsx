@@ -95,6 +95,21 @@ const EXPENSE_CATEGORIES = [
   'ค่าใช้จ่ายอื่นๆ',
 ];
 const ACCOUNTING_CATEGORY_STORAGE_KEY = 'admin-accounting-category-options';
+const MOBILE_KEYPAD_KEYS = [
+  { key: '7', label: '7' },
+  { key: '8', label: '8' },
+  { key: '9', label: '9' },
+  { key: 'Del', label: 'ลบ' },
+  { key: '4', label: '4' },
+  { key: '5', label: '5' },
+  { key: '6', label: '6' },
+  { key: 'C', label: 'C' },
+  { key: '1', label: '1' },
+  { key: '2', label: '2' },
+  { key: '3', label: '3' },
+  { key: '.', label: '.' },
+  { key: '0', label: '0', span: 'col-span-4' },
+] as const;
 
 const PAYMENT_METHOD_LABEL: Record<AccountingPaymentMethod, string> = {
   cash: 'เงินสด',
@@ -327,13 +342,13 @@ const exportLedgerPdf = (
   doc.setFontSize(18);
   doc.text('สมุดบัญชีรายรับ - รายจ่าย', pageWidth / 2, 16, { align: 'center' });
   doc.setFontSize(11);
-  const ledgerAddressLines = getAddressLines(profile?.address, doc, 128);
+  const ledgerAddressLines = getAddressLines(profile?.address, doc, 136);
   doc.text(`ชื่อผู้ประกอบการ: ${resolveTaxPayerName(profile)}`, 14, 26);
   doc.text(`เลขผู้เสียภาษี/เลขบัตรประชาชน: ${resolveTaxId(profile)}`, 14, 32);
   doc.text(`สาขา: ${profile?.businessBranchName?.trim() || 'สำนักงานใหญ่'}`, 14, 38);
   doc.text('ที่อยู่:', 14, 44);
   ledgerAddressLines.forEach((line, index) => {
-    doc.text(line, 30, 44 + (index * 6));
+    doc.text(line, 24, 44 + (index * 5.5));
   });
   doc.text(`ประจำเดือน ${getMonthName(month)} ${businessYear}`, 14, 62);
   doc.text(`พิมพ์เมื่อ ${formatThaiDate(getLocalDate())}`, pageWidth - 14, 62, { align: 'right' });
@@ -425,14 +440,14 @@ const exportReplacementReceiptPdf = (
   doc.setFontSize(17);
   doc.text('ใบรับรองแทนใบเสร็จรับเงิน', 105, 18, { align: 'center' });
   doc.setFontSize(10);
-  const receiptAddressLines = getAddressLines(profile?.address, doc, 126);
+  const receiptAddressLines = getAddressLines(profile?.address, doc, 136);
   doc.text(`เลขที่อ้างอิง ${entry.referenceNo || '-'}`, 195, 26, { align: 'right' });
   doc.text(`ชื่อผู้ประกอบการ: ${resolveTaxPayerName(profile)}`, 14, 32);
   doc.text(`เลขผู้เสียภาษี/เลขบัตรประชาชน: ${resolveTaxId(profile)}`, 14, 38);
   doc.text(`สาขา: ${profile?.businessBranchName?.trim() || 'สำนักงานใหญ่'}`, 14, 44);
   doc.text('ที่อยู่:', 14, 50);
   receiptAddressLines.forEach((line, index) => {
-    doc.text(line, 26, 50 + (index * 6));
+    doc.text(line, 24, 50 + (index * 5.5));
   });
   doc.text('ขอรับรองว่าได้จ่ายเงินตามรายการต่อไปนี้จริง และไม่สามารถเรียกใบเสร็จรับเงินจากผู้รับเงินได้', 14, 68);
 
@@ -926,8 +941,8 @@ const AdminAccounting: React.FC = () => {
   const tabGridClass = 'grid grid-cols-2 gap-2 md:grid-cols-3 xl:flex';
   const tabChipClass = (selected: boolean) => `${tabButtonClass(selected)} min-h-[3rem] w-full justify-center px-3`;
   const keypadButtonClass = isDark
-    ? 'aspect-square w-full rounded-2xl border border-white/10 bg-[#10192a] text-xl font-black text-white transition hover:bg-white/10 sm:text-2xl'
-    : 'aspect-square w-full rounded-2xl border border-[#dfe9e1] bg-white text-xl font-black text-slate-800 transition hover:bg-[#edf5ee] sm:text-2xl';
+    ? 'flex h-[clamp(3.5rem,7.5svh,4.5rem)] w-full items-center justify-center rounded-2xl border border-white/10 bg-[#10192a] px-2 text-[1.35rem] font-black text-white transition hover:bg-white/10 sm:h-[4.75rem] sm:text-2xl'
+    : 'flex h-[clamp(3.5rem,7.5svh,4.5rem)] w-full items-center justify-center rounded-2xl border border-[#dfe9e1] bg-white px-2 text-[1.35rem] font-black text-slate-800 transition hover:bg-[#edf5ee] sm:h-[4.75rem] sm:text-2xl';
   const attachmentChipClass = `${ghostButtonClass} max-w-full justify-start px-3`;
 
   return (
@@ -992,8 +1007,8 @@ const AdminAccounting: React.FC = () => {
 
       {(activeTab === 'income' || activeTab === 'expense') && (
         <section className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_22rem]">
-          <div className={`${surfaceClass} px-5 py-6 md:px-8`}>
-            <div className="flex flex-col gap-4">
+          <div className={`${surfaceClass} px-4 py-5 md:px-8 md:py-6`}>
+            <div className="flex flex-col gap-3 md:gap-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-2xl font-black">
@@ -1050,7 +1065,7 @@ const AdminAccounting: React.FC = () => {
                 </div>
               </div>
 
-              <div className={`${subSurfaceClass} px-4 py-4 lg:px-5 lg:py-5`}>
+              <div className={`${subSurfaceClass} px-3 py-3.5 sm:px-4 sm:py-4 lg:px-5 lg:py-5`}>
                 <p className={`text-sm font-semibold ${mutedTextClass}`}>
                   {activeTab === 'income' ? 'จำนวนเงินรับ (บาท)' : 'จำนวนเงินจ่าย (บาท)'}
                 </p>
@@ -1058,7 +1073,7 @@ const AdminAccounting: React.FC = () => {
                   value={formatAmountInput(entryForm.amountInput)}
                   inputMode="decimal"
                   onChange={(event) => handleAmountChange(event.target.value)}
-                  className={`accounting-amount-input mt-3 min-h-[4.5rem] w-full rounded-2xl border px-4 py-3 text-right font-black leading-none tracking-tight outline-none sm:min-h-[5rem] lg:min-h-[4.75rem] lg:px-5 lg:py-2 ${
+                  className={`accounting-amount-input mt-2.5 min-h-[4rem] w-full rounded-2xl border px-3 py-2 text-right font-black leading-none tracking-tight outline-none sm:mt-3 sm:min-h-[5rem] sm:px-4 sm:py-3 lg:min-h-[4.75rem] lg:px-5 lg:py-2 ${
                     isDark
                       ? 'border-white/10 bg-[#0d1422]'
                       : 'border-[#dfe9e1] bg-white'
@@ -1067,25 +1082,18 @@ const AdminAccounting: React.FC = () => {
                   }`}
                   placeholder="0"
                 />
-                <div className="mt-4 grid grid-cols-3 gap-2 lg:hidden">
-                  {['7', '8', '9', '4', '5', '6', '1', '2', '3', 'C', '0', '.'].map((key) => (
+                <div className="mt-3 grid grid-cols-4 gap-2 lg:hidden">
+                  {MOBILE_KEYPAD_KEYS.map(({ key, label, span }) => (
                     <button
                       key={key}
                       type="button"
-                      className={keypadButtonClass}
+                      className={`${keypadButtonClass} ${span ?? ''} ${key === 'Del' ? 'text-sm font-bold sm:text-base' : ''}`}
                       onClick={() => handleKeypad(key)}
                     >
-                      {key}
+                      {label}
                     </button>
                   ))}
                 </div>
-                <button
-                  type="button"
-                  className={`mt-2 w-full lg:hidden ${ghostButtonClass}`}
-                  onClick={() => handleKeypad('Del')}
-                >
-                  ลบตัวท้าย
-                </button>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -1145,7 +1153,7 @@ const AdminAccounting: React.FC = () => {
                   rows={3}
                   value={entryForm.description}
                   onChange={(event) => setEntryForm((prev) => ({ ...prev, description: event.target.value }))}
-                  placeholder={activeTab === 'income' ? 'เช่น ค่าขนส่งงาน BK Bakery' : 'เช่น เติมน้ำมันดีเซลปฏิบัติงาน'}
+                  placeholder={activeTab === 'income' ? 'เช่น ค่าขนส่งสินค้า' : 'เช่น เติมน้ำมันดีเซลปฏิบัติงาน'}
                   className={`${inputClass} min-h-[112px] resize-y`}
                 />
               </label>
