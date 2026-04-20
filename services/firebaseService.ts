@@ -374,6 +374,19 @@ export const subscribeToJobs = (
   return unsubscribe;
 };
 
+export const fetchAccountingEntries = async (): Promise<AccountingEntry[]> => {
+  const accountingQuery = query(
+    collection(db, ACCOUNTING_ENTRIES_COLLECTION),
+    orderBy('timestamp', 'desc')
+  );
+
+  const snapshot = await getDocs(accountingQuery);
+  return snapshot.docs.map((entryDoc) => ({
+    id: entryDoc.id,
+    ...entryDoc.data(),
+  })) as AccountingEntry[];
+};
+
 export const subscribeToJobsByMonth = (
   year: number,
   month: number,
@@ -885,6 +898,27 @@ export const subscribeToTodayJobsByPickupDateRange = (
   return unsubscribe;
 };
 
+export const fetchTodayJobsByPickupDateRange = async (
+  startDate: string,
+  endDateExclusive: string
+): Promise<TodayJobEntry[]> => {
+  const jobsQuery = query(
+    collection(db, TODAY_JOBS_COLLECTION),
+    where('pickup.date', '>=', startDate),
+    where('pickup.date', '<', endDateExclusive),
+    orderBy('pickup.date', 'desc')
+  );
+
+  const snapshot = await getDocs(jobsQuery);
+  const jobs: TodayJobEntry[] = snapshot.docs.map((jobDoc) => ({
+    id: jobDoc.id,
+    ...jobDoc.data(),
+  })) as TodayJobEntry[];
+
+  jobs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  return jobs;
+};
+
 /**
  * Subscribe to today_jobs by assigned user (driver view)
  */
@@ -952,6 +986,29 @@ export const subscribeToTodayJobsByAssigneeAndPickupDateRange = (
   );
 
   return unsubscribe;
+};
+
+export const fetchTodayJobsByAssigneeAndPickupDateRange = async (
+  assignedToUid: string,
+  startDate: string,
+  endDateExclusive: string
+): Promise<TodayJobEntry[]> => {
+  const jobsQuery = query(
+    collection(db, TODAY_JOBS_COLLECTION),
+    where('assignedToUid', '==', assignedToUid),
+    where('pickup.date', '>=', startDate),
+    where('pickup.date', '<', endDateExclusive),
+    orderBy('pickup.date', 'desc')
+  );
+
+  const snapshot = await getDocs(jobsQuery);
+  const jobs: TodayJobEntry[] = snapshot.docs.map((jobDoc) => ({
+    id: jobDoc.id,
+    ...jobDoc.data(),
+  })) as TodayJobEntry[];
+
+  jobs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  return jobs;
 };
 
 /**

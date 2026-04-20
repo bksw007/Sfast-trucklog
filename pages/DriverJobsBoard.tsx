@@ -19,6 +19,7 @@ import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
 import {
+  fetchTodayJobsByAssigneeAndPickupDateRange,
   subscribeToTodayJobsByAssigneeAndPickupDateRange,
   triggerTodayJobNotification,
   updateTodayJob,
@@ -267,6 +268,31 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
     setErrorMessage('');
 
     const range = view === 'history' ? currentMonthRange : driverRange;
+
+    if (view === 'history') {
+      let cancelled = false;
+      fetchTodayJobsByAssigneeAndPickupDateRange(
+        user.uid,
+        range.startDate,
+        range.endDateExclusive
+      )
+        .then((rows) => {
+          if (cancelled) return;
+          setJobs(rows);
+          setLoading(false);
+        })
+        .catch((error) => {
+          if (cancelled) return;
+          console.error('Driver jobs history fetch failed:', error);
+          setErrorMessage(error.message);
+          setLoading(false);
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const unsubscribe = subscribeToTodayJobsByAssigneeAndPickupDateRange(
       user.uid,
       range.startDate,

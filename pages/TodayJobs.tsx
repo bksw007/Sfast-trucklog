@@ -34,6 +34,7 @@ import {
   addTodayJob,
   addOption,
   deleteTodayJob,
+  fetchTodayJobsByPickupDateRange,
   getTodayJobById,
   RevisionConflictError,
   subscribeToTodayJobsByPickupDateRange,
@@ -95,6 +96,13 @@ const getLocalDate = () => {
   const now = new Date();
   const offset = now.getTimezoneOffset() * 60000;
   return new Date(now.getTime() - offset).toISOString().split('T')[0];
+};
+
+const addDays = (dateStr: string, days: number) => {
+  const base = new Date(`${asDateOnly(dateStr)}T00:00:00`);
+  if (Number.isNaN(base.getTime())) return asDateOnly(dateStr);
+  base.setDate(base.getDate() + days);
+  return base.toISOString().split('T')[0];
 };
 
 const asDateOnly = (dateStr: string) => (dateStr || '').split('T')[0];
@@ -456,30 +464,51 @@ const TodayJobs: React.FC = () => {
 
   const tableMonthOptions = useMemo(() => buildMonthOptions(11, 1), []);
   const previousTableMonth = useMemo(() => shiftMonthKey(tableMonth, -1), [tableMonth]);
+  const focusWindowRange = useMemo(
+    () => ({
+      startDate: addDays(getLocalDate(), -7),
+      endDateExclusive: addDays(getLocalDate(), 15),
+    }),
+    []
+  );
 
   useEffect(() => {
-    const range =
-      activeMainTab === 'table'
-        ? {
-            startDate: `${previousTableMonth}-01`,
-            endDateExclusive: `${shiftMonthKey(tableMonth, 1)}-01`,
-          }
-        : {
-            startDate: `${shiftMonthKey(getMonthKey(), -1)}-01`,
-            endDateExclusive: `${shiftMonthKey(getMonthKey(), 2)}-01`,
-          };
+    const tableRange = {
+      startDate: `${previousTableMonth}-01`,
+      endDateExclusive: `${shiftMonthKey(tableMonth, 1)}-01`,
+    };
 
-    const unsubscribe = subscribeToTodayJobsByPickupDateRange(
-      range.startDate,
-      range.endDateExclusive,
-      (rows) => setJobs(rows),
-      (error) => {
-        console.error('Today jobs subscribe failed:', error);
-      }
-    );
+    if (activeMainTab === 'table') {
+      const unsubscribe = subscribeToTodayJobsByPickupDateRange(
+        tableRange.startDate,
+        tableRange.endDateExclusive,
+        (rows) => setJobs(rows),
+        (error) => {
+          console.error('Today jobs subscribe failed:', error);
+        }
+      );
 
-    return () => unsubscribe();
-  }, [activeMainTab, previousTableMonth, tableMonth]);
+      return () => unsubscribe();
+    }
+
+    let cancelled = false;
+    fetchTodayJobsByPickupDateRange(
+      focusWindowRange.startDate,
+      focusWindowRange.endDateExclusive
+    )
+      .then((rows) => {
+        if (cancelled) return;
+        setJobs(rows);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error('Today jobs fetch failed:', error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeMainTab, focusWindowRange.endDateExclusive, focusWindowRange.startDate, previousTableMonth, tableMonth]);
 
   const assignableUsers = useMemo(
     () => (isAdmin ? adminUsers : []),

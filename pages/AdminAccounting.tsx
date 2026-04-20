@@ -18,7 +18,7 @@ import { NotoSansThaiBase64 } from '../fonts/NotoSansThai';
 import {
   addAccountingEntry,
   deleteAccountingEntry,
-  subscribeToAccountingEntries,
+  fetchAccountingEntries,
   updateAccountingEntry,
   uploadAccountingProofs,
 } from '../services/firebaseService';
@@ -543,20 +543,25 @@ const AdminAccounting: React.FC = () => {
     expense: [],
   });
   const [referenceNoEdited, setReferenceNoEdited] = useState(false);
+  const [entriesReloadKey, setEntriesReloadKey] = useState(0);
 
   useEffect(() => {
-    const unsubscribe = subscribeToAccountingEntries(
-      (rows) => {
+    let cancelled = false;
+    fetchAccountingEntries()
+      .then((rows) => {
+        if (cancelled) return;
         setEntries(rows);
         setLoading(false);
-      },
-      () => {
+      })
+      .catch(() => {
+        if (cancelled) return;
         setLoading(false);
-      },
-    );
+      });
 
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [entriesReloadKey]);
 
   useEffect(() => {
     setProfileForm(createProfileForm(userProfile));
@@ -826,6 +831,7 @@ const AdminAccounting: React.FC = () => {
       }
       clearEntryForm(payload.type);
       applyTab('history');
+      setEntriesReloadKey((prev) => prev + 1);
     } catch (error) {
       console.error('Failed to save accounting entry:', error);
       openAlertModal('บันทึกรายการไม่สำเร็จ', 'กรุณาลองอีกครั้ง');
@@ -870,6 +876,7 @@ const AdminAccounting: React.FC = () => {
     try {
       await deleteAccountingEntry(deleteTarget);
       showNotice('ลบรายการแล้ว');
+      setEntriesReloadKey((prev) => prev + 1);
     } catch (error) {
       console.error('Failed to delete accounting entry:', error);
       openAlertModal('ลบรายการไม่สำเร็จ', 'กรุณาลองใหม่');
