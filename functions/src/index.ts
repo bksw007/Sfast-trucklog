@@ -816,6 +816,13 @@ const sendPush = async (
   }
 };
 
+const excludeTokens = (source: string[], excluded: string[]): string[] => {
+  const excludedSet = new Set(excluded.filter(Boolean));
+  return Array.from(
+    new Set(source.filter((token) => token && !excludedSet.has(token)))
+  );
+};
+
 const notifyByEvent = async (
   eventType: NotifyEventType,
   jobId: string,
@@ -877,6 +884,7 @@ const notifyByEvent = async (
       getAdminTokens(),
       getUserTokens(job.assignedToUid),
     ]);
+    const adminOnlyTokens = excludeTokens(adminTokens, driverTokens);
     await Promise.all([
       sendPush(
         driverTokens,
@@ -891,7 +899,7 @@ const notifyByEvent = async (
         "/#/driver/today"
       ),
       sendPush(
-        adminTokens,
+        adminOnlyTokens,
         "มีงานใหม่มอบหมาย",
         `${routeLabel} | ${vehicleLabel} | ${plateLabel} | ${driverLabel}`,
         {
@@ -911,9 +919,10 @@ const notifyByEvent = async (
       getAdminTokens(),
       getUserTokens(job.assignedToUid),
     ]);
+    const adminOnlyTokens = excludeTokens(adminTokens, driverTokens);
     await Promise.all([
       sendPush(
-        adminTokens,
+        adminOnlyTokens,
         "มีการแก้ไขใบแจ้งงาน",
         `แอดมินแก้ไขงาน ${routeLabel} | ${driverLabel}`,
         {
@@ -966,9 +975,10 @@ const notifyByEvent = async (
       getAdminTokens(),
       getUserTokens(job.assignedToUid),
     ]);
+    const adminOnlyTokens = excludeTokens(adminTokens, driverTokens);
     await Promise.all([
       sendPush(
-        adminTokens,
+        adminOnlyTokens,
         "งานเสร็จแล้ว",
         `${driverLabel} จบงาน ${routeLabel} | WO ${workOrderLabel}`,
         {

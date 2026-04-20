@@ -54,6 +54,12 @@ const isPushEnvironmentSupported = () =>
   'serviceWorker' in navigator &&
   'PushManager' in window;
 
+const isAppleMobileBrowser = () => {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  return /iPhone|iPad|iPod/i.test(ua);
+};
+
 const readStoredPushBinding = (): StoredPushBinding | null => {
   if (typeof window === 'undefined') return null;
 
@@ -114,7 +120,12 @@ export const isPushDisabledForUser = (uid: string): boolean =>
 
 const resolveMessagingContext = async (requestPermission: boolean) => {
   if (!isPushEnvironmentSupported()) {
-    return { ok: false, message: 'อุปกรณ์นี้ไม่รองรับ Web Push' } as const;
+    return {
+      ok: false,
+      message: isAppleMobileBrowser()
+        ? 'iPhone/iPad เครื่องนี้ยังเปิด Push ไม่ได้ เพราะระบบนี้ใช้ Firebase Messaging บนเว็บ ซึ่งยังไม่รองรับ iOS Safari/PWA'
+        : 'อุปกรณ์นี้ไม่รองรับ Web Push',
+    } as const;
   }
 
   const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY as string | undefined;
@@ -136,7 +147,12 @@ const resolveMessagingContext = async (requestPermission: boolean) => {
   const messagingModule = await import('firebase/messaging');
   const supported = await messagingModule.isSupported();
   if (!supported) {
-    return { ok: false, message: 'เบราว์เซอร์นี้ไม่รองรับ Firebase Messaging' } as const;
+    return {
+      ok: false,
+      message: isAppleMobileBrowser()
+        ? 'iPhone/iPad เครื่องนี้ยังเปิด Push ไม่ได้ เพราะระบบนี้ใช้ Firebase Messaging บนเว็บ ซึ่งยังไม่รองรับ iOS Safari/PWA'
+        : 'เบราว์เซอร์นี้ไม่รองรับ Firebase Messaging',
+    } as const;
   }
 
   const swRegistration = await navigator.serviceWorker.register(buildMessagingServiceWorkerUrl());

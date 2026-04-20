@@ -22,6 +22,10 @@ if (hasRequiredConfig) {
   const messaging = firebase.messaging();
 
   messaging.onBackgroundMessage((payload) => {
+    if (payload?.notification?.title || payload?.notification?.body) {
+      return;
+    }
+
     const title = payload?.notification?.title || 'SFast Trucklog';
     const body = payload?.notification?.body || 'มีการอัปเดตงานใหม่';
     const targetLink = payload?.fcmOptions?.link || '/';

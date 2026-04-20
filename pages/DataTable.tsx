@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { deleteJob as firebaseDeleteJob, subscribeToJobsByMonth, updateJob as firebaseUpdateJob } from '../services/firebaseService';
+import { deleteJob as firebaseDeleteJob, fetchJobsByMonth, updateJob as firebaseUpdateJob } from '../services/firebaseService';
 import { JobEntry } from '../types';
 import {
   ArrowUpDown,
@@ -160,21 +160,24 @@ const DataTable: React.FC = () => {
     }
 
     setLoading(true);
-    const unsubscribe = subscribeToJobsByMonth(
-      filters.year,
-      filters.month,
-      (rows) => {
+    let cancelled = false;
+
+    fetchJobsByMonth(filters.year, filters.month)
+      .then((rows) => {
+        if (cancelled) return;
         setJobs(rows);
         setLoading(false);
-      },
-      (error) => {
-        console.error('DataTable jobs subscribe failed:', error);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error('DataTable jobs fetch failed:', error);
         setJobs([]);
         setLoading(false);
-      }
-    );
+      });
 
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+    };
   }, [filters.month, filters.year]);
 
   useEffect(() => {

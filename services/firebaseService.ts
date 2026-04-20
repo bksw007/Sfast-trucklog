@@ -413,6 +413,33 @@ export const subscribeToJobsByMonth = (
   return unsubscribe;
 };
 
+export const fetchJobsByMonth = async (
+  year: number,
+  month: number
+): Promise<JobEntry[]> => {
+  const safeMonth = Math.min(Math.max(month, 1), 12);
+  const startDate = `${year}-${String(safeMonth).padStart(2, '0')}-01`;
+  const nextYear = safeMonth === 12 ? year + 1 : year;
+  const nextMonth = safeMonth === 12 ? 1 : safeMonth + 1;
+  const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+
+  const jobsQuery = query(
+    collection(db, JOBS_COLLECTION),
+    where('date', '>=', startDate),
+    where('date', '<', endDate),
+    orderBy('date', 'desc')
+  );
+
+  const snapshot = await getDocs(jobsQuery);
+  const jobs: JobEntry[] = snapshot.docs.map((jobDoc) => ({
+    id: jobDoc.id,
+    ...jobDoc.data(),
+  })) as JobEntry[];
+
+  jobs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  return jobs;
+};
+
 export const subscribeToDashboardMetricsByMonth = (
   monthKey: string,
   callback: (summary: DashboardMetricSummary | null) => void,
@@ -436,6 +463,18 @@ export const subscribeToDashboardMetricsByMonth = (
   );
 
   return unsubscribe;
+};
+
+export const fetchDashboardMetricsByMonth = async (
+  monthKey: string
+): Promise<DashboardMetricSummary | null> => {
+  const metricRef = doc(db, DASHBOARD_METRICS_COLLECTION, monthKey);
+  const snapshot = await getDoc(metricRef);
+  if (!snapshot.exists()) {
+    return null;
+  }
+
+  return snapshot.data() as DashboardMetricSummary;
 };
 
 export const subscribeToLatestDieselPrice = (
@@ -463,6 +502,19 @@ export const subscribeToLatestDieselPrice = (
   );
 
   return unsubscribe;
+};
+
+export const fetchLatestDieselPrice = async (): Promise<LatestDieselPrice | null> => {
+  const priceRef = doc(db, FUEL_PRICES_COLLECTION, LATEST_DIESEL_PRICE_DOC_ID);
+  const snapshot = await getDoc(priceRef);
+  if (!snapshot.exists()) {
+    return null;
+  }
+
+  return {
+    id: snapshot.id,
+    ...(snapshot.data() as LatestDieselPrice),
+  };
 };
 
 /**
@@ -562,6 +614,74 @@ export const subscribeToDriverJobs = (
   return () => {
     unsubscribes.forEach((unsubscribe) => unsubscribe());
   };
+};
+
+export const fetchDriverJobsByMonth = async (
+  year: number,
+  month: number,
+  assignedToUid: string | undefined,
+  driverNames: string[]
+): Promise<JobEntry[]> => {
+  const safeMonth = Math.min(Math.max(month, 1), 12);
+  const startDate = `${year}-${String(safeMonth).padStart(2, '0')}-01`;
+  const nextYear = safeMonth === 12 ? year + 1 : year;
+  const nextMonth = safeMonth === 12 ? 1 : safeMonth + 1;
+  const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+
+  const normalizedNames = Array.from(
+    new Set(
+      driverNames
+        .map((name) => name.trim())
+        .filter(Boolean)
+    )
+  );
+
+  if (!assignedToUid && normalizedNames.length === 0) {
+    return [];
+  }
+
+  const merged = new Map<string, JobEntry>();
+  const queryPromises: Array<Promise<void>> = [];
+
+  if (assignedToUid) {
+    const queryRef = query(
+      collection(db, JOBS_COLLECTION),
+      where('assignedToUid', '==', assignedToUid),
+      where('date', '>=', startDate),
+      where('date', '<', endDate),
+      orderBy('date', 'desc')
+    );
+    queryPromises.push(
+      getDocs(queryRef).then((snapshot) => {
+        snapshot.docs.forEach((jobDoc) => {
+          merged.set(jobDoc.id, { id: jobDoc.id, ...jobDoc.data() } as JobEntry);
+        });
+      })
+    );
+  }
+
+  for (let index = 0; index < normalizedNames.length; index += 10) {
+    const chunk = normalizedNames.slice(index, index + 10);
+    const queryRef = query(
+      collection(db, JOBS_COLLECTION),
+      where('driverName', 'in', chunk),
+      where('date', '>=', startDate),
+      where('date', '<', endDate),
+      orderBy('date', 'desc')
+    );
+    queryPromises.push(
+      getDocs(queryRef).then((snapshot) => {
+        snapshot.docs.forEach((jobDoc) => {
+          merged.set(jobDoc.id, { id: jobDoc.id, ...jobDoc.data() } as JobEntry);
+        });
+      })
+    );
+  }
+
+  await Promise.all(queryPromises);
+  const jobs = Array.from(merged.values());
+  jobs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  return jobs;
 };
 
 /**

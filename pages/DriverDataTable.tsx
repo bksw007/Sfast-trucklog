@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
-import { subscribeToDriverJobs } from '../services/firebaseService';
+import { fetchDriverJobsByMonth } from '../services/firebaseService';
 import { JobEntry } from '../types';
 import { formatDate } from '../utils/formatters';
 
@@ -75,7 +75,7 @@ const DriverDataTable: React.FC = () => {
   const canLookupJobs = Boolean(user?.uid) || driverNameCandidates.length > 0;
 
   useEffect(() => {
-    if (!canLookupJobs) {
+    if (!canLookupJobs || !monthFilter || !yearFilter) {
       setJobs([]);
       setLoading(false);
       return undefined;
@@ -83,33 +83,35 @@ const DriverDataTable: React.FC = () => {
 
     setLoading(true);
     setErrorMessage('');
+    let cancelled = false;
 
-    const unsubscribe = subscribeToDriverJobs(
+    fetchDriverJobsByMonth(
+      Number(yearFilter),
+      Number(monthFilter),
       user?.uid,
-      driverNameCandidates,
-      (rows) => {
+      driverNameCandidates
+    )
+      .then((rows) => {
+        if (cancelled) return;
         setJobs(rows);
         setLoading(false);
-      },
-      (error) => {
-        console.error('Driver data table subscribe failed:', error);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error('Driver data table fetch failed:', error);
         setErrorMessage(error.message || 'โหลดข้อมูลงานวิ่งไม่สำเร็จ');
         setLoading(false);
-      }
-    );
+      });
 
-    return () => unsubscribe();
-  }, [canLookupJobs, driverNameCandidates, user?.uid]);
+    return () => {
+      cancelled = true;
+    };
+  }, [canLookupJobs, driverNameCandidates, monthFilter, yearFilter, user?.uid]);
 
   const yearOptions = useMemo(() => {
-    const years = new Set(
-      jobs
-        .map((job) => dateKey(job.date).slice(0, 4))
-        .filter(Boolean)
-    );
-    years.add(getCurrentMonthYear().year);
-    return Array.from(years).sort((a, b) => b.localeCompare(a));
-  }, [jobs]);
+    const currentYear = Number(getCurrentMonthYear().year);
+    return Array.from({ length: 6 }, (_, index) => String(currentYear - index));
+  }, []);
 
   const monthOptions = useMemo(
     () => Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0')),

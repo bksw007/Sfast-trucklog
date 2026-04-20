@@ -5,10 +5,10 @@ import { Truck, MapPin, Calendar, CheckCircle2, Filter, X, ChevronDown, Droplets
 import { useData } from '../contexts/DataContext';
 import { useTheme } from '../contexts/ThemeContext';
 import {
+  fetchDashboardMetricsByMonth,
+  fetchJobsByMonth,
+  fetchLatestDieselPrice,
   rebuildDashboardMetricsMonth,
-  subscribeToDashboardMetricsByMonth,
-  subscribeToJobsByMonth,
-  subscribeToLatestDieselPrice,
   type DashboardMetricSummary,
   type LatestDieselPrice,
 } from '../services/firebaseService';
@@ -91,20 +91,24 @@ const Dashboard: React.FC = () => {
     }
 
     setMetricsLoading(true);
-    const unsubscribe = subscribeToDashboardMetricsByMonth(
-      monthKey,
-      (summary) => {
+    let cancelled = false;
+
+    fetchDashboardMetricsByMonth(monthKey)
+      .then((summary) => {
+        if (cancelled) return;
         setMetricSummary(summary);
         setMetricsLoading(false);
-      },
-      (error) => {
-        console.error('Dashboard metrics subscribe failed:', error);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error('Dashboard metrics fetch failed:', error);
         setMetricSummary(null);
         setMetricsLoading(false);
-      }
-    );
+      });
 
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+    };
   }, [hasDimensionFilters, monthKey]);
 
   useEffect(() => {
@@ -115,35 +119,43 @@ const Dashboard: React.FC = () => {
     }
 
     setJobsLoading(true);
-    const unsubscribe = subscribeToJobsByMonth(
-      filters.year,
-      filters.month,
-      (rows) => {
+    let cancelled = false;
+
+    fetchJobsByMonth(filters.year, filters.month)
+      .then((rows) => {
+        if (cancelled) return;
         setJobs(rows);
         setJobsLoading(false);
-      },
-      (error) => {
-        console.error('Dashboard jobs subscribe failed:', error);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error('Dashboard jobs fetch failed:', error);
         setJobs([]);
         setJobsLoading(false);
-      }
-    );
+      });
 
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+    };
   }, [filters.month, filters.year, hasDimensionFilters, monthKey]);
 
   useEffect(() => {
-    const unsubscribe = subscribeToLatestDieselPrice(
-      (price) => {
-        setLatestDieselPrice(price);
-      },
-      (error) => {
-        console.error('Latest diesel price subscribe failed:', error);
-        setLatestDieselPrice(null);
-      }
-    );
+    let cancelled = false;
 
-    return () => unsubscribe();
+    fetchLatestDieselPrice()
+      .then((price) => {
+        if (cancelled) return;
+        setLatestDieselPrice(price);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error('Latest diesel price fetch failed:', error);
+        setLatestDieselPrice(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -154,6 +166,10 @@ const Dashboard: React.FC = () => {
     setRebuildRequestedMonth(monthKey);
     setRebuildingMetrics(true);
     rebuildDashboardMetricsMonth(monthKey)
+      .then(() => fetchDashboardMetricsByMonth(monthKey))
+      .then((summary) => {
+        setMetricSummary(summary);
+      })
       .catch((error) => {
         console.error('Rebuild dashboard metrics failed:', error);
       })
