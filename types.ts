@@ -7,6 +7,7 @@ export interface JobEntry {
   productName: string;
   vehicleType: string;
   driverName: string;
+  driverPhone?: string;
   licensePlate: string;
   jobNo: string;
   invNo: string;

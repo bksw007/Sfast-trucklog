@@ -964,6 +964,7 @@ export const updateJob = async (
     productName: job.productName,
     vehicleType: job.vehicleType,
     driverName: job.driverName,
+    driverPhone: job.driverPhone,
     licensePlate: job.licensePlate,
     jobNo: job.jobNo,
     invNo: job.invNo,

@@ -29,6 +29,7 @@ type TodayJobEntry = {
   employerCompany?: string;
   productName?: string;
   plateNo?: string;
+  driverPhone?: string;
   pickup?: {
     location?: string;
     date?: string;
@@ -1102,6 +1103,7 @@ const buildJobPayloadFromToday = (
     rounds: toRoundsFromToday(job),
     vehicleType: job.vehicleType || "",
     driverName: job.driverName || job.assignedToName || "",
+    driverPhone: job.driverPhone || "",
     licensePlate: job.plateNo || "",
     jobNo: job.jobNo || "",
     invNo: typeof job.invNo === "string" ? job.invNo : "",

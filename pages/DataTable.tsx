@@ -13,6 +13,7 @@ import {
   Image as ImageIcon,
   MapPin,
   Package2,
+  Phone,
   PlusCircle,
   Truck,
   UserRound,
@@ -1711,8 +1712,8 @@ const DataTable: React.FC = () => {
                     value={`คนขับ: ${job.driverName || '-'}`}
                   />
                   <DetailRow
-                    icon={<Package2 size={14} className="driver-clay-muted" />}
-                    value={`สินค้า: ${resolveProductName(job)}`}
+                    icon={<Phone size={14} className="driver-clay-muted" />}
+                    value={`เบอร์ติดต่อคนขับ: ${job.driverPhone || '-'}`}
                   />
                 </div>
 

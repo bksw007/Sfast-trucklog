@@ -18,6 +18,7 @@ import {
   Package2,
   Plus,
   Pencil,
+  Phone,
   RotateCcw,
   Save,
   Trash2,
@@ -2334,8 +2335,8 @@ const TodayJobs: React.FC = () => {
                       value={`คนขับ: ${getDriverFullName(job)} | ทะเบียน: ${job.plateNo || '-'}`}
                     />
                     <DetailRow
-                      icon={<Package2 size={14} className="driver-clay-muted" />}
-                      value={`จำนวนรอบ: ${resolveRounds(job)}`}
+                      icon={<Phone size={14} className="driver-clay-muted" />}
+                      value={`เบอร์ติดต่อคนขับ: ${job.driverPhone || '-'}`}
                     />
                     {hasValue(job.pickup.time) && (
                       <DetailRow

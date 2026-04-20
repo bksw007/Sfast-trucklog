@@ -643,6 +643,7 @@ select.no-arrow {
 
 .driver-mobile-nav-link {
   color: var(--driver-text);
+  text-align: center;
 }
 
 .driver-mobile-nav-link:hover,
@@ -656,11 +657,14 @@ select.no-arrow {
 }
 
 .driver-mobile-nav-label {
+  display: block;
+  width: 100%;
   color: inherit;
   font-size: 0.64rem;
   font-weight: 800;
   line-height: 1.15;
   letter-spacing: 0.01em;
+  text-align: center;
   text-wrap: balance;
 }
 
