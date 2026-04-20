@@ -247,6 +247,11 @@ const resolveRounds = (job: Pick<TodayJobEntry, 'rounds' | 'quantity'>): number 
 const formatAssignableUserLabel = (staff: Pick<UserProfile, 'displayName' | 'role'>) =>
   `${staff.displayName} [${staff.role === 'admin' ? 'Admin' : 'User'}]`;
 
+const resolveUserPrimaryName = (user?: Pick<UserProfile, 'displayName' | 'fullName'> | null) =>
+  user?.displayName?.trim() ||
+  user?.fullName?.trim() ||
+  '';
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const DetailRow: React.FC<{ icon: React.ReactNode; value: string }> = ({ icon, value }) => (
@@ -537,7 +542,7 @@ const TodayJobs: React.FC = () => {
   const driverNameByUid = useMemo(() => {
     const map = new Map<string, string>();
     assignableUsers.forEach((user) => {
-      map.set(user.uid, user.fullName?.trim() || user.displayName || '');
+      map.set(user.uid, resolveUserPrimaryName(user));
     });
     return map;
   }, [assignableUsers]);
@@ -754,10 +759,7 @@ const TodayJobs: React.FC = () => {
 
   const updateAssignedUser = (assignedToUid: string) => {
     const assignedUser = assignableUsers.find((row) => row.uid === assignedToUid);
-    const driverFullName =
-      assignedUser?.fullName?.trim() ||
-      assignedUser?.displayName ||
-      '';
+    const driverFullName = resolveUserPrimaryName(assignedUser);
     const profilePhone = extractUserPhone(assignedUser as (Partial<UserProfile> & Record<string, unknown>) | undefined);
     setFormData((prev) => ({
       ...prev,
@@ -1170,10 +1172,7 @@ const TodayJobs: React.FC = () => {
 
   const handleEditAssignedUser = (assignedToUid: string) => {
     const assignedUser = assignableUsers.find((row) => row.uid === assignedToUid);
-    const driverFullName =
-      assignedUser?.fullName?.trim() ||
-      assignedUser?.displayName ||
-      '';
+    const driverFullName = resolveUserPrimaryName(assignedUser);
     const profilePhone = extractUserPhone(assignedUser as (Partial<UserProfile> & Record<string, unknown>) | undefined);
     setEditForm((prev) => (
       prev
@@ -2473,7 +2472,7 @@ const TodayJobs: React.FC = () => {
                   openJobDetail(job);
                 }}
               >
-                <p className="text-sm font-semibold text-slate-700">{job.driverName || '-'}</p>
+                <p className="text-sm font-semibold text-slate-700">{getDriverFullName(job)}</p>
                 <p className="driver-clay-muted text-xs">ทะเบียน: {job.plateNo || '-'}</p>
                 <p className="driver-clay-muted text-xs">{job.pickup.location || '-'} → {job.delivery.location || '-'}</p>
                 <p className="driver-clay-muted text-xs">{job.pickup.time || '-'} / {job.delivery.time || '-'}</p>
