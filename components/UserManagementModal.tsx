@@ -68,7 +68,12 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen, onClo
   if (userProfile?.role !== 'admin') return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="จัดการผู้ใช้งาน">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="จัดการผู้ใช้งาน"
+      panelClassName="md:max-w-4xl lg:max-w-5xl"
+    >
       <div className="space-y-4">
         <div className={`text-xs p-3 rounded-lg flex items-start gap-2 ${
           isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600'
@@ -98,20 +103,20 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen, onClo
         </div>
 
         {/* User List */}
-        <div className="space-y-2">
+        <div className="grid gap-3 lg:grid-cols-2">
           {loading ? (
-            <div className="flex items-center justify-center py-8">
+            <div className="flex items-center justify-center py-8 lg:col-span-2">
               <Loader2 size={32} className="animate-spin text-accent-primary" />
             </div>
           ) : filteredUsers.length === 0 ? (
-            <div className={`text-center py-8 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
+            <div className={`py-8 text-center lg:col-span-2 ${isDark ? 'text-dark-muted' : 'text-light-muted'}`}>
               ไม่พบข้อมูลผู้ใช้
             </div>
           ) : (
             filteredUsers.map((u) => (
               <div 
                 key={u.uid}
-                className={`flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between ${
+                className={`flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between lg:min-h-[5rem] ${
                   isDark 
                     ? 'bg-dark-bg/50 border-dark-muted/20' 
                     : 'bg-light-bg/50 border-light-muted/20'

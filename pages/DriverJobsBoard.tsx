@@ -804,7 +804,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
         isOpen={!!selectedJob}
         onClose={() => setSelectedJob(null)}
         title={selectedJob?.workOrderNo || selectedJob?.ticketNo || 'รายละเอียดงาน'}
-        panelClassName="max-w-2xl"
+        panelClassName="md:max-w-4xl lg:max-w-5xl"
         bodyClassName="hide-scrollbar max-h-[calc(100dvh-8rem)] space-y-4 overflow-y-auto pr-1"
       >
         {selectedJob && (
@@ -924,7 +924,7 @@ const DriverJobsBoard: React.FC<DriverJobsBoardProps> = ({ view }) => {
                     {section.title} ({section.urls.length})
                   </p>
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {section.urls.map((url, index) => (
                     <button
                       key={`${section.title}-${index}`}

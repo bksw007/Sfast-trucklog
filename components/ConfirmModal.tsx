@@ -52,9 +52,11 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
     warning: <AlertTriangle size={28} />,
     info: <Info size={28} />
   };
+  const hasReviewContent = Boolean(imagePreview || (data && data.length > 0));
+  const panelWidthClass = hasReviewContent ? 'max-w-md md:max-w-2xl lg:max-w-3xl' : 'max-w-md md:max-w-lg';
 
   return (
-    <div className="hide-scrollbar fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto px-4 pb-[max(6.5rem,calc(env(safe-area-inset-bottom)+5.5rem))] pt-[max(5.5rem,calc(env(safe-area-inset-top)+4.5rem))] sm:items-center sm:py-8">
+    <div className="hide-scrollbar fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto px-4 pb-[max(6.5rem,calc(env(safe-area-inset-bottom)+5.5rem))] pt-[max(5.5rem,calc(env(safe-area-inset-top)+4.5rem))] sm:items-center sm:py-8 md:px-6">
       {/* Backdrop */}
       <div 
         className="modal-clay-backdrop absolute inset-0" 
@@ -62,7 +64,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
       />
       
       {/* Modal Content */}
-      <div className="modal-clay-panel hide-scrollbar relative my-auto w-full max-w-md max-h-[calc(100dvh-12rem)] overflow-y-auto p-6 shadow-2xl animate-fade-in sm:max-h-[calc(100dvh-4rem)]">
+      <div className={`modal-clay-panel hide-scrollbar relative my-auto w-full ${panelWidthClass} max-h-[calc(100dvh-12rem)] overflow-y-auto p-6 shadow-2xl animate-fade-in sm:max-h-[calc(100dvh-4rem)] md:p-7`}>
         {/* Close Button */}
         <button 
           onClick={onClose}
@@ -101,13 +103,13 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
         {/* Data Review */}
         {data && data.length > 0 && (
-          <div className="modal-clay-soft mb-4 space-y-2 rounded-xl p-4">
+          <div className="modal-clay-soft mb-4 grid gap-2 rounded-xl p-4 md:grid-cols-2">
             {data.map((item, index) => (
-              <div key={index} className="flex items-center justify-between py-1">
-                <span className="modal-clay-muted text-sm">
+              <div key={index} className="rounded-xl bg-white/35 px-3 py-2 dark:bg-white/5">
+                <span className="modal-clay-muted block text-xs">
                   {item.label}:
                 </span>
-                <span className="text-sm font-semibold text-[#34495e]">
+                <span className="mt-1 block break-words text-sm font-semibold text-[#34495e] dark:text-[#eef3ff]">
                   {item.value || '-'}
                 </span>
               </div>

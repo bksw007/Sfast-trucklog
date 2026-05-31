@@ -148,9 +148,14 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
   if (!userProfile) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="ข้อมูลผู้ใช้งาน">
-      <div className="space-y-6">
-        <div className="flex flex-col items-center justify-center">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="ข้อมูลผู้ใช้งาน"
+      panelClassName="md:max-w-4xl lg:max-w-5xl"
+    >
+      <div className="grid gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start">
+        <div className="flex flex-col items-center justify-center lg:sticky lg:top-0">
           {userProfile.photoURL && !photoLoadFailed ? (
             <div className="relative mb-3">
               <img
@@ -241,7 +246,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <input
                 value={profileForm.nickname}
                 onChange={(e) => handleProfileField('nickname', e.target.value)}
@@ -378,7 +383,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
           </div>
         </div>
 
-        <div className="flex gap-3 pt-2">
+        <div className="flex gap-3 pt-2 lg:col-start-2">
           <button
             onClick={onClose}
             className={`flex-1 rounded-xl px-4 py-3 font-medium transition-all ${

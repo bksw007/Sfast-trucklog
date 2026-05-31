@@ -26,10 +26,11 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, panelCl
 
   if (!isOpen) return null;
 
-  const resolvedBodyClassName = bodyClassName || 'hide-scrollbar max-h-[calc(100dvh-8rem)] overflow-y-auto pr-1';
+  const resolvedBodyClassName = bodyClassName || 'hide-scrollbar max-h-[calc(100dvh-8rem)] overflow-y-auto pr-1 md:max-h-[calc(100dvh-11rem)]';
+  const resolvedPanelClassName = panelClassName || 'md:max-w-xl lg:max-w-2xl';
 
   return (
-    <div className="fixed inset-0 z-[85] flex items-start justify-center overflow-hidden px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:items-center sm:py-8">
+    <div className="fixed inset-0 z-[85] flex items-start justify-center overflow-hidden px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:items-center sm:py-8 md:px-6 lg:px-10">
       {/* Backdrop */}
       <div 
         className="modal-clay-backdrop absolute inset-0" 
@@ -37,7 +38,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, panelCl
       />
       
       {/* Modal Content */}
-      <div className={`modal-clay-panel relative my-auto w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-hidden p-6 shadow-2xl animate-fade-in ${panelClassName}`}>
+      <div className={`modal-clay-panel relative my-auto w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-hidden p-6 shadow-2xl animate-fade-in md:p-7 ${resolvedPanelClassName}`}>
         {/* Header */}
         <div className="modal-clay-header mb-4 flex items-center justify-between pb-3">
           <h3 className="modal-clay-title text-lg">

@@ -2494,8 +2494,13 @@ const TodayJobs: React.FC = () => {
         cancelText="ยกเลิก"
       />
 
-      <Modal isOpen={showCardModal} onClose={() => setShowCardModal(false)} title={cardModalTitle}>
-        <div className="hide-scrollbar space-y-2 max-h-[60vh] overflow-y-auto">
+      <Modal
+        isOpen={showCardModal}
+        onClose={() => setShowCardModal(false)}
+        title={cardModalTitle}
+        panelClassName="md:max-w-3xl lg:max-w-4xl"
+      >
+        <div className="hide-scrollbar grid max-h-[60vh] gap-3 overflow-y-auto lg:grid-cols-2">
           {cardModalJobs.length === 0 ? (
             <p className="driver-clay-muted text-sm">ไม่พบรายการ</p>
           ) : (
@@ -2526,6 +2531,7 @@ const TodayJobs: React.FC = () => {
           setShowStatusPickerModal(false);
         }}
         title="รายละเอียดงาน"
+        panelClassName="md:max-w-4xl lg:max-w-5xl"
       >
         {selectedJob && (
           <div className="space-y-4 text-sm">
@@ -2556,18 +2562,20 @@ const TodayJobs: React.FC = () => {
               </div>
             </div>
 
-            <div className="driver-clay-soft space-y-2 p-3 text-xs text-slate-700">
-              <p className="font-semibold text-slate-700">จุดรับ</p>
-              <p>สถานที่: {selectedJob.pickup.location || '-'}</p>
-              <p>วันที่/เวลา: {selectedJob.pickup.date || '-'} {selectedJob.pickup.time || ''}</p>
-              <p>ผู้ติดต่อ: {selectedJob.pickup.contact || '-'}</p>
-            </div>
+            <div className="grid gap-3 lg:grid-cols-2">
+              <div className="driver-clay-soft space-y-2 p-3 text-xs text-slate-700">
+                <p className="font-semibold text-slate-700">จุดรับ</p>
+                <p>สถานที่: {selectedJob.pickup.location || '-'}</p>
+                <p>วันที่/เวลา: {selectedJob.pickup.date || '-'} {selectedJob.pickup.time || ''}</p>
+                <p>ผู้ติดต่อ: {selectedJob.pickup.contact || '-'}</p>
+              </div>
 
-            <div className="driver-clay-soft space-y-2 p-3 text-xs text-slate-700">
-              <p className="font-semibold text-slate-700">จุดส่ง</p>
-              <p>สถานที่: {selectedJob.delivery.location || '-'}</p>
-              <p>วันที่/เวลา: {selectedJob.delivery.date || '-'} {selectedJob.delivery.time || ''}</p>
-              <p>ผู้ติดต่อ: {selectedJob.delivery.contact || '-'}</p>
+              <div className="driver-clay-soft space-y-2 p-3 text-xs text-slate-700">
+                <p className="font-semibold text-slate-700">จุดส่ง</p>
+                <p>สถานที่: {selectedJob.delivery.location || '-'}</p>
+                <p>วันที่/เวลา: {selectedJob.delivery.date || '-'} {selectedJob.delivery.time || ''}</p>
+                <p>ผู้ติดต่อ: {selectedJob.delivery.contact || '-'}</p>
+              </div>
             </div>
 
             <div className="driver-clay-soft space-y-1.5 p-3 text-xs text-slate-700">
@@ -2671,17 +2679,23 @@ const TodayJobs: React.FC = () => {
         )}
       </Modal>
 
-      <Modal isOpen={!!editingJobId && !!editForm} onClose={closeEditModal} title="แก้ไขรายการงาน">
+      <Modal
+        isOpen={!!editingJobId && !!editForm}
+        onClose={closeEditModal}
+        title="แก้ไขรายการงาน"
+        panelClassName="md:max-w-5xl lg:max-w-6xl xl:max-w-7xl"
+        bodyClassName="hide-scrollbar max-h-[calc(100dvh-8rem)] overflow-y-auto pr-1 md:max-h-[calc(100dvh-11rem)]"
+      >
         {editForm && (
           <div className="space-y-4 text-sm">
             <div className="driver-clay-soft p-3">
               <p className="driver-clay-muted text-xs">แก้ไขข้อมูลให้ครบเหมือนฟอร์มบันทึกหน้างาน แล้วกดบันทึกการแก้ไข</p>
             </div>
 
-            <div className="hide-scrollbar max-h-[70vh] space-y-4 overflow-y-auto pr-1">
+            <div className="space-y-4">
               <div className="driver-clay-soft space-y-3 p-3">
                 <p className="text-sm font-semibold text-slate-700">ข้อมูลหลัก</p>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   <label className="space-y-1">
                     <span className={modalLabelClass}>เลขที่ใบสั่งงาน</span>
                     <input className={modalInputClass} value={editForm.workOrderNo} onChange={(e) => handleEditField('workOrderNo', e.target.value)} />
@@ -2793,8 +2807,8 @@ const TodayJobs: React.FC = () => {
 
               <div className="driver-clay-soft space-y-3 p-3">
                 <p className="text-sm font-semibold text-slate-700">จุดรับ</p>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <label className="space-y-1 sm:col-span-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <label className="space-y-1 sm:col-span-2 lg:col-span-2">
                     <span className={modalLabelClass}>สถานที่รับ</span>
                     <select className={modalInputClass} value={editForm.pickup.location} onChange={(e) => handleEditPoint('pickup', 'location', e.target.value)}>
                       <option value="">เลือกสถานที่รับ</option>
@@ -2829,8 +2843,8 @@ const TodayJobs: React.FC = () => {
 
               <div className="driver-clay-soft space-y-3 p-3">
                 <p className="text-sm font-semibold text-slate-700">จุดส่ง</p>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <label className="space-y-1 sm:col-span-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <label className="space-y-1 sm:col-span-2 lg:col-span-2">
                     <span className={modalLabelClass}>สถานที่ส่ง</span>
                     <select className={modalInputClass} value={editForm.delivery.location} onChange={(e) => handleEditPoint('delivery', 'location', e.target.value)}>
                       <option value="">เลือกสถานที่ส่ง</option>
@@ -2874,7 +2888,7 @@ const TodayJobs: React.FC = () => {
                 <p className="text-sm font-semibold text-slate-700">รูปภาพต้นทาง</p>
                 <input ref={editOriginInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleEditImageSelect('origin', e)} />
                 {editForm.originImageUrls.length > 0 && (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4">
                     {editForm.originImageUrls.map((url, index) => (
                       <div key={`edit-origin-existing-${url}-${index}`} className="relative overflow-hidden rounded-xl border border-white/70">
                         <img src={url} alt={`Origin ${index + 1}`} className="h-24 w-full cursor-pointer object-cover" onClick={() => window.open(url, '_blank')} />
@@ -2887,7 +2901,7 @@ const TodayJobs: React.FC = () => {
                   </div>
                 )}
                 {editOriginPreviews.length > 0 && (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4">
                     {editOriginPreviews.map((preview, index) => (
                       <div key={`edit-origin-new-${index}`} className="relative overflow-hidden rounded-xl border border-white/70">
                         <img src={preview} alt={`New Origin ${index + 1}`} className="h-24 w-full object-cover" />
@@ -2909,7 +2923,7 @@ const TodayJobs: React.FC = () => {
                 <p className="text-sm font-semibold text-slate-700">รูปภาพปลายทาง</p>
                 <input ref={editDestinationInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleEditImageSelect('destination', e)} />
                 {editForm.destinationImageUrls.length > 0 && (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4">
                     {editForm.destinationImageUrls.map((url, index) => (
                       <div key={`edit-destination-existing-${url}-${index}`} className="relative overflow-hidden rounded-xl border border-white/70">
                         <img src={url} alt={`Destination ${index + 1}`} className="h-24 w-full cursor-pointer object-cover" onClick={() => window.open(url, '_blank')} />
@@ -2922,7 +2936,7 @@ const TodayJobs: React.FC = () => {
                   </div>
                 )}
                 {editDestinationPreviews.length > 0 && (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4">
                     {editDestinationPreviews.map((preview, index) => (
                       <div key={`edit-destination-new-${index}`} className="relative overflow-hidden rounded-xl border border-white/70">
                         <img src={preview} alt={`New Destination ${index + 1}`} className="h-24 w-full object-cover" />
@@ -2944,7 +2958,7 @@ const TodayJobs: React.FC = () => {
                 <p className="text-sm font-semibold text-slate-700">รูปภาพเอกสาร</p>
                 <input ref={editDocumentInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleEditImageSelect('document', e)} />
                 {editForm.documentImageUrls.length > 0 && (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4">
                     {editForm.documentImageUrls.map((url, index) => (
                       <div key={`edit-document-existing-${url}-${index}`} className="relative overflow-hidden rounded-xl border border-white/70">
                         <img src={url} alt={`Document ${index + 1}`} className="h-24 w-full cursor-pointer object-cover" onClick={() => window.open(url, '_blank')} />
@@ -2957,7 +2971,7 @@ const TodayJobs: React.FC = () => {
                   </div>
                 )}
                 {editDocumentPreviews.length > 0 && (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4">
                     {editDocumentPreviews.map((preview, index) => (
                       <div key={`edit-document-new-${index}`} className="relative overflow-hidden rounded-xl border border-white/70">
                         <img src={preview} alt={`New Document ${index + 1}`} className="h-24 w-full object-cover" />
