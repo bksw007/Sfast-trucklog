@@ -114,27 +114,60 @@ const buildTodayJobSummaryText = (job: Pick<
     `หมายเหตุ: ${job.importantNote || '-'}`,
   ].join('\n');
 
+const isPlainRecord = (value: unknown): value is Record<string, unknown> => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+};
+
+const removeUndefinedDeep = (value: unknown): unknown => {
+  if (value === undefined) return undefined;
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => removeUndefinedDeep(item))
+      .filter((item) => item !== undefined);
+  }
+  if (!isPlainRecord(value)) return value;
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .map(([key, item]) => [key, removeUndefinedDeep(item)] as const)
+      .filter(([, item]) => item !== undefined)
+  );
+};
+
+const sanitizeFirestoreUpdate = (data: Record<string, unknown>): Record<string, unknown> =>
+  removeUndefinedDeep(data) as Record<string, unknown>;
+
 const mergeTodayJobPatch = (
   current: Partial<TodayJobEntry>,
   next: Partial<TodayJobEntry>
-): Partial<TodayJobEntry> => ({
-  ...current,
-  ...next,
-  pickup:
-    current.pickup || next.pickup
-      ? {
-          ...(current.pickup ?? {}),
-          ...(next.pickup ?? {}),
-        }
-      : undefined,
-  delivery:
-    current.delivery || next.delivery
-      ? {
-          ...(current.delivery ?? {}),
-          ...(next.delivery ?? {}),
-        }
-      : undefined,
-});
+): Partial<TodayJobEntry> => {
+  const merged: Partial<TodayJobEntry> = {
+    ...current,
+    ...next,
+  };
+
+  if (current.pickup || next.pickup) {
+    merged.pickup = {
+      ...(current.pickup ?? {}),
+      ...(next.pickup ?? {}),
+    } as TodayJobEntry['pickup'];
+  } else {
+    delete merged.pickup;
+  }
+
+  if (current.delivery || next.delivery) {
+    merged.delivery = {
+      ...(current.delivery ?? {}),
+      ...(next.delivery ?? {}),
+    } as TodayJobEntry['delivery'];
+  } else {
+    delete merged.delivery;
+  }
+
+  return sanitizeFirestoreUpdate(merged as Record<string, unknown>) as Partial<TodayJobEntry>;
+};
 
 const applyTodayJobPatch = (
   source: TodayJobEntry,
@@ -1409,7 +1442,7 @@ export const renameOptionAndSyncJobs = async (
   jobsToUpdate.forEach((data, jobId) => {
     allUpdates.push({
       ref: doc(db, JOBS_COLLECTION, jobId),
-      data: data as Record<string, unknown>,
+      data: sanitizeFirestoreUpdate(data as Record<string, unknown>),
     });
   });
 
@@ -1419,10 +1452,10 @@ export const renameOptionAndSyncJobs = async (
     const nextState = applyTodayJobPatch(source, patch);
     allUpdates.push({
       ref: doc(db, TODAY_JOBS_COLLECTION, jobId),
-      data: {
+      data: sanitizeFirestoreUpdate({
         ...patch,
         summaryText: buildTodayJobSummaryText(nextState),
-      } as Record<string, unknown>,
+      }),
     });
   });
 
@@ -1430,7 +1463,7 @@ export const renameOptionAndSyncJobs = async (
     const batch = writeBatch(db);
     const chunk = allUpdates.slice(i, i + 500);
     chunk.forEach(({ ref, data }) => {
-      batch.update(ref, data);
+      batch.update(ref, sanitizeFirestoreUpdate(data));
     });
     await batch.commit();
   }
