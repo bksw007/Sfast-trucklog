@@ -453,6 +453,40 @@ export const fetchJobsByMonth = async (
   return jobs;
 };
 
+export const fetchJobsByDateRange = async (
+  startDate: string,
+  endDate: string
+): Promise<JobEntry[]> => {
+  const jobsQuery = query(
+    collection(db, JOBS_COLLECTION),
+    where('date', '>=', startDate),
+    where('date', '<', endDate),
+    orderBy('date', 'desc')
+  );
+
+  const snapshot = await getDocs(jobsQuery);
+  const jobs: JobEntry[] = snapshot.docs.map((jobDoc) => ({
+    id: jobDoc.id,
+    ...jobDoc.data(),
+  })) as JobEntry[];
+
+  jobs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  return jobs;
+};
+
+export const fetchAllJobs = async (): Promise<JobEntry[]> => {
+  const jobsQuery = query(
+    collection(db, JOBS_COLLECTION),
+    orderBy('timestamp', 'desc')
+  );
+
+  const snapshot = await getDocs(jobsQuery);
+  return snapshot.docs.map((jobDoc) => ({
+    id: jobDoc.id,
+    ...jobDoc.data(),
+  })) as JobEntry[];
+};
+
 export const subscribeToDashboardMetricsByMonth = (
   monthKey: string,
   callback: (summary: DashboardMetricSummary | null) => void,

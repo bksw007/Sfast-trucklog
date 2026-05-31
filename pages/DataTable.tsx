@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { deleteJob as firebaseDeleteJob, fetchJobsByMonth, updateJob as firebaseUpdateJob } from '../services/firebaseService';
+import {
+  deleteJob as firebaseDeleteJob,
+  fetchAllJobs,
+  fetchJobsByDateRange,
+  fetchJobsByMonth,
+  updateJob as firebaseUpdateJob
+} from '../services/firebaseService';
 import { JobEntry } from '../types';
 import {
   ArrowUpDown,
@@ -153,16 +159,16 @@ const DataTable: React.FC = () => {
   const [editDocumentImageFiles, setEditDocumentImageFiles] = useState<File[]>([]);
 
   useEffect(() => {
-    if (!filters.month || !filters.year) {
-      setJobs([]);
-      setLoading(false);
-      return undefined;
-    }
-
     setLoading(true);
     let cancelled = false;
+    const fetchPromise =
+      filters.month && filters.year
+        ? fetchJobsByMonth(filters.year, filters.month)
+        : filters.year
+          ? fetchJobsByDateRange(`${filters.year}-01-01`, `${filters.year + 1}-01-01`)
+          : fetchAllJobs();
 
-    fetchJobsByMonth(filters.year, filters.month)
+    fetchPromise
       .then((rows) => {
         if (cancelled) return;
         setJobs(rows);
