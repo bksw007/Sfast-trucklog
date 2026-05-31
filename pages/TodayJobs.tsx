@@ -253,12 +253,19 @@ const resolveRounds = (job: Pick<TodayJobEntry, 'rounds' | 'quantity'>): number 
   typeof job.rounds === 'number' && Number.isFinite(job.rounds) && job.rounds > 0
     ? job.rounds
     : parseRounds(job.quantity);
-const formatAssignableUserLabel = (staff: Pick<UserProfile, 'displayName' | 'role'>) =>
-  `${staff.displayName} [${staff.role === 'admin' ? 'Admin' : 'User'}]`;
-
-const resolveUserPrimaryName = (user?: Pick<UserProfile, 'displayName' | 'fullName'> | null) =>
+const resolveAssignedAppName = (user?: Pick<UserProfile, 'nickname' | 'displayName' | 'fullName'> | null) =>
+  user?.nickname?.trim() ||
   user?.displayName?.trim() ||
   user?.fullName?.trim() ||
+  '';
+
+const formatAssignableUserLabel = (staff: Pick<UserProfile, 'nickname' | 'displayName' | 'fullName' | 'role'>) =>
+  `${resolveAssignedAppName(staff)} [${staff.role === 'admin' ? 'Admin' : 'User'}]`;
+
+const resolveDriverFullName = (user?: Pick<UserProfile, 'fullName' | 'displayName' | 'nickname'> | null) =>
+  user?.fullName?.trim() ||
+  user?.displayName?.trim() ||
+  user?.nickname?.trim() ||
   '';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -572,15 +579,15 @@ const TodayJobs: React.FC = () => {
   const driverNameByUid = useMemo(() => {
     const map = new Map<string, string>();
     assignableUsers.forEach((user) => {
-      map.set(user.uid, resolveUserPrimaryName(user));
+      map.set(user.uid, resolveDriverFullName(user));
     });
     return map;
   }, [assignableUsers]);
 
   const getDriverFullName = (job: TodayJobEntry) =>
     (job.assignedToUid ? driverNameByUid.get(job.assignedToUid) : '') ||
-    job.assignedToName?.trim() ||
     job.driverName ||
+    job.assignedToName?.trim() ||
     '-';
 
   const dashboardStats = useMemo(() => {
@@ -789,7 +796,7 @@ const TodayJobs: React.FC = () => {
 
   const updateAssignedUser = (assignedToUid: string) => {
     const assignedUser = assignableUsers.find((row) => row.uid === assignedToUid);
-    const driverFullName = resolveUserPrimaryName(assignedUser);
+    const driverFullName = resolveDriverFullName(assignedUser);
     const profilePhone = extractUserPhone(assignedUser as (Partial<UserProfile> & Record<string, unknown>) | undefined);
     setFormData((prev) => ({
       ...prev,
@@ -1019,7 +1026,7 @@ const TodayJobs: React.FC = () => {
     setIsSaving(true);
     let createdCount = 0;
     try {
-      const assignedName = selectedAssignedUser?.displayName || formData.driverName || '-';
+      const assignedName = resolveAssignedAppName(selectedAssignedUser) || formData.driverName || '-';
       const baseWorkOrderNo = (formData.workOrderNo || generateWorkOrderNo()).trim();
 
       const shouldSplitRounds = Number.isInteger(totalRounds) && totalRounds > 1;
@@ -1202,7 +1209,7 @@ const TodayJobs: React.FC = () => {
 
   const handleEditAssignedUser = (assignedToUid: string) => {
     const assignedUser = assignableUsers.find((row) => row.uid === assignedToUid);
-    const driverFullName = resolveUserPrimaryName(assignedUser);
+    const driverFullName = resolveDriverFullName(assignedUser);
     const profilePhone = extractUserPhone(assignedUser as (Partial<UserProfile> & Record<string, unknown>) | undefined);
     setEditForm((prev) => (
       prev
@@ -1354,7 +1361,7 @@ const TodayJobs: React.FC = () => {
       const mergedDocumentImageUrls = mergeImageUrls(editForm.documentImageUrls, newDocumentUrls);
 
       const assignedName =
-        assignableUsers.find((row) => row.uid === editForm.assignedToUid)?.displayName ||
+        resolveAssignedAppName(assignableUsers.find((row) => row.uid === editForm.assignedToUid)) ||
         editForm.driverName ||
         '-';
 
@@ -2159,7 +2166,7 @@ const TodayJobs: React.FC = () => {
 
           {formData.assignedToUid && (
             <div className={`rounded-xl border px-4 py-3 text-sm ${isDark ? 'border-dark-muted/25 bg-dark-bg/40 text-dark-muted' : 'border-sky-200 bg-sky-50 text-sky-700'}`}>
-              มอบหมายให้: {selectedAssignedUser?.displayName || formData.driverName || '-'}
+              มอบหมายให้: {resolveAssignedAppName(selectedAssignedUser) || formData.driverName || '-'}
             </div>
           )}
 
