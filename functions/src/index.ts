@@ -116,6 +116,7 @@ const messaging = getMessaging();
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN || "";
 const LINE_GROUP_ID = process.env.LINE_GROUP_ID || "";
+const LINE_NOTIFICATIONS_ENABLED = false;
 const DASHBOARD_METRICS_COLLECTION = "dashboard_metrics";
 const FUEL_PRICES_COLLECTION = "fuel_prices";
 const LATEST_DIESEL_PRICE_DOC_ID = "latest_diesel";
@@ -672,6 +673,15 @@ const sendLineNotification = async (
   jobId: string,
   job: TodayJobEntry
 ): Promise<LineNotificationResult> => {
+  if (!LINE_NOTIFICATIONS_ENABLED) {
+    logger.info("LINE skipped (temporarily disabled)", {eventType, jobId});
+    return {
+      attempted: false,
+      ok: false,
+      reason: "temporarily-disabled",
+    };
+  }
+
   if (!LINE_CHANNEL_ACCESS_TOKEN || !LINE_GROUP_ID) {
     logger.info("LINE skipped (missing env)", {eventType, jobId});
     return {
