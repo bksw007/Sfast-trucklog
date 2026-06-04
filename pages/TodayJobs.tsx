@@ -593,6 +593,11 @@ const TodayJobs: React.FC = () => {
     job.assignedToName?.trim() ||
     '-';
 
+  const toResolvedEditableForm = (job: TodayJobEntry): TodayJobForm => ({
+    ...toEditableForm(job),
+    driverName: getDriverFullName(job) === '-' ? '' : getDriverFullName(job),
+  });
+
   const dashboardStats = useMemo(() => {
     const today = parseDate(todayDate);
     if (!today) {
@@ -1177,7 +1182,7 @@ const TodayJobs: React.FC = () => {
   const openEditModal = (job: TodayJobEntry) => {
     resetEditImageDrafts();
     setEditingJobId(job.id);
-    setEditForm(toEditableForm(job));
+    setEditForm(toResolvedEditableForm(job));
     setEditBaseRevision(
       typeof job.revision === 'number' && Number.isFinite(job.revision)
         ? job.revision
@@ -1398,7 +1403,7 @@ const TodayJobs: React.FC = () => {
       if (error instanceof RevisionConflictError) {
         const latest = await getTodayJobById(editingJobId);
         if (latest) {
-          setEditForm(toEditableForm(latest));
+          setEditForm(toResolvedEditableForm(latest));
           resetEditImageDrafts();
           setEditBaseRevision(
             typeof latest.revision === 'number' && Number.isFinite(latest.revision)
@@ -2101,6 +2106,7 @@ const TodayJobs: React.FC = () => {
                   className={selectClass}
                   value={formData.driverName}
                   onChange={(e) => updateField('driverName', e.target.value)}
+                  disabled={!!formData.assignedToUid}
                 >
                   <option value="">เลือกพนักงานขับรถ</option>
                   {buildDropdownOptions(driverOptions, formData.driverName).map((option) => (
@@ -2601,7 +2607,7 @@ const TodayJobs: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => handleDownloadPdf(toEditableForm(selectedJob))}
+                onClick={() => handleDownloadPdf(toResolvedEditableForm(selectedJob))}
                 className="driver-clay-btn driver-clay-btn-info driver-clay-btn-pdf text-xs"
               >
                 <FileDown size={14} />
@@ -2771,7 +2777,12 @@ const TodayJobs: React.FC = () => {
                   </label>
                   <label className="space-y-1">
                     <span className={modalLabelClass}>พนักงานขับรถ</span>
-                    <select className={modalInputClass} value={editForm.driverName} onChange={(e) => handleEditField('driverName', e.target.value)}>
+                    <select
+                      className={modalInputClass}
+                      value={editForm.driverName}
+                      onChange={(e) => handleEditField('driverName', e.target.value)}
+                      disabled={!!editForm.assignedToUid}
+                    >
                       <option value="">เลือกพนักงานขับรถ</option>
                       {buildDropdownOptions(driverOptions, editForm.driverName).map((option) => (
                         <option key={`edit-driver-${option}`} value={option}>
