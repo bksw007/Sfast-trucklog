@@ -12,6 +12,7 @@ interface UserProfileModalProps {
 }
 
 type ProfileFormState = {
+  fullName: string;
   nickname: string;
   employeeCode: string;
   phoneNumber: string;
@@ -23,6 +24,7 @@ type ProfileFormState = {
 };
 
 const emptyProfileForm = (): ProfileFormState => ({
+  fullName: '',
   nickname: '',
   employeeCode: '',
   phoneNumber: '',
@@ -57,6 +59,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
     if (isOpen && userProfile) {
       setDisplayName(userProfile.displayName || '');
       setProfileForm({
+        fullName: userProfile.fullName || '',
         nickname: userProfile.nickname || '',
         employeeCode: userProfile.employeeCode || '',
         phoneNumber: formatPhone(userProfile.phoneNumber || ''),
@@ -91,6 +94,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
     try {
       await updateUserProfile(user.uid, {
         displayName: displayName.trim(),
+        fullName: profileForm.fullName.trim(),
         nickname: profileForm.nickname.trim(),
         employeeCode: profileForm.employeeCode.trim(),
         phoneNumber: formatPhone(profileForm.phoneNumber.trim()),
@@ -247,6 +251,16 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <input
+                value={profileForm.fullName}
+                onChange={(e) => handleProfileField('fullName', e.target.value)}
+                className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none ${
+                  isDark
+                    ? 'border-dark-muted/30 bg-dark-bg/60 text-dark-text focus:border-accent-primary'
+                    : 'border-light-muted/30 bg-white text-light-text focus:border-accent-primary'
+                }`}
+                placeholder="ชื่อจริง"
+              />
               <input
                 value={profileForm.nickname}
                 onChange={(e) => handleProfileField('nickname', e.target.value)}
