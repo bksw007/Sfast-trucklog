@@ -1110,7 +1110,9 @@ const toImageUrls = (urls?: unknown, single?: unknown): string[] => {
   return singleUrl ? [singleUrl] : [];
 };
 
-const resolveAssignedDriverName = async (assignedToUid?: string): Promise<string> => {
+const resolveAssignedDriverName = async (
+  assignedToUid?: string
+): Promise<string> => {
   const normalizedUid = (assignedToUid || "").trim();
   if (!normalizedUid) return "";
 
