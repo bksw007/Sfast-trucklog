@@ -1110,19 +1110,40 @@ const toImageUrls = (urls?: unknown, single?: unknown): string[] => {
   return singleUrl ? [singleUrl] : [];
 };
 
+const resolveAssignedDriverName = async (assignedToUid?: string): Promise<string> => {
+  const normalizedUid = (assignedToUid || "").trim();
+  if (!normalizedUid) return "";
+
+  const userSnapshot = await db.collection("users").doc(normalizedUid).get();
+  const user = userSnapshot.exists ? userSnapshot.data() || {} : {};
+  const candidates = [user.fullName, user.displayName, user.nickname];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  return "";
+};
+
 const buildJobPayloadFromToday = (
   todayJobId: string,
   job: TodayJobEntry,
-  now: number
+  now: number,
+  assignedDriverName = ""
 ): Record<string, unknown> => {
   const pickupDate = asDateOnly(job.pickup?.date);
+  const driverName =
+    assignedDriverName ||
+    (typeof job.assignedToName === "string" ? job.assignedToName.trim() : "") ||
+    (typeof job.driverName === "string" ? job.driverName.trim() : "");
   const payload: Record<string, unknown> = {
     date: toJobDate(pickupDate),
     pickupLocation: job.pickup?.location || "",
     dropoffLocation: job.delivery?.location || "",
     rounds: toRoundsFromToday(job),
     vehicleType: job.vehicleType || "",
-    driverName: job.driverName || job.assignedToName || "",
+    driverName,
     driverPhone: job.driverPhone || "",
     licensePlate: job.plateNo || "",
     jobNo: job.jobNo || "",
@@ -1135,7 +1156,7 @@ const buildJobPayloadFromToday = (
     productName: (job.productName || "Inverter").trim() || "Inverter",
     todayQuantity: job.quantity || "",
     assignedToUid: job.assignedToUid || "",
-    assignedToName: job.assignedToName || job.driverName || "",
+    assignedToName: driverName,
     updatedAt: now,
     timestamp: typeof job.timestamp === "number" ? job.timestamp : now,
   };
@@ -1287,7 +1308,13 @@ export const syncTodayJobToJobs = onCall(async (request) => {
 
   const now = Date.now();
   const targetJobId = `today_${todayJobId}`;
-  const payload = buildJobPayloadFromToday(todayJobId, job, now);
+  const assignedDriverName = await resolveAssignedDriverName(job.assignedToUid);
+  const payload = buildJobPayloadFromToday(
+    todayJobId,
+    job,
+    now,
+    assignedDriverName
+  );
 
   await db.collection("jobs").doc(targetJobId).set(payload, {merge: true});
   await rebuildDashboardMetricsForMonth(getMonthKey(payload.date as string));

@@ -622,6 +622,7 @@ export const subscribeToDriverJobs = (
   callback: (jobs: JobEntry[]) => void,
   onError?: (error: Error) => void
 ): (() => void) => {
+  const normalizedAssignedToUid = (assignedToUid || '').trim();
   const normalizedNames = Array.from(
     new Set(
       driverNames
@@ -630,7 +631,7 @@ export const subscribeToDriverJobs = (
     )
   );
 
-  if (!assignedToUid && normalizedNames.length === 0) {
+  if (!normalizedAssignedToUid && normalizedNames.length === 0) {
     callback([]);
     return () => {};
   }
@@ -638,12 +639,12 @@ export const subscribeToDriverJobs = (
   const latestQueryRows = new Map<string, JobEntry[]>();
   const queryEntries: Array<{ key: string; queryRef: Query<DocumentData> }> = [];
 
-  if (assignedToUid) {
+  if (normalizedAssignedToUid) {
     queryEntries.push({
-      key: `uid:${assignedToUid}`,
+      key: `uid:${normalizedAssignedToUid}`,
       queryRef: query(
         collection(db, JOBS_COLLECTION),
-        where('assignedToUid', '==', assignedToUid)
+        where('assignedToUid', '==', normalizedAssignedToUid)
       ),
     });
   }
@@ -663,6 +664,13 @@ export const subscribeToDriverJobs = (
     const merged = new Map<string, JobEntry>();
     latestQueryRows.forEach((rows) => {
       rows.forEach((job) => {
+        if (
+          normalizedAssignedToUid &&
+          job.assignedToUid &&
+          job.assignedToUid !== normalizedAssignedToUid
+        ) {
+          return;
+        }
         merged.set(job.id, job);
       });
     });
@@ -702,6 +710,7 @@ export const fetchDriverJobsByMonth = async (
   assignedToUid: string | undefined,
   driverNames: string[]
 ): Promise<JobEntry[]> => {
+  const normalizedAssignedToUid = (assignedToUid || '').trim();
   const safeMonth = Math.min(Math.max(month, 1), 12);
   const startDate = `${year}-${String(safeMonth).padStart(2, '0')}-01`;
   const nextYear = safeMonth === 12 ? year + 1 : year;
@@ -716,17 +725,17 @@ export const fetchDriverJobsByMonth = async (
     )
   );
 
-  if (!assignedToUid && normalizedNames.length === 0) {
+  if (!normalizedAssignedToUid && normalizedNames.length === 0) {
     return [];
   }
 
   const merged = new Map<string, JobEntry>();
   const queryPromises: Array<Promise<void>> = [];
 
-  if (assignedToUid) {
+  if (normalizedAssignedToUid) {
     const queryRef = query(
       collection(db, JOBS_COLLECTION),
-      where('assignedToUid', '==', assignedToUid),
+      where('assignedToUid', '==', normalizedAssignedToUid),
       where('date', '>=', startDate),
       where('date', '<', endDate),
       orderBy('date', 'desc')
@@ -752,7 +761,15 @@ export const fetchDriverJobsByMonth = async (
     queryPromises.push(
       getDocs(queryRef).then((snapshot) => {
         snapshot.docs.forEach((jobDoc) => {
-          merged.set(jobDoc.id, { id: jobDoc.id, ...jobDoc.data() } as JobEntry);
+          const job = { id: jobDoc.id, ...jobDoc.data() } as JobEntry;
+          if (
+            normalizedAssignedToUid &&
+            job.assignedToUid &&
+            job.assignedToUid !== normalizedAssignedToUid
+          ) {
+            return;
+          }
+          merged.set(jobDoc.id, job);
         });
       })
     );

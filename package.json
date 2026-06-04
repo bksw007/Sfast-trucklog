@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "line:quota": "node scripts/check-line-quota.mjs",
     "backfill:today-jobs-assignee": "node scripts/backfill-today-jobs-assignee.mjs",
-    "backfill:today-jobs-assignee:apply": "node scripts/backfill-today-jobs-assignee.mjs --apply"
+    "backfill:today-jobs-assignee:apply": "node scripts/backfill-today-jobs-assignee.mjs --apply",
+    "backfill:job-assignee-driver-name": "node scripts/backfill-job-assignee-driver-name.mjs",
+    "backfill:job-assignee-driver-name:apply": "node scripts/backfill-job-assignee-driver-name.mjs --apply"
   },
   "dependencies": {
     "browser-image-compression": "^2.0.2",

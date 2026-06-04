@@ -178,7 +178,9 @@ const DriverDataTable: React.FC = () => {
           <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">My Records</p>
           <h2 className="mt-1 text-2xl font-black text-slate-700">ข้อมูลงานวิ่งของฉัน</h2>
           <p className="mt-1 text-sm text-slate-500">
-            {driverNameCandidates.length > 0
+            {user?.uid && driverNameCandidates.length > 0
+              ? `ค้นหาจากบัญชีนี้ และงานเก่าที่ตรงกับชื่อ ${driverNameCandidates.join(' / ')}`
+              : driverNameCandidates.length > 0
               ? `ค้นหาด้วยบัญชีนี้และชื่อที่เกี่ยวข้อง ${driverNameCandidates.join(' / ')}`
               : 'ค้นหาจากบัญชีผู้ใช้ที่กำลังเข้าสู่ระบบ'}
           </p>

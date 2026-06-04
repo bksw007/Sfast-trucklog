@@ -268,6 +268,9 @@ const resolveDriverFullName = (user?: Pick<UserProfile, 'fullName' | 'displayNam
   user?.nickname?.trim() ||
   '';
 
+const resolveAssignedDriverName = (user?: Pick<UserProfile, 'fullName' | 'displayName' | 'nickname'> | null) =>
+  resolveDriverFullName(user) || resolveAssignedAppName(user);
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const DetailRow: React.FC<{ icon: React.ReactNode; value: string }> = ({ icon, value }) => (
@@ -796,12 +799,12 @@ const TodayJobs: React.FC = () => {
 
   const updateAssignedUser = (assignedToUid: string) => {
     const assignedUser = assignableUsers.find((row) => row.uid === assignedToUid);
-    const driverFullName = resolveDriverFullName(assignedUser);
+    const driverFullName = resolveAssignedDriverName(assignedUser);
     const profilePhone = extractUserPhone(assignedUser as (Partial<UserProfile> & Record<string, unknown>) | undefined);
     setFormData((prev) => ({
       ...prev,
       assignedToUid,
-      driverName: driverFullName || prev.driverName,
+      driverName: driverFullName,
       driverPhone: formatPhoneNumber(profilePhone || ''),
     }));
 
@@ -1026,7 +1029,7 @@ const TodayJobs: React.FC = () => {
     setIsSaving(true);
     let createdCount = 0;
     try {
-      const assignedName = resolveAssignedAppName(selectedAssignedUser) || formData.driverName || '-';
+      const assignedName = resolveAssignedDriverName(selectedAssignedUser) || formData.driverName || '-';
       const baseWorkOrderNo = (formData.workOrderNo || generateWorkOrderNo()).trim();
 
       const shouldSplitRounds = Number.isInteger(totalRounds) && totalRounds > 1;
@@ -1039,6 +1042,7 @@ const TodayJobs: React.FC = () => {
           shouldSplitRounds ? `${baseWorkOrderNo}-R${roundNumber}` : baseWorkOrderNo;
         const roundForm = {
           ...formData,
+          driverName: assignedName,
           quantity: String(roundValue),
           workOrderNo: roundWorkOrderNo,
         };
@@ -1046,6 +1050,7 @@ const TodayJobs: React.FC = () => {
 
         const createdJob = await addTodayJob({
           ...roundForm,
+          driverName: assignedName,
           fuelAndToll: fuelAndTollValue,
           rounds: roundValue,
           ticketNo: roundWorkOrderNo,
@@ -1209,14 +1214,14 @@ const TodayJobs: React.FC = () => {
 
   const handleEditAssignedUser = (assignedToUid: string) => {
     const assignedUser = assignableUsers.find((row) => row.uid === assignedToUid);
-    const driverFullName = resolveDriverFullName(assignedUser);
+    const driverFullName = resolveAssignedDriverName(assignedUser);
     const profilePhone = extractUserPhone(assignedUser as (Partial<UserProfile> & Record<string, unknown>) | undefined);
     setEditForm((prev) => (
       prev
         ? {
             ...prev,
             assignedToUid,
-            driverName: driverFullName || prev.driverName,
+            driverName: driverFullName,
             driverPhone: formatPhoneNumber(profilePhone || ''),
           }
         : prev
@@ -1361,12 +1366,13 @@ const TodayJobs: React.FC = () => {
       const mergedDocumentImageUrls = mergeImageUrls(editForm.documentImageUrls, newDocumentUrls);
 
       const assignedName =
-        resolveAssignedAppName(assignableUsers.find((row) => row.uid === editForm.assignedToUid)) ||
+        resolveAssignedDriverName(assignableUsers.find((row) => row.uid === editForm.assignedToUid)) ||
         editForm.driverName ||
         '-';
 
       await updateTodayJob(editingJobId, {
         ...editForm,
+        driverName: assignedName,
         rounds: toRoundCount(editForm.quantity) ?? 1,
         fuelAndToll: fuelAndTollValue,
         originImageUrls: mergedOriginImageUrls,
@@ -1377,7 +1383,7 @@ const TodayJobs: React.FC = () => {
         documentImageUrl: mergedDocumentImageUrls[0] || '',
         ticketNo: editForm.workOrderNo,
         assignedToName: assignedName,
-        summaryText: buildSummaryText(editForm),
+        summaryText: buildSummaryText({ ...editForm, driverName: assignedName }),
         lastSavedAt: Date.now(),
         updatedByUid: user?.uid || '',
       }, editBaseRevision ?? undefined);
